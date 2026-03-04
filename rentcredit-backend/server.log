@@ -1,0 +1,94 @@
+nohup: ignoring input
+
+> rentcredit-backend@0.0.1 start:dev
+> nest start --watch
+
+[2J[3J[H[[90m6:38:28 PM[0m] Starting compilation in watch mode...
+
+[[90m6:38:30 PM[0m] Found 0 errors. Watching for file changes.
+
+[dotenv@17.3.1] injecting env (11) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +44ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +0ms[39m
+(node:22578) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use asycn/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmCoreModule dependencies initialized[39m[38;5;3m +59ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mUsersModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mKycModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPaymentsModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPropertiesModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTenantsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAppController {/}:[39m[38;5;3m +10ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/, GET} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuthController {/auth}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/auth/signup, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/auth/login, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/auth/switch-role, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/auth/me, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mUsersController {/users}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/users/profile, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/users/profile, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/users, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/users/:id, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mKycController {/kyc}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/kyc/upload, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/kyc/status, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/kyc/pending, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/kyc/verify/:kycId, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPaymentsController {/payments}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/payments, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/payments/:paymentId/record, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/payments/tenant, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/payments/property/:propertyId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/payments/:paymentId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/payments/:paymentId/status, PUT} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPropertiesController {/properties}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/properties, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/properties, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/properties/:propertyId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/properties/:propertyId/stats, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/properties/:propertyId, PUT} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/properties/:propertyId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTenantsController {/tenants}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/tenants/by-property/:propertyId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/tenants/all, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/tenants/profile/:tenantId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/tenants/:tenantId/reliability, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +2ms[39m
+[31m[Nest] 22578  - [39m03/04/2026, 6:38:30 PM [31m  ERROR[39m [38;5;3m[NestApplication] [39m[31mError: listen EADDRINUSE: address already in use :::3000[39m[38;5;3m +3ms[39m
+node:internal/errors:496
+    ErrorCaptureStackTrace(err);
+    ^
+
+Error: listen EADDRINUSE: address already in use :::3000
+    at __node_internal_captureLargerStackTrace (node:internal/errors:496:5)
+    at __node_internal_uvExceptionWithHostPort (node:internal/errors:593:12)
+    at Server.setupListenHandle [as _listen2] (node:net:1811:16)
+    at listenInCluster (node:net:1859:12)
+    at Server.listen (node:net:1947:7)
+    at ExpressAdapter.listen (/home/feijo/CRENIT/rentcredit-backend/node_modules/@nestjs/platform-express/adapters/express-adapter.js:127:32)
+    at /home/feijo/CRENIT/rentcredit-backend/node_modules/@nestjs/core/nest-application.js:188:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (/home/feijo/CRENIT/rentcredit-backend/node_modules/@nestjs/core/nest-application.js:178:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at bootstrap (/home/feijo/CRENIT/rentcredit-backend/src/main.ts:30:3) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 3000
+}
+
+Node.js v18.19.1
