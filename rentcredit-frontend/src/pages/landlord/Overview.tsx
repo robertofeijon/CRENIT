@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { fetchLandlordOverview } from '../../api';
+import { fetchProfile } from '../../api';
 
 export default function LandlordOverview() {
-  const [data, setData] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
-    fetchLandlordOverview()
-      .then(setData)
-      .catch((e) => setError(e.message));
+    fetchProfile().then((p) => setProfile(p.user || p)).catch(() => {});
   }, []);
 
   return (
@@ -17,18 +14,16 @@ export default function LandlordOverview() {
         <div>
           <div className="pg-eyebrow">Landlord · Overview</div>
           <div className="pg-title">Portfolio Overview</div>
+          {profile?.phoneNumber && (
+            <div style={{ color: 'var(--ink-3)', fontSize: 14, marginTop: 2 }}>
+              Phone: {profile.phoneNumber}
+            </div>
+          )}
         </div>
       </div>
-      {error && <div style={{ color: 'var(--danger)' }}>{error}</div>}
-      {data ? (
-        <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem' }}>
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      ) : (
-        <p style={{ margin: '40px 0', fontSize: '16px', color: 'var(--ink-3)' }}>
-          Overview placeholder
-        </p>
-      )}
+      <p style={{ margin: '40px 0', fontSize: '16px', color: 'var(--ink-3)' }}>
+        Overview placeholder
+      </p>
     </div>
   );
 }

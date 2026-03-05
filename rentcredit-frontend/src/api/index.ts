@@ -1,3 +1,16 @@
+// Update user profile
+export async function updateProfile(data: { fullName: string; phoneNumber?: string }) {
+  const res = await authorizedFetch(`${BASE}/users/profile`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Profile update failed');
+  }
+  return res.json();
+}
 const BASE = 'http://localhost:3000';
 let authToken: string | null = null;
 
