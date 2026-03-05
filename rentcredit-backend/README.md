@@ -31,6 +31,15 @@
 $ npm install
 ```
 
+This project seeds two demo users on startup (see `src/main.ts`):
+
+```
+tenant@example.com / tenant123   (tenant role)
+landlord@example.com / landlord123   (landlord role)
+```
+
+You can log in with those accounts or call `/auth/signup` to create others.
+
 ## Compile and run the project
 
 ```bash
