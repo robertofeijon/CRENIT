@@ -1,4 +1,12 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
+} from 'typeorm';
 import { User } from './user.entity';
 import { Payment } from './payment.entity';
 
@@ -25,8 +33,23 @@ export class Property {
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   monthlyRent: number;
 
+  @Column('simple-array', { nullable: true })
+  images: string[];
+
   @Column({ nullable: true })
   unitCount: number;
+
+  @Column({ nullable: true })
+  description: string;
+
+  @Column({ nullable: true })
+  propertyType: string;
+
+  @Column({ nullable: true })
+  bedrooms: number;
+
+  @Column({ nullable: true })
+  bathrooms: number;
 
   @Column({ default: true })
   isActive: boolean;

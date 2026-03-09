@@ -6,6 +6,10 @@ export declare class CreatePropertyDto {
     zipCode?: string;
     monthlyRent?: number;
     unitCount?: number;
+    description?: string;
+    propertyType?: string;
+    bedrooms?: number;
+    bathrooms?: number;
 }
 export declare class UpdatePropertyDto {
     name?: string;
@@ -15,4 +19,8 @@ export declare class UpdatePropertyDto {
     zipCode?: string;
     monthlyRent?: number;
     unitCount?: number;
+    description?: string;
+    propertyType?: string;
+    bedrooms?: number;
+    bathrooms?: number;
 }

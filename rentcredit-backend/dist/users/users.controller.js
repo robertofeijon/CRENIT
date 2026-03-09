@@ -31,8 +31,8 @@ let UsersController = class UsersController {
     async getAllUsers(role) {
         return await this.usersService.getAllUsers(role);
     }
-    async getUser(req) {
-        return await this.usersService.getUser(req.params.id);
+    async getUser(id) {
+        return await this.usersService.getUser(id);
     }
 };
 exports.UsersController = UsersController;
@@ -64,9 +64,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)(':id'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __param(0, (0, common_1.Request)()),
+    __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "getUser", null);
 exports.UsersController = UsersController = __decorate([

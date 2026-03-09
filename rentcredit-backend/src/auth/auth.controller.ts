@@ -1,4 +1,12 @@
-import { Controller, Post, Body, UseGuards, Request, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+  Get,
+} from '@nestjs/common';
+import type { RequestWithUser } from '../types/express';
 import { AuthService } from './auth.service';
 import { SignUpDto, LoginDto, RoleSwitchDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -19,13 +27,16 @@ export class AuthController {
 
   @Post('switch-role')
   @UseGuards(JwtAuthGuard)
-  async switchRole(@Request() req, @Body() roleSwitchDto: RoleSwitchDto) {
-    return await this.authService.switchRole(req.user.userId, roleSwitchDto);
+  async switchRole(
+    @Request() req: RequestWithUser,
+    @Body() roleSwitchDto: RoleSwitchDto,
+  ) {
+    return await this.authService.switchRole(req.user!.userId, roleSwitchDto);
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  getProfile(@Request() req) {
+  getProfile(@Request() req: RequestWithUser) {
     return {
       user: req.user,
     };

@@ -23,6 +23,9 @@ let PaymentsController = class PaymentsController {
     constructor(paymentsService) {
         this.paymentsService = paymentsService;
     }
+    async getRentDue(req) {
+        return await this.paymentsService.getRentDue(req.user.userId);
+    }
     async createPayment(req, createPaymentDto) {
         return await this.paymentsService.createPayment(req.user.userId, createPaymentDto);
     }
@@ -43,6 +46,15 @@ let PaymentsController = class PaymentsController {
     }
 };
 exports.PaymentsController = PaymentsController;
+__decorate([
+    (0, common_1.Get)('rent-due'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, role_guard_1.RoleGuard),
+    (0, role_guard_1.Roles)('tenant'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "getRentDue", null);
 __decorate([
     (0, common_1.Post)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, role_guard_1.RoleGuard),

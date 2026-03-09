@@ -23,6 +23,15 @@ import { Roles, RoleGuard } from '../auth/guards/role.guard';
 export class PaymentsController {
   constructor(private paymentsService: PaymentsService) {}
 
+  @Get('rent-due')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @Roles('tenant')
+  async getRentDue(
+    @Request() req: ExpressRequest & { user: { userId: string } },
+  ) {
+    return await this.paymentsService.getRentDue(req.user.userId);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RoleGuard)
   @Roles('landlord')

@@ -1,4 +1,14 @@
-import { Controller, Post, Get, Put, Body, UseGuards, Request, Param } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Put,
+  Body,
+  UseGuards,
+  Request,
+  Param,
+} from '@nestjs/common';
+import type { RequestWithUser } from '../types/express';
 import { KycService } from './kyc.service';
 import { UploadKYCDto, UpdateKYCStatusDto } from './dto/kyc.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -10,14 +20,17 @@ export class KycController {
 
   @Post('upload')
   @UseGuards(JwtAuthGuard)
-  async uploadKYC(@Request() req, @Body() uploadKycDto: UploadKYCDto) {
-    return await this.kycService.uploadKYC(req.user.userId, uploadKycDto);
+  async uploadKYC(
+    @Request() req: RequestWithUser,
+    @Body() uploadKycDto: UploadKYCDto,
+  ) {
+    return await this.kycService.uploadKYC(req.user!.userId, uploadKycDto);
   }
 
   @Get('status')
   @UseGuards(JwtAuthGuard)
-  async getKYCStatus(@Request() req) {
-    return await this.kycService.getKYCStatus(req.user.userId);
+  async getKYCStatus(@Request() req: RequestWithUser) {
+    return await this.kycService.getKYCStatus(req.user!.userId);
   }
 
   @Get('pending')
@@ -33,8 +46,12 @@ export class KycController {
   async verifyKYC(
     @Param('kycId') kycId: string,
     @Body() updateKycStatusDto: UpdateKYCStatusDto,
-    @Request() req,
+    @Request() req: RequestWithUser,
   ) {
-    return await this.kycService.verifyKYC(kycId, updateKycStatusDto, req.user.userId);
+    return await this.kycService.verifyKYC(
+      kycId,
+      updateKycStatusDto,
+      req.user!.userId,
+    );
   }
 }

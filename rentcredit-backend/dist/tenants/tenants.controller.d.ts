@@ -1,8 +1,9 @@
+import type { RequestWithUser } from '../types/express';
 import { TenantsService } from './tenants.service';
 export declare class TenantsController {
     private tenantsService;
     constructor(tenantsService: TenantsService);
-    getTenantsByProperty(propertyId: string, req: any): Promise<{
+    getTenantsByProperty(propertyId: string, req: RequestWithUser): Promise<{
         user: {
             id: string | undefined;
             email: string | undefined;
@@ -17,7 +18,7 @@ export declare class TenantsController {
             overdue: number;
         };
     }[]>;
-    getLandlordTenants(req: any): Promise<{
+    getLandlordTenants(req: RequestWithUser): Promise<{
         propertyId: string;
         propertyName: string;
         tenants: Array<{
@@ -68,4 +69,5 @@ export declare class TenantsController {
             totalPayments: number;
         };
     }>;
+    getMyProperty(req: RequestWithUser): Promise<import("../entities").Property>;
 }

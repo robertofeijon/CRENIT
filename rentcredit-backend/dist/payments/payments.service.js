@@ -85,6 +85,19 @@ let PaymentsService = class PaymentsService {
             },
         };
     }
+    async getRentDue(tenantId) {
+        const payment = await this.paymentsRepository.findOne({
+            where: { tenantId, status: 'pending' },
+            order: { dueDate: 'ASC' },
+        });
+        if (!payment) {
+            return { amount: '$0', due: null };
+        }
+        return {
+            amount: `$${payment.amount}`,
+            due: payment.dueDate.toISOString().split('T')[0],
+        };
+    }
     async getTenantPayments(tenantId, status) {
         let query = this.paymentsRepository
             .createQueryBuilder('payment')

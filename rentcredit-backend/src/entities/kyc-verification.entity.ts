@@ -1,4 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('kyc_verifications')
 export class KYCVerification {
@@ -17,7 +23,10 @@ export class KYCVerification {
   @Column({ nullable: true })
   verifiedDocumentUrl: string;
 
-  @Column('enum', { enum: ['pending', 'verified', 'rejected'], default: 'pending' })
+  @Column('enum', {
+    enum: ['pending', 'verified', 'rejected'],
+    default: 'pending',
+  })
   status: string;
 
   @Column({ nullable: true })

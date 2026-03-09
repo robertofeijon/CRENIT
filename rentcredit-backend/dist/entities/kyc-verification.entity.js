@@ -46,7 +46,10 @@ __decorate([
     __metadata("design:type", String)
 ], KYCVerification.prototype, "verifiedDocumentUrl", void 0);
 __decorate([
-    (0, typeorm_1.Column)('enum', { enum: ['pending', 'verified', 'rejected'], default: 'pending' }),
+    (0, typeorm_1.Column)('enum', {
+        enum: ['pending', 'verified', 'rejected'],
+        default: 'pending',
+    }),
     __metadata("design:type", String)
 ], KYCVerification.prototype, "status", void 0);
 __decorate([

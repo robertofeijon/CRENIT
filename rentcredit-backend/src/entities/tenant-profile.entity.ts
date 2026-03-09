@@ -1,4 +1,11 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+} from 'typeorm';
 import { User } from './user.entity';
 
 @Entity('tenant_profiles')
@@ -21,7 +28,10 @@ export class TenantProfile {
   @Column({ type: 'int', default: 0 })
   onTimePayments: number;
 
-  @Column('enum', { enum: ['poor', 'fair', 'good', 'excellent'], default: 'poor' })
+  @Column('enum', {
+    enum: ['poor', 'fair', 'good', 'excellent'],
+    default: 'poor',
+  })
   creditTier: string;
 
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })

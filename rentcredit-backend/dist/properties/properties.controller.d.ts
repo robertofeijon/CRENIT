@@ -4,6 +4,16 @@ import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
 export declare class PropertiesController {
     private propertiesService;
     constructor(propertiesService: PropertiesService);
+    getAvailableProperties(): Promise<{
+        id: string;
+        name: string;
+        address: string;
+        city: string;
+        state: string;
+        monthlyRent: number;
+        unitCount: number;
+        images: string[];
+    }[]>;
     createProperty(req: ExpressRequest & {
         user: {
             userId: string;
@@ -61,5 +71,13 @@ export declare class PropertiesController {
         };
     }): Promise<{
         message: string;
+    }>;
+    uploadPropertyImage(propertyId: string, req: ExpressRequest & {
+        user: {
+            userId: string;
+        };
+    }, file: Express.Multer.File): Promise<{
+        message: string;
+        imageUrl: string;
     }>;
 }

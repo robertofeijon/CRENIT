@@ -72,4 +72,5 @@ export declare class TenantsService {
             totalPayments: number;
         };
     }>;
+    getTenantProperty(tenantId: string): Promise<Property>;
 }

@@ -1,6 +1,10 @@
 import { Repository } from 'typeorm';
 import { Property } from '../entities';
 import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
+interface MulterFile {
+    originalname: string;
+    buffer: Buffer;
+}
 export declare class PropertiesService {
     private propertiesRepository;
     constructor(propertiesRepository: Repository<Property>);
@@ -38,4 +42,19 @@ export declare class PropertiesService {
             monthlyRent: number;
         };
     }>;
+    uploadPropertyImage(propertyId: string, landlordId: string, file: MulterFile): Promise<{
+        message: string;
+        imageUrl: string;
+    }>;
+    getAvailableProperties(): Promise<{
+        id: string;
+        name: string;
+        address: string;
+        city: string;
+        state: string;
+        monthlyRent: number;
+        unitCount: number;
+        images: string[];
+    }[]>;
 }
+export {};

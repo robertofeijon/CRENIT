@@ -145,6 +145,17 @@ let TenantsService = class TenantsService {
             },
         };
     }
+    async getTenantProperty(tenantId) {
+        const recentPayment = await this.paymentsRepository.findOne({
+            where: { tenantId },
+            order: { createdAt: 'DESC' },
+            relations: ['property'],
+        });
+        if (!recentPayment || !recentPayment.property) {
+            throw new common_1.NotFoundException('No property found for this tenant');
+        }
+        return recentPayment.property;
+    }
 };
 exports.TenantsService = TenantsService;
 exports.TenantsService = TenantsService = __decorate([

@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsEnum } from 'class-validator';
 
 export class CreatePropertyDto {
   @IsString()
@@ -26,6 +26,30 @@ export class CreatePropertyDto {
   @IsOptional()
   @IsNumber()
   unitCount?: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsEnum([
+    'apartment',
+    'house',
+    'condo',
+    'townhouse',
+    'studio',
+    'commercial',
+    'other',
+  ])
+  propertyType?: string;
+
+  @IsOptional()
+  @IsNumber()
+  bedrooms?: number;
+
+  @IsOptional()
+  @IsNumber()
+  bathrooms?: number;
 }
 
 export class UpdatePropertyDto {
@@ -56,4 +80,28 @@ export class UpdatePropertyDto {
   @IsOptional()
   @IsNumber()
   unitCount?: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsEnum([
+    'apartment',
+    'house',
+    'condo',
+    'townhouse',
+    'studio',
+    'commercial',
+    'other',
+  ])
+  propertyType?: string;
+
+  @IsOptional()
+  @IsNumber()
+  bedrooms?: number;
+
+  @IsOptional()
+  @IsNumber()
+  bathrooms?: number;
 }

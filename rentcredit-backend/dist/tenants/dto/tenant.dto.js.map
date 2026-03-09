@@ -1,1 +1,1 @@
-{"version":3,"file":"tenant.dto.js","sourceRoot":"","sources":["../../../src/tenants/dto/tenant.dto.ts"],"names":[],"mappings":";;;;;;;;;;;;AAAA,qDAAuD;AAEvD,MAAa,aAAa;IAExB,WAAW,CAAS;IAGpB,UAAU,CAAS;CACpB;AAND,sCAMC;AAJC;IADC,IAAA,0BAAQ,GAAE;;kDACS;AAGpB;IADC,IAAA,0BAAQ,GAAE;;iDACQ"}
+{"version":3,"file":"tenant.dto.js","sourceRoot":"","sources":["../../../src/tenants/dto/tenant.dto.ts"],"names":[],"mappings":";;;;;;;;;;;;AAAA,qDAA2C;AAE3C,MAAa,aAAa;IAExB,WAAW,CAAS;IAGpB,UAAU,CAAS;CACpB;AAND,sCAMC;AAJC;IADC,IAAA,0BAAQ,GAAE;;kDACS;AAGpB;IADC,IAAA,0BAAQ,GAAE;;iDACQ"}

@@ -4,6 +4,17 @@ import { CreatePaymentDto, UpdatePaymentStatusDto, RecordPaymentDto } from './dt
 export declare class PaymentsController {
     private paymentsService;
     constructor(paymentsService: PaymentsService);
+    getRentDue(req: ExpressRequest & {
+        user: {
+            userId: string;
+        };
+    }): Promise<{
+        amount: string;
+        due: null;
+    } | {
+        amount: string;
+        due: string;
+    }>;
     createPayment(req: ExpressRequest & {
         user: {
             userId: string;

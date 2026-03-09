@@ -1,0 +1,105 @@
+import { Repository } from 'typeorm';
+import { Dispute, Payment, User } from '../entities';
+export declare class DisputesService {
+    private disputesRepository;
+    private paymentsRepository;
+    private usersRepository;
+    constructor(disputesRepository: Repository<Dispute>, paymentsRepository: Repository<Payment>, usersRepository: Repository<User>);
+    getAllDisputes(): Promise<{
+        id: string;
+        paymentId: string;
+        tenantId: string;
+        tenantName: string;
+        landlordId: string;
+        landlordName: string;
+        type: string;
+        reason: string;
+        description: string;
+        status: string;
+        amount: number;
+        resolution: string;
+        notes: string;
+        resolvedByAdmin: string;
+        createdAt: Date;
+        resolutionDate: Date;
+    }[]>;
+    getLandlordDisputes(landlordId: string): Promise<{
+        id: string;
+        paymentId: string;
+        tenantId: string;
+        tenantName: string;
+        landlordId: string;
+        landlordName: string;
+        type: string;
+        reason: string;
+        description: string;
+        status: string;
+        amount: number;
+        resolution: string;
+        notes: string;
+        resolvedByAdmin: string;
+        createdAt: Date;
+        resolutionDate: Date;
+    }[]>;
+    getTenantDisputes(tenantId: string): Promise<{
+        id: string;
+        paymentId: string;
+        tenantId: string;
+        tenantName: string;
+        landlordId: string;
+        landlordName: string;
+        type: string;
+        reason: string;
+        description: string;
+        status: string;
+        amount: number;
+        resolution: string;
+        notes: string;
+        resolvedByAdmin: string;
+        createdAt: Date;
+        resolutionDate: Date;
+    }[]>;
+    createDispute(userId: string, paymentId: string, type: string, reason: string, description: string, amount?: number): Promise<{
+        message: string;
+        dispute: {
+            id: string;
+            paymentId: string;
+            tenantId: string;
+            tenantName: string;
+            landlordId: string;
+            landlordName: string;
+            type: string;
+            reason: string;
+            description: string;
+            status: string;
+            amount: number;
+            resolution: string;
+            notes: string;
+            resolvedByAdmin: string;
+            createdAt: Date;
+            resolutionDate: Date;
+        };
+    }>;
+    resolveDispute(disputeId: string, adminId: string, status: 'resolved' | 'rejected', resolution: string): Promise<{
+        message: string;
+        dispute: {
+            id: string;
+            paymentId: string;
+            tenantId: string;
+            tenantName: string;
+            landlordId: string;
+            landlordName: string;
+            type: string;
+            reason: string;
+            description: string;
+            status: string;
+            amount: number;
+            resolution: string;
+            notes: string;
+            resolvedByAdmin: string;
+            createdAt: Date;
+            resolutionDate: Date;
+        };
+    }>;
+    private formatDispute;
+}

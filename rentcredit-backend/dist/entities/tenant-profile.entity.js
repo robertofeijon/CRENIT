@@ -51,7 +51,10 @@ __decorate([
     __metadata("design:type", Number)
 ], TenantProfile.prototype, "onTimePayments", void 0);
 __decorate([
-    (0, typeorm_1.Column)('enum', { enum: ['poor', 'fair', 'good', 'excellent'], default: 'poor' }),
+    (0, typeorm_1.Column)('enum', {
+        enum: ['poor', 'fair', 'good', 'excellent'],
+        default: 'poor',
+    }),
     __metadata("design:type", String)
 ], TenantProfile.prototype, "creditTier", void 0);
 __decorate([

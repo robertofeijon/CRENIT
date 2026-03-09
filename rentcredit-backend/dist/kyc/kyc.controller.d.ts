@@ -1,9 +1,10 @@
+import type { RequestWithUser } from '../types/express';
 import { KycService } from './kyc.service';
 import { UploadKYCDto, UpdateKYCStatusDto } from './dto/kyc.dto';
 export declare class KycController {
     private kycService;
     constructor(kycService: KycService);
-    uploadKYC(req: any, uploadKycDto: UploadKYCDto): Promise<{
+    uploadKYC(req: RequestWithUser, uploadKycDto: UploadKYCDto): Promise<{
         message: string;
         kyc: {
             id: string;
@@ -11,7 +12,7 @@ export declare class KycController {
             documentType: string;
         };
     }>;
-    getKYCStatus(req: any): Promise<{
+    getKYCStatus(req: RequestWithUser): Promise<{
         status: string;
         message: string;
         id?: undefined;
@@ -29,7 +30,7 @@ export declare class KycController {
         message?: undefined;
     }>;
     getPendingKYCs(): Promise<import("../entities").KYCVerification[]>;
-    verifyKYC(kycId: string, updateKycStatusDto: UpdateKYCStatusDto, req: any): Promise<{
+    verifyKYC(kycId: string, updateKycStatusDto: UpdateKYCStatusDto, req: RequestWithUser): Promise<{
         message: string;
         kyc: {
             id: string;

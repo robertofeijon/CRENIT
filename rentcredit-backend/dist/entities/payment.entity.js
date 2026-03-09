@@ -47,7 +47,10 @@ __decorate([
     __metadata("design:type", Number)
 ], Payment.prototype, "amount", void 0);
 __decorate([
-    (0, typeorm_1.Column)('enum', { enum: ['pending', 'completed', 'failed', 'overdue'], default: 'pending' }),
+    (0, typeorm_1.Column)('enum', {
+        enum: ['pending', 'completed', 'failed', 'overdue'],
+        default: 'pending',
+    }),
     __metadata("design:type", String)
 ], Payment.prototype, "status", void 0);
 __decorate([

@@ -21,7 +21,12 @@ let Property = class Property {
     state;
     zipCode;
     monthlyRent;
+    images;
     unitCount;
+    description;
+    propertyType;
+    bedrooms;
+    bathrooms;
     isActive;
     createdAt;
     updatedAt;
@@ -59,9 +64,29 @@ __decorate([
     __metadata("design:type", Number)
 ], Property.prototype, "monthlyRent", void 0);
 __decorate([
+    (0, typeorm_1.Column)('simple-array', { nullable: true }),
+    __metadata("design:type", Array)
+], Property.prototype, "images", void 0);
+__decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", Number)
 ], Property.prototype, "unitCount", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Property.prototype, "description", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Property.prototype, "propertyType", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Number)
+], Property.prototype, "bedrooms", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Number)
+], Property.prototype, "bathrooms", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: true }),
     __metadata("design:type", Boolean)

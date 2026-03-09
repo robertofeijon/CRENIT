@@ -1,9 +1,10 @@
+import type { RequestWithUser } from '../types/express';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/user.dto';
 export declare class UsersController {
     private usersService;
     constructor(usersService: UsersService);
-    getProfile(req: any): Promise<{
+    getProfile(req: RequestWithUser): Promise<{
         id: string;
         email: string;
         fullName: string;
@@ -12,7 +13,7 @@ export declare class UsersController {
         kycStatus: string;
         createdAt: Date;
     }>;
-    updateProfile(req: any, updateUserDto: UpdateUserDto): Promise<{
+    updateProfile(req: RequestWithUser, updateUserDto: UpdateUserDto): Promise<{
         id: string;
         email: string;
         fullName: string;
@@ -21,7 +22,7 @@ export declare class UsersController {
         kycStatus: string;
     }>;
     getAllUsers(role?: string): Promise<import("../entities").User[]>;
-    getUser(req: any): Promise<{
+    getUser(id: string): Promise<{
         id: string;
         email: string;
         fullName: string;

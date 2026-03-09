@@ -19,6 +19,10 @@ class CreatePropertyDto {
     zipCode;
     monthlyRent;
     unitCount;
+    description;
+    propertyType;
+    bedrooms;
+    bathrooms;
 }
 exports.CreatePropertyDto = CreatePropertyDto;
 __decorate([
@@ -54,6 +58,34 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], CreatePropertyDto.prototype, "unitCount", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreatePropertyDto.prototype, "description", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)([
+        'apartment',
+        'house',
+        'condo',
+        'townhouse',
+        'studio',
+        'commercial',
+        'other',
+    ]),
+    __metadata("design:type", String)
+], CreatePropertyDto.prototype, "propertyType", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], CreatePropertyDto.prototype, "bedrooms", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], CreatePropertyDto.prototype, "bathrooms", void 0);
 class UpdatePropertyDto {
     name;
     address;
@@ -62,6 +94,10 @@ class UpdatePropertyDto {
     zipCode;
     monthlyRent;
     unitCount;
+    description;
+    propertyType;
+    bedrooms;
+    bathrooms;
 }
 exports.UpdatePropertyDto = UpdatePropertyDto;
 __decorate([
@@ -99,4 +135,32 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], UpdatePropertyDto.prototype, "unitCount", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdatePropertyDto.prototype, "description", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)([
+        'apartment',
+        'house',
+        'condo',
+        'townhouse',
+        'studio',
+        'commercial',
+        'other',
+    ]),
+    __metadata("design:type", String)
+], UpdatePropertyDto.prototype, "propertyType", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], UpdatePropertyDto.prototype, "bedrooms", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], UpdatePropertyDto.prototype, "bathrooms", void 0);
 //# sourceMappingURL=property.dto.js.map

@@ -24,6 +24,13 @@ export declare class PaymentsService {
             isOnTime: boolean;
         };
     }>;
+    getRentDue(tenantId: string): Promise<{
+        amount: string;
+        due: null;
+    } | {
+        amount: string;
+        due: string;
+    }>;
     getTenantPayments(tenantId: string, status?: string): Promise<Payment[]>;
     getPropertyPayments(propertyId: string): Promise<Payment[]>;
     getPaymentDetails(paymentId: string): Promise<Payment>;

@@ -1,4 +1,11 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+} from 'typeorm';
 import { User } from './user.entity';
 import { Property } from './property.entity';
 
@@ -16,7 +23,10 @@ export class Payment {
   @Column('decimal', { precision: 10, scale: 2 })
   amount: number;
 
-  @Column('enum', { enum: ['pending', 'completed', 'failed', 'overdue'], default: 'pending' })
+  @Column('enum', {
+    enum: ['pending', 'completed', 'failed', 'overdue'],
+    default: 'pending',
+  })
   status: string;
 
   @Column()

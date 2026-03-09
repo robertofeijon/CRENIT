@@ -6,7 +6,10 @@ import { Payment, Property, TenantProfile } from '../entities';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Payment, Property, TenantProfile]), AuthModule],
+  imports: [
+    TypeOrmModule.forFeature([Payment, Property, TenantProfile]),
+    AuthModule,
+  ],
   providers: [PaymentsService],
   controllers: [PaymentsController],
   exports: [PaymentsService],

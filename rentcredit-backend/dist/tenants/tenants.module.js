@@ -18,7 +18,10 @@ let TenantsModule = class TenantsModule {
 exports.TenantsModule = TenantsModule;
 exports.TenantsModule = TenantsModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([entities_1.User, entities_1.TenantProfile, entities_1.Property, entities_1.Payment]), auth_module_1.AuthModule],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([entities_1.User, entities_1.TenantProfile, entities_1.Property, entities_1.Payment]),
+            auth_module_1.AuthModule,
+        ],
         providers: [tenants_service_1.TenantsService],
         controllers: [tenants_controller_1.TenantsController],
         exports: [tenants_service_1.TenantsService],

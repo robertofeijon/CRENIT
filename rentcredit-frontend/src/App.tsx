@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import './styles.css';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { NotificationsProvider, NotificationsDisplay } from './components/Notifications';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
 import { NavItem } from './components/NavItem';
@@ -14,15 +15,17 @@ import TenantPayments from './pages/tenant/Payments';
 import TenantCredit from './pages/tenant/Credit';
 import TenantDeposit from './pages/tenant/Deposit';
 import TenantSettings from './pages/tenant/Settings';
+import BrowseRentals from './pages/tenant/Browse';
 
 import LandlordOverview from './pages/landlord/Overview';
 import LandlordProperties from './pages/landlord/Properties';
 import LandlordTenants from './pages/landlord/Tenants';
 import LandlordPayments from './pages/landlord/Payments';
-import LandlordDisputes from './pages/landlord/Disputes';
+import AdminDisputes from './pages/admin/Disputes';
 
 const tenantNav: NavItem[] = [
   { id: 'home', label: 'Home', dot: true },
+  { id: 'browse', label: 'Browse Rentals', dot: true, badge: 'new' },
   { id: 'payments', label: 'Payments Center', dot: true },
   { id: 'credit', label: 'Credit Hub', dot: true },
   { id: 'deposit', label: 'Deposit Tracking', dot: true },
@@ -34,11 +37,23 @@ const landlordNav: NavItem[] = [
   { id: 'properties', label: 'Properties', dot: true },
   { id: 'tenants', label: 'Tenants', dot: true },
   { id: 'payments', label: 'Payments', dot: true },
-  { id: 'disputes', label: 'Disputes', dot: true, badge: '2' },
+];
+
+const adminNav: NavItem[] = [
+  { id: 'disputes', label: 'Disputes', dot: true, badge: 'manage' },
 ];
 
 function RoutesWithAuth() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)' }}>
+        <div style={{ color: 'var(--ink-3)', fontSize: 14 }}>Loading…</div>
+      </div>
+    );
+  }
+  
   if (!user) {
     return (
       <Routes>
@@ -48,8 +63,8 @@ function RoutesWithAuth() {
     );
   }
 
-  const navItems = user.role === 'tenant' ? tenantNav : landlordNav;
-  const defaultPath = `/${user.role}/${user.role === 'tenant' ? 'home' : 'overview'}`;
+  const navItems = user.role === 'tenant' ? tenantNav : user.role === 'admin' ? adminNav : landlordNav;
+  const defaultPath = user.role === 'admin' ? '/admin/disputes' : `/${user.role}/${user.role === 'tenant' ? 'home' : 'overview'}`;
 
   return (
     <>
@@ -61,6 +76,7 @@ function RoutesWithAuth() {
           {user.role === 'tenant' && (
             <>
               <Route path="/tenant/home" element={<TenantHome />} />
+              <Route path="/tenant/browse" element={<BrowseRentals />} />
               <Route path="/tenant/payments" element={<TenantPayments />} />
               <Route path="/tenant/credit" element={<TenantCredit />} />
               <Route path="/tenant/deposit" element={<TenantDeposit />} />
@@ -73,7 +89,11 @@ function RoutesWithAuth() {
               <Route path="/landlord/properties" element={<LandlordProperties />} />
               <Route path="/landlord/tenants" element={<LandlordTenants />} />
               <Route path="/landlord/payments" element={<LandlordPayments />} />
-              <Route path="/landlord/disputes" element={<LandlordDisputes />} />
+            </>
+          )}
+          {user.role === 'admin' && (
+            <>
+              <Route path="/admin/disputes" element={<AdminDisputes />} />
             </>
           )}
           <Route path="*" element={<div className="page">Not found</div>} />
@@ -86,9 +106,12 @@ function RoutesWithAuth() {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <RoutesWithAuth />
-      </BrowserRouter>
+      <NotificationsProvider>
+        <BrowserRouter>
+          <RoutesWithAuth />
+        </BrowserRouter>
+        <NotificationsDisplay />
+      </NotificationsProvider>
     </AuthProvider>
   );
 }

@@ -18,7 +18,9 @@ dotenv.config();
     TypeOrmModule.forFeature([User, TenantProfile]),
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production-12345',
+      secret:
+        process.env.JWT_SECRET ||
+        'your-super-secret-jwt-key-change-in-production-12345',
       signOptions: { expiresIn: '7d' },
     }),
   ],

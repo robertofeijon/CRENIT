@@ -34,6 +34,9 @@ let TenantsController = class TenantsController {
     async getTenantReliabilityScore(tenantId) {
         return await this.tenantsService.getTenantReliabilityScore(tenantId);
     }
+    async getMyProperty(req) {
+        return await this.tenantsService.getTenantProperty(req.user.userId);
+    }
 };
 exports.TenantsController = TenantsController;
 __decorate([
@@ -71,6 +74,15 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], TenantsController.prototype, "getTenantReliabilityScore", null);
+__decorate([
+    (0, common_1.Get)('my-property'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, role_guard_1.RoleGuard),
+    (0, role_guard_1.Roles)('tenant'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], TenantsController.prototype, "getMyProperty", null);
 exports.TenantsController = TenantsController = __decorate([
     (0, common_1.Controller)('tenants'),
     __metadata("design:paramtypes", [tenants_service_1.TenantsService])

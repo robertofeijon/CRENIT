@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PropertiesController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
 const properties_service_1 = require("./properties.service");
 const property_dto_1 = require("./dto/property.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
@@ -22,6 +23,9 @@ let PropertiesController = class PropertiesController {
     propertiesService;
     constructor(propertiesService) {
         this.propertiesService = propertiesService;
+    }
+    async getAvailableProperties() {
+        return await this.propertiesService.getAvailableProperties();
     }
     async createProperty(req, createPropertyDto) {
         return await this.propertiesService.createProperty(req.user.userId, createPropertyDto);
@@ -41,8 +45,17 @@ let PropertiesController = class PropertiesController {
     async deleteProperty(propertyId, req) {
         return await this.propertiesService.deleteProperty(propertyId, req.user.userId);
     }
+    async uploadPropertyImage(propertyId, req, file) {
+        return await this.propertiesService.uploadPropertyImage(propertyId, req.user.userId, file);
+    }
 };
 exports.PropertiesController = PropertiesController;
+__decorate([
+    (0, common_1.Get)('public/available'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], PropertiesController.prototype, "getAvailableProperties", null);
 __decorate([
     (0, common_1.Post)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, role_guard_1.RoleGuard),
@@ -103,6 +116,18 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], PropertiesController.prototype, "deleteProperty", null);
+__decorate([
+    (0, common_1.Post)(':propertyId/images'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, role_guard_1.RoleGuard),
+    (0, role_guard_1.Roles)('landlord'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('image')),
+    __param(0, (0, common_1.Param)('propertyId')),
+    __param(1, (0, common_1.Request)()),
+    __param(2, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], PropertiesController.prototype, "uploadPropertyImage", null);
 exports.PropertiesController = PropertiesController = __decorate([
     (0, common_1.Controller)('properties'),
     __metadata("design:paramtypes", [properties_service_1.PropertiesService])

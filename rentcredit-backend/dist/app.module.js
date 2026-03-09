@@ -42,7 +42,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
+const serve_static_1 = require("@nestjs/serve-static");
 const dotenv = __importStar(require("dotenv"));
+const path = __importStar(require("path"));
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
 const database_config_1 = require("./config/database.config");
@@ -52,6 +54,7 @@ const kyc_module_1 = require("./kyc/kyc.module");
 const payments_module_1 = require("./payments/payments.module");
 const properties_module_1 = require("./properties/properties.module");
 const tenants_module_1 = require("./tenants/tenants.module");
+const disputes_module_1 = require("./disputes/disputes.module");
 dotenv.config();
 let AppModule = class AppModule {
 };
@@ -59,6 +62,10 @@ exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            serve_static_1.ServeStaticModule.forRoot({
+                rootPath: path.join(__dirname, '..', 'uploads'),
+                serveRoot: '/uploads',
+            }),
             typeorm_1.TypeOrmModule.forRoot(database_config_1.databaseConfig),
             auth_module_1.AuthModule,
             users_module_1.UsersModule,
@@ -66,6 +73,7 @@ exports.AppModule = AppModule = __decorate([
             payments_module_1.PaymentsModule,
             properties_module_1.PropertiesModule,
             tenants_module_1.TenantsModule,
+            disputes_module_1.DisputesModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

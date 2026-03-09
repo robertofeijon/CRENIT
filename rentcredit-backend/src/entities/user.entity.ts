@@ -1,4 +1,11 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { Payment } from './payment.entity';
 import { TenantProfile } from './tenant-profile.entity';
 
@@ -22,7 +29,10 @@ export class User {
   @Column('enum', { enum: ['tenant', 'landlord'], default: 'tenant' })
   role: string;
 
-  @Column('enum', { enum: ['pending', 'verified', 'rejected'], default: 'pending' })
+  @Column('enum', {
+    enum: ['pending', 'verified', 'rejected'],
+    default: 'pending',
+  })
   kycStatus: string;
 
   @Column({ nullable: true })

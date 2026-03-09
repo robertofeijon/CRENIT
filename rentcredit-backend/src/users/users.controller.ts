@@ -1,4 +1,14 @@
-import { Controller, Get, Put, Body, UseGuards, Request, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Body,
+  UseGuards,
+  Request,
+  Query,
+  Param,
+} from '@nestjs/common';
+import type { RequestWithUser } from '../types/express';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -9,14 +19,17 @@ export class UsersController {
 
   @Get('profile')
   @UseGuards(JwtAuthGuard)
-  async getProfile(@Request() req) {
-    return await this.usersService.getUser(req.user.userId);
+  async getProfile(@Request() req: RequestWithUser) {
+    return await this.usersService.getUser(req.user!.userId);
   }
 
   @Put('profile')
   @UseGuards(JwtAuthGuard)
-  async updateProfile(@Request() req, @Body() updateUserDto: UpdateUserDto) {
-    return await this.usersService.updateUser(req.user.userId, updateUserDto);
+  async updateProfile(
+    @Request() req: RequestWithUser,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return await this.usersService.updateUser(req.user!.userId, updateUserDto);
   }
 
   @Get()
@@ -27,7 +40,7 @@ export class UsersController {
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  async getUser(@Request() req) {
-    return await this.usersService.getUser(req.params.id);
+  async getUser(@Param('id') id: string) {
+    return await this.usersService.getUser(id);
   }
 }

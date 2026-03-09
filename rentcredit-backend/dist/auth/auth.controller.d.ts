@@ -1,3 +1,4 @@
+import type { RequestWithUser } from '../types/express';
 import { AuthService } from './auth.service';
 import { SignUpDto, LoginDto, RoleSwitchDto } from './dto/auth.dto';
 export declare class AuthController {
@@ -25,7 +26,7 @@ export declare class AuthController {
         };
         access_token: string;
     }>;
-    switchRole(req: any, roleSwitchDto: RoleSwitchDto): Promise<{
+    switchRole(req: RequestWithUser, roleSwitchDto: RoleSwitchDto): Promise<{
         message: string;
         user: {
             id: string;
@@ -34,7 +35,13 @@ export declare class AuthController {
         };
         access_token: string;
     }>;
-    getProfile(req: any): {
-        user: any;
+    getProfile(req: RequestWithUser): {
+        user: {
+            userId: string;
+            email: string;
+            role: string;
+            iat: number;
+            exp: number;
+        } | undefined;
     };
 }

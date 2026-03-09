@@ -18,7 +18,10 @@ let PaymentsModule = class PaymentsModule {
 exports.PaymentsModule = PaymentsModule;
 exports.PaymentsModule = PaymentsModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([entities_1.Payment, entities_1.Property, entities_1.TenantProfile]), auth_module_1.AuthModule],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([entities_1.Payment, entities_1.Property, entities_1.TenantProfile]),
+            auth_module_1.AuthModule,
+        ],
         providers: [payments_service_1.PaymentsService],
         controllers: [payments_controller_1.PaymentsController],
         exports: [payments_service_1.PaymentsService],
