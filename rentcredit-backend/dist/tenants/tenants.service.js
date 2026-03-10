@@ -28,6 +28,35 @@ let TenantsService = class TenantsService {
         this.propertiesRepository = propertiesRepository;
         this.paymentsRepository = paymentsRepository;
     }
+    async requestInvoice(tenantId, propertyId, amount, notes) {
+        const property = await this.propertiesRepository.findOne({ where: { id: propertyId } });
+        if (!property) {
+            throw new common_1.NotFoundException('Property not found');
+        }
+        let available = true;
+        if ('unitsAvailable' in property) {
+            available = property.unitsAvailable > 0;
+        }
+        if (!available) {
+            return { success: false, message: 'No units available for this property.' };
+        }
+        const landlordId = property.landlordId;
+        const payment = this.paymentsRepository.create({
+            tenantId,
+            propertyId,
+            amount,
+            status: 'pending',
+            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            notes: notes || '',
+        });
+        await this.paymentsRepository.save(payment);
+        return {
+            success: true,
+            message: 'Invoice request sent to landlord.',
+            landlordId,
+            paymentId: payment.id,
+        };
+    }
     async getTenantsByProperty(propertyId, landlordId) {
         const property = await this.propertiesRepository.findOne({
             where: { id: propertyId, landlordId },

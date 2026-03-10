@@ -16,6 +16,45 @@ export class TenantsService {
     private paymentsRepository: Repository<Payment>,
   ) {}
 
+  // Tenant requests to rent a unit (invoice request)
+  async requestInvoice(tenantId: string, propertyId: string, amount: number, notes?: string) {
+    // Check property exists
+    const property = await this.propertiesRepository.findOne({ where: { id: propertyId } });
+    if (!property) {
+      throw new NotFoundException('Property not found');
+    }
+    // Check for available units (assume property has a unitsAvailable field, or fallback to always available)
+    // If not present, always allow
+    let available = true;
+    if ('unitsAvailable' in property) {
+      available = (property as any).unitsAvailable > 0;
+    }
+    if (!available) {
+      return { success: false, message: 'No units available for this property.' };
+    }
+    // Notify landlord (could be via notification, email, or just return for now)
+    // For now, just return a message and simulate notification
+    // Optionally, create a pending payment/invoice record
+    const landlordId = property.landlordId;
+    // Optionally, create a Payment record with status 'pending' (simulate invoice)
+    const payment = this.paymentsRepository.create({
+      tenantId,
+      propertyId,
+      amount,
+      status: 'pending',
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // due in 7 days
+      notes: notes || '',
+    });
+    await this.paymentsRepository.save(payment);
+    // Simulate notification to landlord
+    return {
+      success: true,
+      message: 'Invoice request sent to landlord.',
+      landlordId,
+      paymentId: payment.id,
+    };
+  }
+
   async getTenantsByProperty(propertyId: string, landlordId: string) {
     // Verify property belongs to landlord
     const property = await this.propertiesRepository.findOne({
@@ -110,27 +149,25 @@ export class TenantsService {
     };
   }
 
-  async getLandlordTenants(landlordId: string): Promise<
-    Array<{
-      propertyId: string;
-      propertyName: string;
-      tenants: Array<{
-        user: {
-          id: string | undefined;
-          email: string | undefined;
-          fullName: string | undefined;
-          phoneNumber: string | undefined;
-        };
-        creditProfile: unknown;
-        paymentHistory: {
-          total: number;
-          completed: number;
-          pending: number;
-          overdue: number;
-        };
-      }>;
-    }>
-  > {
+  async getLandlordTenants(landlordId: string): Promise<{
+    propertyId: string;
+    propertyName: string;
+    tenants: Array<{
+      user: {
+        id: string | undefined;
+        email: string | undefined;
+        fullName: string | undefined;
+        phoneNumber: string | undefined;
+      };
+      creditProfile: unknown;
+      paymentHistory: {
+        total: number;
+        completed: number;
+        pending: number;
+        overdue: number;
+      };
+    }>;
+  }[]> {
     const properties = await this.propertiesRepository.find({
       where: { landlordId, isActive: true },
     });

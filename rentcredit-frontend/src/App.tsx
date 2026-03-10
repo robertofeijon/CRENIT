@@ -7,6 +7,7 @@ import { NotificationsProvider, NotificationsDisplay } from './components/Notifi
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
 import { NavItem } from './components/NavItem';
+import { Role } from './contexts/AuthContext';
 
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -21,7 +22,7 @@ import LandlordOverview from './pages/landlord/Overview';
 import LandlordProperties from './pages/landlord/Properties';
 import LandlordTenants from './pages/landlord/Tenants';
 import LandlordPayments from './pages/landlord/Payments';
-import AdminDisputes from './pages/admin/Disputes';
+import LandlordInvoices from './pages/landlord/Invoices';
 
 const tenantNav: NavItem[] = [
   { id: 'home', label: 'Home', dot: true },
@@ -37,10 +38,7 @@ const landlordNav: NavItem[] = [
   { id: 'properties', label: 'Properties', dot: true },
   { id: 'tenants', label: 'Tenants', dot: true },
   { id: 'payments', label: 'Payments', dot: true },
-];
-
-const adminNav: NavItem[] = [
-  { id: 'disputes', label: 'Disputes', dot: true, badge: 'manage' },
+  { id: 'invoices', label: 'Invoice Requests', dot: true, badge: 'new' },
 ];
 
 function RoutesWithAuth() {
@@ -62,9 +60,9 @@ function RoutesWithAuth() {
       </Routes>
     );
   }
-
-  const navItems = user.role === 'tenant' ? tenantNav : user.role === 'admin' ? adminNav : landlordNav;
-  const defaultPath = user.role === 'admin' ? '/admin/disputes' : `/${user.role}/${user.role === 'tenant' ? 'home' : 'overview'}`;
+  // Only 'tenant' or 'landlord' are valid roles
+  const navItems = user.role === 'tenant' ? tenantNav : landlordNav;
+  const defaultPath = user.role === 'tenant' ? '/tenant/home' : '/landlord/overview';
 
   return (
     <>
@@ -89,11 +87,7 @@ function RoutesWithAuth() {
               <Route path="/landlord/properties" element={<LandlordProperties />} />
               <Route path="/landlord/tenants" element={<LandlordTenants />} />
               <Route path="/landlord/payments" element={<LandlordPayments />} />
-            </>
-          )}
-          {user.role === 'admin' && (
-            <>
-              <Route path="/admin/disputes" element={<AdminDisputes />} />
+              <Route path="/landlord/invoices" element={<LandlordInvoices />} />
             </>
           )}
           <Route path="*" element={<div className="page">Not found</div>} />

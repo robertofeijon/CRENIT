@@ -342,3 +342,42 @@ export async function updatePaymentStatus(paymentId: string, status: string) {
   }
   return res.json();
 }
+
+// Tenant requests invoice for a property
+export async function requestInvoice(data: { propertyId: string; amount: number; notes?: string }) {
+  const res = await authorizedFetch(`${BASE}/tenants/request-invoice`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Failed to request invoice');
+  }
+  return res.json();
+}
+
+// Fetch pending invoice requests for landlord
+export async function fetchPendingInvoices() {
+  const res = await authorizedFetch(`${BASE}/payments/pending-invoices`);
+  if (!res.ok) throw new Error('Failed to fetch pending invoices');
+  return res.json();
+}
+
+// Approve invoice request
+export async function approveInvoiceRequest(invoiceId: string) {
+  const res = await authorizedFetch(`${BASE}/payments/invoice/${invoiceId}/approve`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('Failed to approve invoice');
+  return res.json();
+}
+
+// Reject invoice request
+export async function rejectInvoiceRequest(invoiceId: string) {
+  const res = await authorizedFetch(`${BASE}/payments/invoice/${invoiceId}/reject`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('Failed to reject invoice');
+  return res.json();
+}

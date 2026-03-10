@@ -1,16 +1,9 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payment, Property, TenantProfile } from '../entities';
-import {
-  CreatePaymentDto,
-  UpdatePaymentStatusDto,
-  RecordPaymentDto,
-} from './dto/payment.dto';
+import { CreatePaymentDto, UpdatePaymentStatusDto, RecordPaymentDto } from './dto/payment.dto';
 
 @Injectable()
 export class PaymentsService {
@@ -22,6 +15,49 @@ export class PaymentsService {
     @InjectRepository(TenantProfile)
     private tenantProfileRepository: Repository<TenantProfile>,
   ) {}
+
+  // Fetch all pending invoice requests for landlord
+  async getPendingInvoicesForLandlord(landlordId: string) {
+    // Find all properties for landlord
+    const properties = await this.propertiesRepository.find({ where: { landlordId } });
+    const propertyIds = properties.map((p) => p.id);
+    if (propertyIds.length === 0) return [];
+    // Find all pending payments (invoices) for these properties
+    const pending = await this.paymentsRepository.find({
+      where: propertyIds.map((id) => ({ propertyId: id, status: 'pending' })),
+      order: { createdAt: 'DESC' },
+    });
+    // Optionally, join tenant and property info
+    // (Assumes Payment entity has relations set up)
+    return pending;
+  }
+
+  // Approve invoice request
+  async approveInvoiceRequest(invoiceId: string, landlordId: string) {
+    const payment = await this.paymentsRepository.findOne({ where: { id: invoiceId } });
+    if (!payment) throw new NotFoundException('Invoice not found');
+    // Check property belongs to landlord
+    const property = await this.propertiesRepository.findOne({ where: { id: payment.propertyId } });
+    if (!property || property.landlordId !== landlordId) throw new BadRequestException('Unauthorized');
+    if (payment.status !== 'pending') throw new BadRequestException('Invoice is not pending');
+    payment.status = 'approved';
+    await this.paymentsRepository.save(payment);
+    return { message: 'Invoice approved', id: payment.id };
+  }
+
+  // Reject invoice request
+  async rejectInvoiceRequest(invoiceId: string, landlordId: string) {
+    const payment = await this.paymentsRepository.findOne({ where: { id: invoiceId } });
+    if (!payment) throw new NotFoundException('Invoice not found');
+    // Check property belongs to landlord
+    const property = await this.propertiesRepository.findOne({ where: { id: payment.propertyId } });
+    if (!property || property.landlordId !== landlordId) throw new BadRequestException('Unauthorized');
+    if (payment.status !== 'pending') throw new BadRequestException('Invoice is not pending');
+    payment.status = 'rejected';
+    await this.paymentsRepository.save(payment);
+    return { message: 'Invoice rejected', id: payment.id };
+  }
+
 
   async createPayment(tenantId: string, createPaymentDto: CreatePaymentDto) {
     const property = await this.propertiesRepository.findOne({
@@ -130,9 +166,21 @@ export class PaymentsService {
     return payments;
   }
 
+
   async getPropertyPayments(propertyId: string) {
     return await this.paymentsRepository.find({
       where: { propertyId },
+      order: { dueDate: 'DESC' },
+    });
+  }
+
+  async getAllLandlordPayments(landlordId: string) {
+    // Find all properties for landlord
+    const properties = await this.propertiesRepository.find({ where: { landlordId } });
+    const propertyIds = properties.map((p) => p.id);
+    if (propertyIds.length === 0) return [];
+    return await this.paymentsRepository.find({
+      where: propertyIds.map((id) => ({ propertyId: id })),
       order: { dueDate: 'DESC' },
     });
   }

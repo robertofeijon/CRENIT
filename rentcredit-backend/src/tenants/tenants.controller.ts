@@ -1,12 +1,33 @@
-import { Controller, Get, UseGuards, Request, Param } from '@nestjs/common';
+import { Controller, Get, UseGuards, Request, Param, Body, Post } from '@nestjs/common';
 import type { RequestWithUser } from '../types/express';
 import { TenantsService } from './tenants.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles, RoleGuard } from '../auth/guards/role.guard';
+import { InvoiceRequestDto } from './dto/invoice-request.dto';
 
 @Controller('tenants')
 export class TenantsController {
   constructor(private tenantsService: TenantsService) {}
+
+
+
+
+  @Post('request-invoice')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @Roles('tenant')
+  async requestInvoice(
+    @Request() req: RequestWithUser,
+    @Body() dto: InvoiceRequestDto,
+  ) {
+    // Check if property exists and has available units
+    const result = await this.tenantsService.requestInvoice(
+      req.user!.userId,
+      dto.propertyId,
+      dto.amount,
+      dto.notes,
+    );
+    return result;
+  }
 
   @Get('by-property/:propertyId')
   @UseGuards(JwtAuthGuard, RoleGuard)

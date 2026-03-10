@@ -1,8 +1,20 @@
 import type { RequestWithUser } from '../types/express';
 import { TenantsService } from './tenants.service';
+import { InvoiceRequestDto } from './dto/invoice-request.dto';
 export declare class TenantsController {
     private tenantsService;
     constructor(tenantsService: TenantsService);
+    requestInvoice(req: RequestWithUser, dto: InvoiceRequestDto): Promise<{
+        success: boolean;
+        message: string;
+        landlordId?: undefined;
+        paymentId?: undefined;
+    } | {
+        success: boolean;
+        message: string;
+        landlordId: string;
+        paymentId: string;
+    }>;
     getTenantsByProperty(propertyId: string, req: RequestWithUser): Promise<{
         user: {
             id: string | undefined;

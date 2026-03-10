@@ -17,10 +17,15 @@ const common_1 = require("@nestjs/common");
 const tenants_service_1 = require("./tenants.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const role_guard_1 = require("../auth/guards/role.guard");
+const invoice_request_dto_1 = require("./dto/invoice-request.dto");
 let TenantsController = class TenantsController {
     tenantsService;
     constructor(tenantsService) {
         this.tenantsService = tenantsService;
+    }
+    async requestInvoice(req, dto) {
+        const result = await this.tenantsService.requestInvoice(req.user.userId, dto.propertyId, dto.amount, dto.notes);
+        return result;
     }
     async getTenantsByProperty(propertyId, req) {
         return await this.tenantsService.getTenantsByProperty(propertyId, req.user.userId);
@@ -39,6 +44,16 @@ let TenantsController = class TenantsController {
     }
 };
 exports.TenantsController = TenantsController;
+__decorate([
+    (0, common_1.Post)('request-invoice'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, role_guard_1.RoleGuard),
+    (0, role_guard_1.Roles)('tenant'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, invoice_request_dto_1.InvoiceRequestDto]),
+    __metadata("design:returntype", Promise)
+], TenantsController.prototype, "requestInvoice", null);
 __decorate([
     (0, common_1.Get)('by-property/:propertyId'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, role_guard_1.RoleGuard),

@@ -6,6 +6,17 @@ export declare class TenantsService {
     private propertiesRepository;
     private paymentsRepository;
     constructor(usersRepository: Repository<User>, tenantProfileRepository: Repository<TenantProfile>, propertiesRepository: Repository<Property>, paymentsRepository: Repository<Payment>);
+    requestInvoice(tenantId: string, propertyId: string, amount: number, notes?: string): Promise<{
+        success: boolean;
+        message: string;
+        landlordId?: undefined;
+        paymentId?: undefined;
+    } | {
+        success: boolean;
+        message: string;
+        landlordId: string;
+        paymentId: string;
+    }>;
     getTenantsByProperty(propertyId: string, landlordId: string): Promise<{
         user: {
             id: string | undefined;
@@ -44,7 +55,7 @@ export declare class TenantsService {
         };
         recentPayments: Payment[];
     }>;
-    getLandlordTenants(landlordId: string): Promise<Array<{
+    getLandlordTenants(landlordId: string): Promise<{
         propertyId: string;
         propertyName: string;
         tenants: Array<{
@@ -62,7 +73,7 @@ export declare class TenantsService {
                 overdue: number;
             };
         }>;
-    }>>;
+    }[]>;
     getTenantReliabilityScore(tenantId: string): Promise<{
         score: number;
         breakdown: {

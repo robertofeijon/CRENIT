@@ -1,0 +1,1 @@
+{"version":3,"file":"invoice-request.dto.js","sourceRoot":"","sources":["../../../src/tenants/dto/invoice-request.dto.ts"],"names":[],"mappings":";;;;;;;;;;;;AAAA,qDAAqD;AAErD,MAAa,iBAAiB;IAE5B,UAAU,CAAS;IAGnB,MAAM,CAAS;IAGf,KAAK,CAAU;CAChB;AATD,8CASC;AAPC;IADC,IAAA,0BAAQ,GAAE;;qDACQ;AAGnB;IADC,IAAA,0BAAQ,GAAE;;iDACI;AAGf;IADC,IAAA,0BAAQ,GAAE;;gDACI"}

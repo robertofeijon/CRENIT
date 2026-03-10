@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchAvailableProperties } from '../../api';
+import { fetchAvailableProperties, requestInvoice } from '../../api';
 
 interface Property {
   id: string;
@@ -212,10 +212,28 @@ function PropertyModal({
   property: Property | null;
   onClose: () => void;
 }) {
-  const [inquiry, setInquiry] = useState('');
+  const [amount, setAmount] = useState('');
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!property) return null;
+
+  async function handleRequestInvoice() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      // Use monthlyRent as default amount if not entered
+      const invoiceAmount = amount ? Number(amount) : property?.monthlyRent || 0;
+      await requestInvoice({ propertyId: property!.id, amount: invoiceAmount, notes });
+      setSubmitted(true);
+    } catch (e: any) {
+      setError(e.message || 'Failed to request invoice');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div
@@ -262,7 +280,6 @@ function PropertyModal({
             ✕
           </button>
         </div>
-
         {/* Images */}
         {property.images && property.images.length > 0 && (
           <div style={{ marginBottom: 20 }}>
@@ -284,7 +301,6 @@ function PropertyModal({
             )}
           </div>
         )}
-
         {/* Details */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 24 }}>
           <div>
@@ -297,18 +313,12 @@ function PropertyModal({
           </div>
           {property.unitCount && (
             <div>
-              <div style={{ color: 'var(--ink-3)', fontSize: 12, marginBottom: 4 }}>
-                Units
-              </div>
-              <div style={{ fontSize: 20, fontWeight: 700 }}>
-                {property.unitCount}
-              </div>
+              <div style={{ color: 'var(--ink-3)', fontSize: 12, marginBottom: 4 }}>Units</div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{property.unitCount}</div>
             </div>
           )}
           <div style={{ gridColumn: '1 / -1' }}>
-            <div style={{ color: 'var(--ink-3)', fontSize: 12, marginBottom: 4 }}>
-              Address
-            </div>
+            <div style={{ color: 'var(--ink-3)', fontSize: 12, marginBottom: 4 }}>Address</div>
             <div style={{ fontSize: 14 }}>
               {property.address}
               <br />
@@ -316,40 +326,42 @@ function PropertyModal({
             </div>
           </div>
         </div>
-
-        {/* Inquiry Form */}
+        {/* Invoice Request Form */}
         {!submitted ? (
           <div style={{ borderTop: '1px solid var(--surface-3)', paddingTop: 20 }}>
             <div className="pg-title" style={{ fontSize: 16, margin: '0 0 12px 0' }}>
-              Send an Inquiry
+              Request an Invoice
             </div>
-            <textarea
-              value={inquiry}
-              onChange={(e) => setInquiry(e.target.value)}
-              placeholder="Tell the landlord about yourself..."
-              style={{
-                width: '100%',
-                padding: '12px 14px',
-                border: '1px solid var(--surface-3)',
-                borderRadius: 'var(--r-md)',
-                background: 'var(--surface)',
-                color: 'var(--ink)',
-                fontFamily: 'inherit',
-                fontSize: 14,
-                minHeight: 100,
-                resize: 'vertical',
-                marginBottom: 12,
-              }}
-            />
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 13, color: 'var(--ink-3)' }}>Amount</label>
+              <input
+                type="number"
+                min="1"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder={`Default: $${property.monthlyRent || 0}`}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--surface-3)', marginTop: 4 }}
+              />
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 13, color: 'var(--ink-3)' }}>Notes (optional)</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add any notes for the landlord..."
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--surface-3)', minHeight: 60, marginTop: 4 }}
+              />
+            </div>
+            {error && <div style={{ color: 'red', marginBottom: 8 }}>{error}</div>}
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 className="btn btn-primary"
-                onClick={() => setSubmitted(true)}
-                disabled={!inquiry.trim()}
+                onClick={handleRequestInvoice}
+                disabled={submitting || (!amount && !property.monthlyRent)}
               >
-                Send Inquiry
+                {submitting ? 'Requesting…' : 'Request Invoice'}
               </button>
-              <button className="btn btn-outline" onClick={onClose}>
+              <button className="btn btn-outline" onClick={onClose} disabled={submitting}>
                 Close
               </button>
             </div>
@@ -364,10 +376,10 @@ function PropertyModal({
           >
             <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
             <div className="pg-title" style={{ fontSize: 16, margin: 0 }}>
-              Inquiry Sent!
+              Invoice Request Sent!
             </div>
             <p style={{ color: 'var(--ink-3)', marginTop: 8 }}>
-              The landlord will review your inquiry and contact you soon.
+              The landlord will review your request and respond soon.
             </p>
             <button
               className="btn btn-primary"

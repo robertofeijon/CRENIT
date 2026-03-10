@@ -19,9 +19,34 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles, RoleGuard } from '../auth/guards/role.guard';
 
+
 @Controller('payments')
 export class PaymentsController {
   constructor(private paymentsService: PaymentsService) {}
+
+  // Fetch all pending invoice requests for landlord
+  @Get('pending-invoices')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @Roles('landlord')
+  async getPendingInvoices(@Request() req: ExpressRequest & { user: { userId: string } }) {
+    return await this.paymentsService.getPendingInvoicesForLandlord(req.user.userId);
+  }
+
+  // Approve invoice request
+  @Post('invoice/:invoiceId/approve')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @Roles('landlord')
+  async approveInvoice(@Param('invoiceId') invoiceId: string, @Request() req: ExpressRequest & { user: { userId: string } }) {
+    return await this.paymentsService.approveInvoiceRequest(invoiceId, req.user.userId);
+  }
+
+  // Reject invoice request
+  @Post('invoice/:invoiceId/reject')
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @Roles('landlord')
+  async rejectInvoice(@Param('invoiceId') invoiceId: string, @Request() req: ExpressRequest & { user: { userId: string } }) {
+    return await this.paymentsService.rejectInvoiceRequest(invoiceId, req.user.userId);
+  }
 
   @Get('rent-due')
   @UseGuards(JwtAuthGuard, RoleGuard)
@@ -76,7 +101,19 @@ export class PaymentsController {
   @Get('property/:propertyId')
   @UseGuards(JwtAuthGuard, RoleGuard)
   @Roles('landlord')
-  async getPropertyPayments(@Param('propertyId') propertyId: string) {
+  async getPropertyPayments(
+    @Param('propertyId') propertyId: string,
+    @Request() req: ExpressRequest & { user: { userId: string } },
+  ) {
+    // If 'all', return all payments for landlord
+    if (propertyId === 'all') {
+      return await this.paymentsService.getAllLandlordPayments(req.user.userId);
+    }
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!uuidRegex.test(propertyId)) {
+      return { error: 'Invalid propertyId format' };
+    }
     return await this.paymentsService.getPropertyPayments(propertyId);
   }
 

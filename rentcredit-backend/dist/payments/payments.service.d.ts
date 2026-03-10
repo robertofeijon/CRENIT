@@ -6,6 +6,15 @@ export declare class PaymentsService {
     private propertiesRepository;
     private tenantProfileRepository;
     constructor(paymentsRepository: Repository<Payment>, propertiesRepository: Repository<Property>, tenantProfileRepository: Repository<TenantProfile>);
+    getPendingInvoicesForLandlord(landlordId: string): Promise<Payment[]>;
+    approveInvoiceRequest(invoiceId: string, landlordId: string): Promise<{
+        message: string;
+        id: string;
+    }>;
+    rejectInvoiceRequest(invoiceId: string, landlordId: string): Promise<{
+        message: string;
+        id: string;
+    }>;
     createPayment(tenantId: string, createPaymentDto: CreatePaymentDto): Promise<{
         message: string;
         payment: {
@@ -33,6 +42,7 @@ export declare class PaymentsService {
     }>;
     getTenantPayments(tenantId: string, status?: string): Promise<Payment[]>;
     getPropertyPayments(propertyId: string): Promise<Payment[]>;
+    getAllLandlordPayments(landlordId: string): Promise<Payment[]>;
     getPaymentDetails(paymentId: string): Promise<Payment>;
     updatePaymentStatus(paymentId: string, updatePaymentStatusDto: UpdatePaymentStatusDto): Promise<{
         message: string;

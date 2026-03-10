@@ -23,6 +23,15 @@ let PaymentsController = class PaymentsController {
     constructor(paymentsService) {
         this.paymentsService = paymentsService;
     }
+    async getPendingInvoices(req) {
+        return await this.paymentsService.getPendingInvoicesForLandlord(req.user.userId);
+    }
+    async approveInvoice(invoiceId, req) {
+        return await this.paymentsService.approveInvoiceRequest(invoiceId, req.user.userId);
+    }
+    async rejectInvoice(invoiceId, req) {
+        return await this.paymentsService.rejectInvoiceRequest(invoiceId, req.user.userId);
+    }
     async getRentDue(req) {
         return await this.paymentsService.getRentDue(req.user.userId);
     }
@@ -35,7 +44,14 @@ let PaymentsController = class PaymentsController {
     async getTenantPayments(req, status) {
         return await this.paymentsService.getTenantPayments(req.user.userId, status);
     }
-    async getPropertyPayments(propertyId) {
+    async getPropertyPayments(propertyId, req) {
+        if (propertyId === 'all') {
+            return await this.paymentsService.getAllLandlordPayments(req.user.userId);
+        }
+        const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+        if (!uuidRegex.test(propertyId)) {
+            return { error: 'Invalid propertyId format' };
+        }
         return await this.paymentsService.getPropertyPayments(propertyId);
     }
     async getPaymentDetails(paymentId) {
@@ -46,6 +62,35 @@ let PaymentsController = class PaymentsController {
     }
 };
 exports.PaymentsController = PaymentsController;
+__decorate([
+    (0, common_1.Get)('pending-invoices'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, role_guard_1.RoleGuard),
+    (0, role_guard_1.Roles)('landlord'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "getPendingInvoices", null);
+__decorate([
+    (0, common_1.Post)('invoice/:invoiceId/approve'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, role_guard_1.RoleGuard),
+    (0, role_guard_1.Roles)('landlord'),
+    __param(0, (0, common_1.Param)('invoiceId')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "approveInvoice", null);
+__decorate([
+    (0, common_1.Post)('invoice/:invoiceId/reject'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, role_guard_1.RoleGuard),
+    (0, role_guard_1.Roles)('landlord'),
+    __param(0, (0, common_1.Param)('invoiceId')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsController.prototype, "rejectInvoice", null);
 __decorate([
     (0, common_1.Get)('rent-due'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, role_guard_1.RoleGuard),
@@ -91,8 +136,9 @@ __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, role_guard_1.RoleGuard),
     (0, role_guard_1.Roles)('landlord'),
     __param(0, (0, common_1.Param)('propertyId')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], PaymentsController.prototype, "getPropertyPayments", null);
 __decorate([

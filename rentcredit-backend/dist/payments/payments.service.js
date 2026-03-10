@@ -26,6 +26,43 @@ let PaymentsService = class PaymentsService {
         this.propertiesRepository = propertiesRepository;
         this.tenantProfileRepository = tenantProfileRepository;
     }
+    async getPendingInvoicesForLandlord(landlordId) {
+        const properties = await this.propertiesRepository.find({ where: { landlordId } });
+        const propertyIds = properties.map((p) => p.id);
+        if (propertyIds.length === 0)
+            return [];
+        const pending = await this.paymentsRepository.find({
+            where: propertyIds.map((id) => ({ propertyId: id, status: 'pending' })),
+            order: { createdAt: 'DESC' },
+        });
+        return pending;
+    }
+    async approveInvoiceRequest(invoiceId, landlordId) {
+        const payment = await this.paymentsRepository.findOne({ where: { id: invoiceId } });
+        if (!payment)
+            throw new common_1.NotFoundException('Invoice not found');
+        const property = await this.propertiesRepository.findOne({ where: { id: payment.propertyId } });
+        if (!property || property.landlordId !== landlordId)
+            throw new common_1.BadRequestException('Unauthorized');
+        if (payment.status !== 'pending')
+            throw new common_1.BadRequestException('Invoice is not pending');
+        payment.status = 'approved';
+        await this.paymentsRepository.save(payment);
+        return { message: 'Invoice approved', id: payment.id };
+    }
+    async rejectInvoiceRequest(invoiceId, landlordId) {
+        const payment = await this.paymentsRepository.findOne({ where: { id: invoiceId } });
+        if (!payment)
+            throw new common_1.NotFoundException('Invoice not found');
+        const property = await this.propertiesRepository.findOne({ where: { id: payment.propertyId } });
+        if (!property || property.landlordId !== landlordId)
+            throw new common_1.BadRequestException('Unauthorized');
+        if (payment.status !== 'pending')
+            throw new common_1.BadRequestException('Invoice is not pending');
+        payment.status = 'rejected';
+        await this.paymentsRepository.save(payment);
+        return { message: 'Invoice rejected', id: payment.id };
+    }
     async createPayment(tenantId, createPaymentDto) {
         const property = await this.propertiesRepository.findOne({
             where: { id: createPaymentDto.propertyId },
@@ -111,6 +148,16 @@ let PaymentsService = class PaymentsService {
     async getPropertyPayments(propertyId) {
         return await this.paymentsRepository.find({
             where: { propertyId },
+            order: { dueDate: 'DESC' },
+        });
+    }
+    async getAllLandlordPayments(landlordId) {
+        const properties = await this.propertiesRepository.find({ where: { landlordId } });
+        const propertyIds = properties.map((p) => p.id);
+        if (propertyIds.length === 0)
+            return [];
+        return await this.paymentsRepository.find({
+            where: propertyIds.map((id) => ({ propertyId: id })),
             order: { dueDate: 'DESC' },
         });
     }

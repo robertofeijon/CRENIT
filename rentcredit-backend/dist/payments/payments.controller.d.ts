@@ -4,6 +4,27 @@ import { CreatePaymentDto, UpdatePaymentStatusDto, RecordPaymentDto } from './dt
 export declare class PaymentsController {
     private paymentsService;
     constructor(paymentsService: PaymentsService);
+    getPendingInvoices(req: ExpressRequest & {
+        user: {
+            userId: string;
+        };
+    }): Promise<import("../entities").Payment[]>;
+    approveInvoice(invoiceId: string, req: ExpressRequest & {
+        user: {
+            userId: string;
+        };
+    }): Promise<{
+        message: string;
+        id: string;
+    }>;
+    rejectInvoice(invoiceId: string, req: ExpressRequest & {
+        user: {
+            userId: string;
+        };
+    }): Promise<{
+        message: string;
+        id: string;
+    }>;
     getRentDue(req: ExpressRequest & {
         user: {
             userId: string;
@@ -46,7 +67,13 @@ export declare class PaymentsController {
             userId: string;
         };
     }, status?: string): Promise<import("../entities").Payment[]>;
-    getPropertyPayments(propertyId: string): Promise<import("../entities").Payment[]>;
+    getPropertyPayments(propertyId: string, req: ExpressRequest & {
+        user: {
+            userId: string;
+        };
+    }): Promise<import("../entities").Payment[] | {
+        error: string;
+    }>;
     getPaymentDetails(paymentId: string): Promise<import("../entities").Payment>;
     updatePaymentStatus(paymentId: string, updatePaymentStatusDto: UpdatePaymentStatusDto): Promise<{
         message: string;
