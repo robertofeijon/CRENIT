@@ -1,0 +1,532 @@
+{
+  "users": [
+    {
+      "id": "USR-ADMIN-1",
+      "fullName": "System Admin",
+      "email": "admin@crenit.com",
+      "role": "admin",
+      "passwordHash": "0f2cadd20c7a0fc272dd29e39a7e785d8d38dc348b7432260a2934f95a8674b4",
+      "createdAt": "2026-03-25T00:00:00.000Z",
+      "updatedAt": "2026-03-25T02:17:36.909Z",
+      "sessions": [
+        {
+          "id": "SES-1774405056909-6950",
+          "userAgent": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.7705",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T02:17:36.909Z",
+          "lastActiveAt": "2026-03-25T02:17:36.909Z"
+        }
+      ],
+      "kycStatus": "pending",
+      "kycDocuments": [],
+      "kycSubmittedAt": "",
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774395354023-3132",
+      "fullName": "Customer One",
+      "email": "customer1@example.com",
+      "role": "customer",
+      "passwordHash": "8d93927a71edb19f2efd388503d2be1f12a8732738429787de9f02199ecc666c",
+      "createdAt": "2026-03-24T23:35:54.023Z",
+      "updatedAt": "2026-03-24T23:35:54.023Z"
+    },
+    {
+      "id": "USR-1774400025257-479",
+      "fullName": "Land lord",
+      "email": "tenant@crenit.com",
+      "role": "customer",
+      "passwordHash": "0f2cadd20c7a0fc272dd29e39a7e785d8d38dc348b7432260a2934f95a8674b4",
+      "createdAt": "2026-03-25T00:53:45.257Z",
+      "updatedAt": "2026-03-25T02:34:47.205Z",
+      "sessions": [
+        {
+          "id": "SES-1774406087164-9704",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T02:34:47.164Z",
+          "lastActiveAt": "2026-03-25T02:34:47.205Z"
+        },
+        {
+          "id": "SES-1774405357546-9547",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T02:22:37.546Z",
+          "lastActiveAt": "2026-03-25T02:22:37.605Z"
+        }
+      ],
+      "kycDocuments": [],
+      "kycSubmittedAt": "",
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774402180007-8224",
+      "fullName": "E2E Tenant",
+      "email": "tenant.e2e.1774402179@example.com",
+      "role": "customer",
+      "passwordHash": "ef82637aeda54b95f56c83b46758707a71b5905edd8c4e9505c5758a6161e365",
+      "createdAt": "2026-03-25T01:29:40.007Z",
+      "updatedAt": "2026-03-25T01:29:40.007Z"
+    },
+    {
+      "id": "USR-1774402513916-2212",
+      "fullName": "Single App Tenant",
+      "email": "tenant.singleapp.1774402513@example.com",
+      "role": "customer",
+      "passwordHash": "ef82637aeda54b95f56c83b46758707a71b5905edd8c4e9505c5758a6161e365",
+      "createdAt": "2026-03-25T01:35:13.916Z",
+      "updatedAt": "2026-03-25T01:35:13.916Z"
+    },
+    {
+      "id": "USR-1774402915269-3646",
+      "fullName": "Unified Tenant",
+      "email": "tenant.unified.1774402915@example.com",
+      "role": "customer",
+      "passwordHash": "ef82637aeda54b95f56c83b46758707a71b5905edd8c4e9505c5758a6161e365",
+      "createdAt": "2026-03-25T01:41:55.269Z",
+      "updatedAt": "2026-03-25T01:41:55.269Z"
+    },
+    {
+      "id": "USR-1774405056828-8463",
+      "fullName": "Test Landlord",
+      "email": "landlord.1774405056@example.com",
+      "role": "landlord",
+      "passwordHash": "8dcd3ac4347dac379d13ed4cb824fbfcdd1d9be3807041f864caa86e7ea74bdb",
+      "kycStatus": "pending",
+      "kycDocuments": [],
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774405056830-745",
+          "userAgent": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.7705",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T02:17:36.830Z",
+          "lastActiveAt": "2026-03-25T02:17:36.830Z"
+        }
+      ],
+      "createdAt": "2026-03-25T02:17:36.828Z",
+      "updatedAt": "2026-03-25T02:17:36.830Z",
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774405056884-9211",
+      "fullName": "Test Tenant",
+      "email": "tenant.1774405056@example.com",
+      "role": "customer",
+      "passwordHash": "ef82637aeda54b95f56c83b46758707a71b5905edd8c4e9505c5758a6161e365",
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774405056888-317",
+          "userAgent": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.7705",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T02:17:36.888Z",
+          "lastActiveAt": "2026-03-25T02:17:36.888Z"
+        }
+      ],
+      "createdAt": "2026-03-25T02:17:36.884Z",
+      "updatedAt": "2026-03-25T02:17:36.888Z",
+      "kycDocuments": [],
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774433225689-2348",
+      "fullName": "David Phillipus",
+      "email": "224068199@nust.na",
+      "role": "customer",
+      "passwordHash": "3ca8652741eac18494298407e27f83a4d76c192378939ce3cae4d4196006d6eb",
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774433225693-2760",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T10:07:05.694Z",
+          "lastActiveAt": "2026-03-25T10:07:05.769Z"
+        }
+      ],
+      "createdAt": "2026-03-25T10:07:05.689Z",
+      "updatedAt": "2026-03-25T10:07:05.769Z",
+      "kycDocuments": [],
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774433488428-1244",
+      "fullName": "King Von",
+      "email": "owner@glamorous.com",
+      "role": "landlord",
+      "passwordHash": "7000713ed5ebb32b0ebdd38234036ab62606c403330b1f9940bc10dc4e46576a",
+      "kycStatus": "pending",
+      "kycDocuments": [],
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774433488430-1603",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T10:11:28.430Z",
+          "lastActiveAt": "2026-03-25T11:19:58.080Z"
+        }
+      ],
+      "createdAt": "2026-03-25T10:11:28.428Z",
+      "updatedAt": "2026-03-25T11:19:58.080Z",
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774436626642-3591",
+      "fullName": "Booking Flow Tenant",
+      "email": "tenant.booking.flow.1774436626459.5334@example.com",
+      "role": "customer",
+      "passwordHash": "d5cf87733f2d325805110e0d409148f21cc30562ade0803447a205386b905cc8",
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774436626649-230",
+          "userAgent": "node",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T11:03:46.649Z",
+          "lastActiveAt": "2026-03-25T11:03:46.649Z"
+        }
+      ],
+      "createdAt": "2026-03-25T11:03:46.642Z",
+      "updatedAt": "2026-03-25T11:03:46.649Z",
+      "kycDocuments": [],
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774436626662-9363",
+      "fullName": "Booking Flow Landlord",
+      "email": "landlord.booking.flow.1774436626459.2261@example.com",
+      "role": "landlord",
+      "passwordHash": "11dcf838e1d898a20304c9dfc3fbc259311c3ebc29a598db3d6bf21cec337466",
+      "kycStatus": "pending",
+      "kycDocuments": [],
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774436626664-1229",
+          "userAgent": "node",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T11:03:46.664Z",
+          "lastActiveAt": "2026-03-25T11:03:46.664Z"
+        }
+      ],
+      "createdAt": "2026-03-25T11:03:46.662Z",
+      "updatedAt": "2026-03-25T11:03:46.664Z",
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774436832844-2362",
+      "fullName": "Updated Name",
+      "email": "tenant.nonbooking.1774436832702.3170@example.com",
+      "role": "customer",
+      "passwordHash": "d5cf87733f2d325805110e0d409148f21cc30562ade0803447a205386b905cc8",
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774436832847-4718",
+          "userAgent": "node",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T11:07:12.848Z",
+          "lastActiveAt": "2026-03-25T11:07:12.848Z"
+        }
+      ],
+      "createdAt": "2026-03-25T11:07:12.844Z",
+      "updatedAt": "2026-03-25T11:07:12.898Z",
+      "kycDocuments": [],
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774436832871-8125",
+      "fullName": "Non-Booking Flow Landlord",
+      "email": "landlord.nonbooking.1774436832702.8332@example.com",
+      "role": "landlord",
+      "passwordHash": "11dcf838e1d898a20304c9dfc3fbc259311c3ebc29a598db3d6bf21cec337466",
+      "kycStatus": "pending",
+      "kycDocuments": [],
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774436832872-7127",
+          "userAgent": "node",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T11:07:12.872Z",
+          "lastActiveAt": "2026-03-25T11:07:12.872Z"
+        }
+      ],
+      "createdAt": "2026-03-25T11:07:12.871Z",
+      "updatedAt": "2026-03-25T11:07:12.872Z",
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774436894526-4274",
+      "fullName": "Updated Name",
+      "email": "tenant.nonbooking.1774436894424.8422@example.com",
+      "role": "customer",
+      "passwordHash": "d5cf87733f2d325805110e0d409148f21cc30562ade0803447a205386b905cc8",
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774436894531-3519",
+          "userAgent": "node",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T11:08:14.532Z",
+          "lastActiveAt": "2026-03-25T11:08:14.532Z"
+        }
+      ],
+      "createdAt": "2026-03-25T11:08:14.526Z",
+      "updatedAt": "2026-03-25T11:08:14.595Z",
+      "kycDocuments": [],
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774436894562-7922",
+      "fullName": "Non-Booking Flow Landlord",
+      "email": "landlord.nonbooking.1774436894424.5056@example.com",
+      "role": "landlord",
+      "passwordHash": "11dcf838e1d898a20304c9dfc3fbc259311c3ebc29a598db3d6bf21cec337466",
+      "kycStatus": "pending",
+      "kycDocuments": [],
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774436894564-6476",
+          "userAgent": "node",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T11:08:14.564Z",
+          "lastActiveAt": "2026-03-25T11:08:14.564Z"
+        }
+      ],
+      "createdAt": "2026-03-25T11:08:14.562Z",
+      "updatedAt": "2026-03-25T11:08:14.564Z",
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774436907622-8143",
+      "fullName": "Updated Name",
+      "email": "tenant.nonbooking.1774436907474.2672@example.com",
+      "role": "customer",
+      "passwordHash": "d5cf87733f2d325805110e0d409148f21cc30562ade0803447a205386b905cc8",
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774436907628-9153",
+          "userAgent": "node",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T11:08:27.629Z",
+          "lastActiveAt": "2026-03-25T11:08:27.629Z"
+        }
+      ],
+      "createdAt": "2026-03-25T11:08:27.622Z",
+      "updatedAt": "2026-03-25T11:08:27.689Z",
+      "kycDocuments": [],
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774436907659-9394",
+      "fullName": "Non-Booking Flow Landlord",
+      "email": "landlord.nonbooking.1774436907474.3884@example.com",
+      "role": "landlord",
+      "passwordHash": "11dcf838e1d898a20304c9dfc3fbc259311c3ebc29a598db3d6bf21cec337466",
+      "kycStatus": "pending",
+      "kycDocuments": [],
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774436907661-6455",
+          "userAgent": "node",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T11:08:27.661Z",
+          "lastActiveAt": "2026-03-25T11:08:27.661Z"
+        }
+      ],
+      "createdAt": "2026-03-25T11:08:27.659Z",
+      "updatedAt": "2026-03-25T11:08:27.661Z",
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774436927627-5365",
+      "fullName": "Updated Name",
+      "email": "tenant.nonbooking.1774436927534.199@example.com",
+      "role": "customer",
+      "passwordHash": "d5cf87733f2d325805110e0d409148f21cc30562ade0803447a205386b905cc8",
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774436927632-1170",
+          "userAgent": "node",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T11:08:47.632Z",
+          "lastActiveAt": "2026-03-25T11:08:47.632Z"
+        }
+      ],
+      "createdAt": "2026-03-25T11:08:47.627Z",
+      "updatedAt": "2026-03-25T11:08:47.692Z",
+      "kycDocuments": [],
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774436927659-6731",
+      "fullName": "Non-Booking Flow Landlord",
+      "email": "landlord.nonbooking.1774436927534.8127@example.com",
+      "role": "landlord",
+      "passwordHash": "11dcf838e1d898a20304c9dfc3fbc259311c3ebc29a598db3d6bf21cec337466",
+      "kycStatus": "pending",
+      "kycDocuments": [],
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774436927660-7273",
+          "userAgent": "node",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T11:08:47.660Z",
+          "lastActiveAt": "2026-03-25T11:08:47.660Z"
+        }
+      ],
+      "createdAt": "2026-03-25T11:08:47.659Z",
+      "updatedAt": "2026-03-25T11:08:47.660Z",
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774436950560-8780",
+      "fullName": "Updated Name",
+      "email": "tenant.nonbooking.1774436950428.2161@example.com",
+      "role": "customer",
+      "passwordHash": "80a9ec434432815384a6cf89ca68a19c2b7947d0443f6065c22d3742767f8a97",
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774436950566-5363",
+          "userAgent": "node",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T11:09:10.566Z",
+          "lastActiveAt": "2026-03-25T11:09:10.760Z"
+        }
+      ],
+      "createdAt": "2026-03-25T11:09:10.560Z",
+      "updatedAt": "2026-03-25T11:09:10.760Z",
+      "kycDocuments": [],
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774436950591-2242",
+      "fullName": "Non-Booking Flow Landlord",
+      "email": "landlord.nonbooking.1774436950428.3001@example.com",
+      "role": "landlord",
+      "passwordHash": "11dcf838e1d898a20304c9dfc3fbc259311c3ebc29a598db3d6bf21cec337466",
+      "kycStatus": "pending",
+      "kycDocuments": [
+        {
+          "id": "KYC-1774436950728-1",
+          "type": "id",
+          "name": "passport.pdf",
+          "uploadedAt": "2026-03-25T11:09:10.728Z"
+        },
+        {
+          "id": "KYC-1774436950728-2",
+          "type": "ownership",
+          "name": "property_deed.pdf",
+          "uploadedAt": "2026-03-25T11:09:10.728Z"
+        }
+      ],
+      "kycSubmittedAt": "2026-03-25T11:09:10.728Z",
+      "sessions": [
+        {
+          "id": "SES-1774436950594-3548",
+          "userAgent": "node",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T11:09:10.594Z",
+          "lastActiveAt": "2026-03-25T11:09:10.594Z"
+        }
+      ],
+      "createdAt": "2026-03-25T11:09:10.591Z",
+      "updatedAt": "2026-03-25T11:09:10.728Z",
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774439537258-7911",
+      "fullName": "John Doe",
+      "email": "tukunamulundu@gmail.com",
+      "role": "customer",
+      "passwordHash": "4344dab3e3a78a614e31cc64f8493562ce67643d39e45ee368d0a4cc756c0dbe",
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774439537271-7346",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-25T11:52:17.271Z",
+          "lastActiveAt": "2026-03-25T11:52:17.619Z"
+        }
+      ],
+      "createdAt": "2026-03-25T11:52:17.258Z",
+      "updatedAt": "2026-03-25T11:52:17.619Z",
+      "kycDocuments": [],
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774627401287-5813",
+      "fullName": "j",
+      "email": "cristianofeijon@gmail.com",
+      "role": "landlord",
+      "passwordHash": "2e339907a32acb84741f5353ba495736c719f4285f82c47e1368cb279d30bd3c",
+      "kycStatus": "pending",
+      "kycDocuments": [],
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774627401289-1339",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-27T16:03:21.290Z",
+          "lastActiveAt": "2026-03-27T16:03:21.474Z"
+        }
+      ],
+      "createdAt": "2026-03-27T16:03:21.287Z",
+      "updatedAt": "2026-03-27T16:03:21.475Z",
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    },
+    {
+      "id": "USR-1774629443375-5348",
+      "fullName": "feijo",
+      "email": "robertofeijon@gmail.com",
+      "role": "customer",
+      "passwordHash": "$2a$10$q8DdNA./M9JJKuPrD1Bbbuz/rqtPndYdHoggUN85kTqsamOwAYvP2",
+      "kycSubmittedAt": "",
+      "sessions": [
+        {
+          "id": "SES-1774629443696-3124",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+          "ipAddress": "::1",
+          "createdAt": "2026-03-27T16:37:23.699Z",
+          "lastActiveAt": "2026-03-27T16:40:22.770Z"
+        }
+      ],
+      "createdAt": "2026-03-27T16:37:23.375Z",
+      "updatedAt": "2026-03-27T16:40:22.770Z",
+      "kycDocuments": [],
+      "kycReviewedAt": "",
+      "kycReviewNote": ""
+    }
+  ]
+}

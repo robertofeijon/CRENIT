@@ -1,0 +1,4542 @@
+{
+  "tenants": {
+    "USR-1774400025257-479": {
+      "tenantId": "USR-1774400025257-479",
+      "verification": {
+        "status": "not_submitted",
+        "requiredSteps": [
+          "Confirm your legal name",
+          "Upload a government ID",
+          "Upload proof of current address",
+          "Review and submit"
+        ],
+        "documents": [],
+        "submittedAt": ""
+      },
+      "rent": {
+        "amountDue": 1200,
+        "nextPaymentDate": "2026-04-01",
+        "status": "pending",
+        "autoPayEnabled": false,
+        "currentMonthLabel": "March 2026"
+      },
+      "paymentMethods": [
+        {
+          "id": "PM-1774400975776-1",
+          "label": "Land Main Bank",
+          "type": "bank",
+          "last4": "1122",
+          "isPrimary": true
+        }
+      ],
+      "payments": {
+        "upcoming": [
+          {
+            "id": "UP-1774400975776-1",
+            "date": "2026-04-01",
+            "amount": 1200,
+            "label": "April Rent"
+          },
+          {
+            "id": "UP-1774400975776-2",
+            "date": "2026-05-01",
+            "amount": 1200,
+            "label": "May Rent"
+          }
+        ],
+        "history": [
+          {
+            "id": "PAY-1774400975776-1",
+            "date": "2026-03-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20march-rent"
+          },
+          {
+            "id": "PAY-1774400975776-2",
+            "date": "2026-02-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20feb-rent"
+          },
+          {
+            "id": "PAY-1774400975776-3",
+            "date": "2026-01-01",
+            "amount": 1200,
+            "status": "failed",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20jan-rent"
+          }
+        ]
+      },
+      "credit": {
+        "currentScore": 684,
+        "tier": "Good",
+        "history": [
+          {
+            "month": "Oct",
+            "score": 642
+          },
+          {
+            "month": "Nov",
+            "score": 653
+          },
+          {
+            "month": "Dec",
+            "score": 664
+          },
+          {
+            "month": "Jan",
+            "score": 671
+          },
+          {
+            "month": "Feb",
+            "score": 679
+          },
+          {
+            "month": "Mar",
+            "score": 684
+          }
+        ],
+        "onTimePercentage": 92,
+        "latePaymentCount": 1,
+        "paymentStreak": 5,
+        "calculationRule": "Score is weighted by on-time payments, payment consistency, and dispute resolution performance.",
+        "reportUrl": "data:text/plain;charset=utf-8,Document%20credit-report.pdf",
+        "reportShareLink": "https://rentcredit.example/share/credit-report"
+      },
+      "lease": {
+        "startDate": "2025-08-01",
+        "endDate": "2026-07-31",
+        "propertyAddress": "14 Riverside Drive, Unit B4",
+        "unit": "B4",
+        "rentAmount": 1200,
+        "terms": [
+          "Rent due on the 1st of every month",
+          "Late fee applies after 5 days",
+          "Pets allowed with additional rider"
+        ],
+        "documentUrl": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf",
+        "landlord": {
+          "name": "Daniel K",
+          "email": "landlord@rentcredit.com"
+        },
+        "renewalWarning": "renewal_due_soon"
+      },
+      "deposit": {
+        "totalAmount": 1800,
+        "escrowStatus": "active",
+        "refundStatus": "pending_review",
+        "deductions": [
+          {
+            "id": "DED-1774400975777-1",
+            "reason": "Paint touch-up",
+            "amount": 120
+          }
+        ],
+        "timeline": [
+          {
+            "id": "DEP-1774400975777-1",
+            "date": "2025-08-01",
+            "message": "Deposit placed into escrow"
+          },
+          {
+            "id": "DEP-1774400975777-2",
+            "date": "2026-03-01",
+            "message": "Inspection initiated"
+          }
+        ]
+      },
+      "disputes": [
+        {
+          "id": "DSP-1774400975777-1",
+          "title": "January payment marked failed",
+          "category": "payment",
+          "status": "under_review",
+          "createdAt": "2026-01-03",
+          "evidence": [
+            {
+              "id": "EVD-1774400975777-1",
+              "name": "bank-statement-jan.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774400975777-1",
+              "by": "tenant",
+              "message": "Payment was debited from my account.",
+              "at": "2026-03-25T01:09:35.776Z"
+            },
+            {
+              "id": "MSG-1774400975777-2",
+              "by": "landlord",
+              "message": "Finance team is investigating this case.",
+              "at": "2026-03-25T01:09:35.776Z"
+            }
+          ]
+        }
+      ],
+      "notifications": {
+        "preferences": {
+          "paymentReminders": true,
+          "paymentConfirmations": true,
+          "verificationUpdates": true,
+          "disputeUpdates": true,
+          "leaseAlerts": true,
+          "depositAlerts": true
+        },
+        "items": [
+          {
+            "id": "NT-1774400975777-1",
+            "title": "Rent due soon",
+            "message": "April rent is due in 7 days.",
+            "type": "payment",
+            "read": false,
+            "createdAt": "2026-03-25T01:09:35.776Z"
+          },
+          {
+            "id": "NT-1774400975777-2",
+            "title": "Verification needed",
+            "message": "Complete identity verification to unlock all features.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T01:09:35.776Z"
+          },
+          {
+            "id": "NT-1774400975777-3",
+            "title": "Dispute update",
+            "message": "Your payment dispute is under review.",
+            "type": "dispute",
+            "read": true,
+            "createdAt": "2026-03-25T01:09:35.776Z"
+          }
+        ]
+      },
+      "documents": [
+        {
+          "id": "DOC-1774400975777-1",
+          "type": "receipt",
+          "name": "March Receipt.pdf",
+          "date": "2026-03-01",
+          "url": "data:text/plain;charset=utf-8,Document%20march-receipt.pdf"
+        },
+        {
+          "id": "DOC-1774400975777-2",
+          "type": "statement",
+          "name": "2025 Annual Statement.pdf",
+          "date": "2025-12-31",
+          "url": "data:text/plain;charset=utf-8,Document%20annual-statement-2025.pdf"
+        },
+        {
+          "id": "DOC-1774400975777-3",
+          "type": "lease",
+          "name": "Lease Agreement.pdf",
+          "date": "2025-08-01",
+          "url": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf"
+        }
+      ],
+      "profile": {
+        "fullName": "Land lord",
+        "email": "tenant@crenit.com",
+        "phone": "+1 555 0188",
+        "twoFactorEnabled": false,
+        "linkedAccounts": [
+          {
+            "id": "ACC-1774400975777-1",
+            "label": "Main Checking Account (****1122)"
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "SES-1774400975777-1",
+          "device": "Chrome on Windows",
+          "location": "Nairobi, KE",
+          "lastActive": "Today",
+          "current": true
+        },
+        {
+          "id": "SES-1774400975777-2",
+          "device": "Mobile Safari",
+          "location": "Nairobi, KE",
+          "lastActive": "2 days ago",
+          "current": false
+        }
+      ],
+      "support": {
+        "faq": [
+          {
+            "q": "How do I avoid late payments?",
+            "a": "Enable auto-pay and set payment reminders from settings."
+          },
+          {
+            "q": "When does credit update?",
+            "a": "Credit updates after verified rent settlements each month."
+          },
+          {
+            "q": "How does escrow work?",
+            "a": "Deposit funds are held and tracked until lease closure."
+          }
+        ],
+        "articles": [
+          {
+            "id": "ART-1",
+            "title": "Payment best practices"
+          },
+          {
+            "id": "ART-2",
+            "title": "How to submit KYC documents"
+          },
+          {
+            "id": "ART-3",
+            "title": "Understanding dispute timelines"
+          }
+        ],
+        "tickets": []
+      },
+      "activity": [
+        {
+          "id": "ACT-1774400975777-1",
+          "message": "March rent payment recorded"
+        },
+        {
+          "id": "ACT-1774400975777-2",
+          "message": "Credit score increased by 5 points"
+        },
+        {
+          "id": "ACT-1774400975777-3",
+          "message": "Dispute response posted by landlord"
+        }
+      ]
+    },
+    "USR-1774402180007-8224": {
+      "tenantId": "USR-1774402180007-8224",
+      "verification": {
+        "status": "not_submitted",
+        "requiredSteps": [
+          "Confirm your legal name",
+          "Upload a government ID",
+          "Upload proof of current address",
+          "Review and submit"
+        ],
+        "documents": [],
+        "submittedAt": ""
+      },
+      "rent": {
+        "amountDue": 1200,
+        "nextPaymentDate": "2026-04-01",
+        "status": "pending",
+        "autoPayEnabled": false,
+        "currentMonthLabel": "March 2026"
+      },
+      "paymentMethods": [
+        {
+          "id": "PM-1774402180009-1",
+          "label": "E2E Main Bank",
+          "type": "bank",
+          "last4": "1122",
+          "isPrimary": true
+        }
+      ],
+      "payments": {
+        "upcoming": [
+          {
+            "id": "UP-1774402180009-1",
+            "date": "2026-04-01",
+            "amount": 1200,
+            "label": "April Rent"
+          },
+          {
+            "id": "UP-1774402180009-2",
+            "date": "2026-05-01",
+            "amount": 1200,
+            "label": "May Rent"
+          }
+        ],
+        "history": [
+          {
+            "id": "PAY-1774402180009-1",
+            "date": "2026-03-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20march-rent"
+          },
+          {
+            "id": "PAY-1774402180009-2",
+            "date": "2026-02-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20feb-rent"
+          },
+          {
+            "id": "PAY-1774402180009-3",
+            "date": "2026-01-01",
+            "amount": 1200,
+            "status": "failed",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20jan-rent"
+          }
+        ]
+      },
+      "credit": {
+        "currentScore": 684,
+        "tier": "Good",
+        "history": [
+          {
+            "month": "Oct",
+            "score": 642
+          },
+          {
+            "month": "Nov",
+            "score": 653
+          },
+          {
+            "month": "Dec",
+            "score": 664
+          },
+          {
+            "month": "Jan",
+            "score": 671
+          },
+          {
+            "month": "Feb",
+            "score": 679
+          },
+          {
+            "month": "Mar",
+            "score": 684
+          }
+        ],
+        "onTimePercentage": 92,
+        "latePaymentCount": 1,
+        "paymentStreak": 5,
+        "calculationRule": "Score is weighted by on-time payments, payment consistency, and dispute resolution performance.",
+        "reportUrl": "data:text/plain;charset=utf-8,Document%20credit-report.pdf",
+        "reportShareLink": "https://rentcredit.example/share/credit-report"
+      },
+      "lease": {
+        "startDate": "2025-08-01",
+        "endDate": "2026-07-31",
+        "propertyAddress": "14 Riverside Drive, Unit B4",
+        "unit": "B4",
+        "rentAmount": 1200,
+        "terms": [
+          "Rent due on the 1st of every month",
+          "Late fee applies after 5 days",
+          "Pets allowed with additional rider"
+        ],
+        "documentUrl": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf",
+        "landlord": {
+          "name": "Daniel K",
+          "email": "landlord@rentcredit.com"
+        },
+        "renewalWarning": "renewal_due_soon"
+      },
+      "deposit": {
+        "totalAmount": 1800,
+        "escrowStatus": "active",
+        "refundStatus": "pending_review",
+        "deductions": [
+          {
+            "id": "DED-1774402180009-1",
+            "reason": "Paint touch-up",
+            "amount": 120
+          }
+        ],
+        "timeline": [
+          {
+            "id": "DEP-1774402180009-1",
+            "date": "2025-08-01",
+            "message": "Deposit placed into escrow"
+          },
+          {
+            "id": "DEP-1774402180009-2",
+            "date": "2026-03-01",
+            "message": "Inspection initiated"
+          }
+        ]
+      },
+      "disputes": [
+        {
+          "id": "DSP-1774402180009-1",
+          "title": "January payment marked failed",
+          "category": "payment",
+          "status": "under_review",
+          "createdAt": "2026-01-03",
+          "evidence": [
+            {
+              "id": "EVD-1774402180009-1",
+              "name": "bank-statement-jan.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774402180009-1",
+              "by": "tenant",
+              "message": "Payment was debited from my account.",
+              "at": "2026-03-25T01:29:40.009Z"
+            },
+            {
+              "id": "MSG-1774402180009-2",
+              "by": "landlord",
+              "message": "Finance team is investigating this case.",
+              "at": "2026-03-25T01:29:40.009Z"
+            }
+          ]
+        }
+      ],
+      "notifications": {
+        "preferences": {
+          "paymentReminders": true,
+          "paymentConfirmations": true,
+          "verificationUpdates": true,
+          "disputeUpdates": true,
+          "leaseAlerts": true,
+          "depositAlerts": true
+        },
+        "items": [
+          {
+            "id": "NT-1774402180009-1",
+            "title": "Rent due soon",
+            "message": "April rent is due in 7 days.",
+            "type": "payment",
+            "read": false,
+            "createdAt": "2026-03-25T01:29:40.009Z"
+          },
+          {
+            "id": "NT-1774402180009-2",
+            "title": "Verification needed",
+            "message": "Complete identity verification to unlock all features.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T01:29:40.009Z"
+          },
+          {
+            "id": "NT-1774402180009-3",
+            "title": "Dispute update",
+            "message": "Your payment dispute is under review.",
+            "type": "dispute",
+            "read": true,
+            "createdAt": "2026-03-25T01:29:40.009Z"
+          }
+        ]
+      },
+      "documents": [
+        {
+          "id": "DOC-1774402180009-1",
+          "type": "receipt",
+          "name": "March Receipt.pdf",
+          "date": "2026-03-01",
+          "url": "data:text/plain;charset=utf-8,Document%20march-receipt.pdf"
+        },
+        {
+          "id": "DOC-1774402180009-2",
+          "type": "statement",
+          "name": "2025 Annual Statement.pdf",
+          "date": "2025-12-31",
+          "url": "data:text/plain;charset=utf-8,Document%20annual-statement-2025.pdf"
+        },
+        {
+          "id": "DOC-1774402180009-3",
+          "type": "lease",
+          "name": "Lease Agreement.pdf",
+          "date": "2025-08-01",
+          "url": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf"
+        }
+      ],
+      "profile": {
+        "fullName": "E2E Tenant",
+        "email": "tenant.e2e.1774402179@example.com",
+        "phone": "+1 555 0188",
+        "twoFactorEnabled": false,
+        "linkedAccounts": [
+          {
+            "id": "ACC-1774402180009-1",
+            "label": "Main Checking Account (****1122)"
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "SES-1774402180009-1",
+          "device": "Chrome on Windows",
+          "location": "Nairobi, KE",
+          "lastActive": "Today",
+          "current": true
+        },
+        {
+          "id": "SES-1774402180009-2",
+          "device": "Mobile Safari",
+          "location": "Nairobi, KE",
+          "lastActive": "2 days ago",
+          "current": false
+        }
+      ],
+      "support": {
+        "faq": [
+          {
+            "q": "How do I avoid late payments?",
+            "a": "Enable auto-pay and set payment reminders from settings."
+          },
+          {
+            "q": "When does credit update?",
+            "a": "Credit updates after verified rent settlements each month."
+          },
+          {
+            "q": "How does escrow work?",
+            "a": "Deposit funds are held and tracked until lease closure."
+          }
+        ],
+        "articles": [
+          {
+            "id": "ART-1",
+            "title": "Payment best practices"
+          },
+          {
+            "id": "ART-2",
+            "title": "How to submit KYC documents"
+          },
+          {
+            "id": "ART-3",
+            "title": "Understanding dispute timelines"
+          }
+        ],
+        "tickets": []
+      },
+      "activity": [
+        {
+          "id": "ACT-1774402180009-1",
+          "message": "March rent payment recorded"
+        },
+        {
+          "id": "ACT-1774402180009-2",
+          "message": "Credit score increased by 5 points"
+        },
+        {
+          "id": "ACT-1774402180009-3",
+          "message": "Dispute response posted by landlord"
+        }
+      ]
+    },
+    "USR-1774402513916-2212": {
+      "tenantId": "USR-1774402513916-2212",
+      "verification": {
+        "status": "not_submitted",
+        "requiredSteps": [
+          "Confirm your legal name",
+          "Upload a government ID",
+          "Upload proof of current address",
+          "Review and submit"
+        ],
+        "documents": [],
+        "submittedAt": ""
+      },
+      "rent": {
+        "amountDue": 1200,
+        "nextPaymentDate": "2026-04-01",
+        "status": "pending",
+        "autoPayEnabled": false,
+        "currentMonthLabel": "March 2026"
+      },
+      "paymentMethods": [
+        {
+          "id": "PM-1774402513917-1",
+          "label": "Single Main Bank",
+          "type": "bank",
+          "last4": "1122",
+          "isPrimary": true
+        }
+      ],
+      "payments": {
+        "upcoming": [
+          {
+            "id": "UP-1774402513917-1",
+            "date": "2026-04-01",
+            "amount": 1200,
+            "label": "April Rent"
+          },
+          {
+            "id": "UP-1774402513917-2",
+            "date": "2026-05-01",
+            "amount": 1200,
+            "label": "May Rent"
+          }
+        ],
+        "history": [
+          {
+            "id": "PAY-1774402513917-1",
+            "date": "2026-03-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20march-rent"
+          },
+          {
+            "id": "PAY-1774402513917-2",
+            "date": "2026-02-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20feb-rent"
+          },
+          {
+            "id": "PAY-1774402513917-3",
+            "date": "2026-01-01",
+            "amount": 1200,
+            "status": "failed",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20jan-rent"
+          }
+        ]
+      },
+      "credit": {
+        "currentScore": 684,
+        "tier": "Good",
+        "history": [
+          {
+            "month": "Oct",
+            "score": 642
+          },
+          {
+            "month": "Nov",
+            "score": 653
+          },
+          {
+            "month": "Dec",
+            "score": 664
+          },
+          {
+            "month": "Jan",
+            "score": 671
+          },
+          {
+            "month": "Feb",
+            "score": 679
+          },
+          {
+            "month": "Mar",
+            "score": 684
+          }
+        ],
+        "onTimePercentage": 92,
+        "latePaymentCount": 1,
+        "paymentStreak": 5,
+        "calculationRule": "Score is weighted by on-time payments, payment consistency, and dispute resolution performance.",
+        "reportUrl": "data:text/plain;charset=utf-8,Document%20credit-report.pdf",
+        "reportShareLink": "https://rentcredit.example/share/credit-report"
+      },
+      "lease": {
+        "startDate": "2025-08-01",
+        "endDate": "2026-07-31",
+        "propertyAddress": "14 Riverside Drive, Unit B4",
+        "unit": "B4",
+        "rentAmount": 1200,
+        "terms": [
+          "Rent due on the 1st of every month",
+          "Late fee applies after 5 days",
+          "Pets allowed with additional rider"
+        ],
+        "documentUrl": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf",
+        "landlord": {
+          "name": "Daniel K",
+          "email": "landlord@rentcredit.com"
+        },
+        "renewalWarning": "renewal_due_soon"
+      },
+      "deposit": {
+        "totalAmount": 1800,
+        "escrowStatus": "active",
+        "refundStatus": "pending_review",
+        "deductions": [
+          {
+            "id": "DED-1774402513917-1",
+            "reason": "Paint touch-up",
+            "amount": 120
+          }
+        ],
+        "timeline": [
+          {
+            "id": "DEP-1774402513917-1",
+            "date": "2025-08-01",
+            "message": "Deposit placed into escrow"
+          },
+          {
+            "id": "DEP-1774402513917-2",
+            "date": "2026-03-01",
+            "message": "Inspection initiated"
+          }
+        ]
+      },
+      "disputes": [
+        {
+          "id": "DSP-1774402513917-1",
+          "title": "January payment marked failed",
+          "category": "payment",
+          "status": "under_review",
+          "createdAt": "2026-01-03",
+          "evidence": [
+            {
+              "id": "EVD-1774402513917-1",
+              "name": "bank-statement-jan.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774402513917-1",
+              "by": "tenant",
+              "message": "Payment was debited from my account.",
+              "at": "2026-03-25T01:35:13.917Z"
+            },
+            {
+              "id": "MSG-1774402513917-2",
+              "by": "landlord",
+              "message": "Finance team is investigating this case.",
+              "at": "2026-03-25T01:35:13.917Z"
+            }
+          ]
+        }
+      ],
+      "notifications": {
+        "preferences": {
+          "paymentReminders": true,
+          "paymentConfirmations": true,
+          "verificationUpdates": true,
+          "disputeUpdates": true,
+          "leaseAlerts": true,
+          "depositAlerts": true
+        },
+        "items": [
+          {
+            "id": "NT-1774402513917-1",
+            "title": "Rent due soon",
+            "message": "April rent is due in 7 days.",
+            "type": "payment",
+            "read": false,
+            "createdAt": "2026-03-25T01:35:13.917Z"
+          },
+          {
+            "id": "NT-1774402513917-2",
+            "title": "Verification needed",
+            "message": "Complete identity verification to unlock all features.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T01:35:13.917Z"
+          },
+          {
+            "id": "NT-1774402513917-3",
+            "title": "Dispute update",
+            "message": "Your payment dispute is under review.",
+            "type": "dispute",
+            "read": true,
+            "createdAt": "2026-03-25T01:35:13.917Z"
+          }
+        ]
+      },
+      "documents": [
+        {
+          "id": "DOC-1774402513917-1",
+          "type": "receipt",
+          "name": "March Receipt.pdf",
+          "date": "2026-03-01",
+          "url": "data:text/plain;charset=utf-8,Document%20march-receipt.pdf"
+        },
+        {
+          "id": "DOC-1774402513917-2",
+          "type": "statement",
+          "name": "2025 Annual Statement.pdf",
+          "date": "2025-12-31",
+          "url": "data:text/plain;charset=utf-8,Document%20annual-statement-2025.pdf"
+        },
+        {
+          "id": "DOC-1774402513917-3",
+          "type": "lease",
+          "name": "Lease Agreement.pdf",
+          "date": "2025-08-01",
+          "url": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf"
+        }
+      ],
+      "profile": {
+        "fullName": "Single App Tenant",
+        "email": "tenant.singleapp.1774402513@example.com",
+        "phone": "+1 555 0188",
+        "twoFactorEnabled": false,
+        "linkedAccounts": [
+          {
+            "id": "ACC-1774402513917-1",
+            "label": "Main Checking Account (****1122)"
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "SES-1774402513917-1",
+          "device": "Chrome on Windows",
+          "location": "Nairobi, KE",
+          "lastActive": "Today",
+          "current": true
+        },
+        {
+          "id": "SES-1774402513917-2",
+          "device": "Mobile Safari",
+          "location": "Nairobi, KE",
+          "lastActive": "2 days ago",
+          "current": false
+        }
+      ],
+      "support": {
+        "faq": [
+          {
+            "q": "How do I avoid late payments?",
+            "a": "Enable auto-pay and set payment reminders from settings."
+          },
+          {
+            "q": "When does credit update?",
+            "a": "Credit updates after verified rent settlements each month."
+          },
+          {
+            "q": "How does escrow work?",
+            "a": "Deposit funds are held and tracked until lease closure."
+          }
+        ],
+        "articles": [
+          {
+            "id": "ART-1",
+            "title": "Payment best practices"
+          },
+          {
+            "id": "ART-2",
+            "title": "How to submit KYC documents"
+          },
+          {
+            "id": "ART-3",
+            "title": "Understanding dispute timelines"
+          }
+        ],
+        "tickets": []
+      },
+      "activity": [
+        {
+          "id": "ACT-1774402513917-1",
+          "message": "March rent payment recorded"
+        },
+        {
+          "id": "ACT-1774402513917-2",
+          "message": "Credit score increased by 5 points"
+        },
+        {
+          "id": "ACT-1774402513917-3",
+          "message": "Dispute response posted by landlord"
+        }
+      ]
+    },
+    "USR-1774402915269-3646": {
+      "tenantId": "USR-1774402915269-3646",
+      "verification": {
+        "status": "not_submitted",
+        "requiredSteps": [
+          "Confirm your legal name",
+          "Upload a government ID",
+          "Upload proof of current address",
+          "Review and submit"
+        ],
+        "documents": [],
+        "submittedAt": ""
+      },
+      "rent": {
+        "amountDue": 1200,
+        "nextPaymentDate": "2026-04-01",
+        "status": "pending",
+        "autoPayEnabled": false,
+        "currentMonthLabel": "March 2026"
+      },
+      "paymentMethods": [
+        {
+          "id": "PM-1774402915272-1",
+          "label": "Unified Main Bank",
+          "type": "bank",
+          "last4": "1122",
+          "isPrimary": true
+        }
+      ],
+      "payments": {
+        "upcoming": [
+          {
+            "id": "UP-1774402915272-1",
+            "date": "2026-04-01",
+            "amount": 1200,
+            "label": "April Rent"
+          },
+          {
+            "id": "UP-1774402915272-2",
+            "date": "2026-05-01",
+            "amount": 1200,
+            "label": "May Rent"
+          }
+        ],
+        "history": [
+          {
+            "id": "PAY-1774402915272-1",
+            "date": "2026-03-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20march-rent"
+          },
+          {
+            "id": "PAY-1774402915272-2",
+            "date": "2026-02-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20feb-rent"
+          },
+          {
+            "id": "PAY-1774402915272-3",
+            "date": "2026-01-01",
+            "amount": 1200,
+            "status": "failed",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20jan-rent"
+          }
+        ]
+      },
+      "credit": {
+        "currentScore": 684,
+        "tier": "Good",
+        "history": [
+          {
+            "month": "Oct",
+            "score": 642
+          },
+          {
+            "month": "Nov",
+            "score": 653
+          },
+          {
+            "month": "Dec",
+            "score": 664
+          },
+          {
+            "month": "Jan",
+            "score": 671
+          },
+          {
+            "month": "Feb",
+            "score": 679
+          },
+          {
+            "month": "Mar",
+            "score": 684
+          }
+        ],
+        "onTimePercentage": 92,
+        "latePaymentCount": 1,
+        "paymentStreak": 5,
+        "calculationRule": "Score is weighted by on-time payments, payment consistency, and dispute resolution performance.",
+        "reportUrl": "data:text/plain;charset=utf-8,Document%20credit-report.pdf",
+        "reportShareLink": "https://rentcredit.example/share/credit-report"
+      },
+      "lease": {
+        "startDate": "2025-08-01",
+        "endDate": "2026-07-31",
+        "propertyAddress": "14 Riverside Drive, Unit B4",
+        "unit": "B4",
+        "rentAmount": 1200,
+        "terms": [
+          "Rent due on the 1st of every month",
+          "Late fee applies after 5 days",
+          "Pets allowed with additional rider"
+        ],
+        "documentUrl": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf",
+        "landlord": {
+          "name": "Daniel K",
+          "email": "landlord@rentcredit.com"
+        },
+        "renewalWarning": "renewal_due_soon"
+      },
+      "deposit": {
+        "totalAmount": 1800,
+        "escrowStatus": "active",
+        "refundStatus": "pending_review",
+        "deductions": [
+          {
+            "id": "DED-1774402915272-1",
+            "reason": "Paint touch-up",
+            "amount": 120
+          }
+        ],
+        "timeline": [
+          {
+            "id": "DEP-1774402915272-1",
+            "date": "2025-08-01",
+            "message": "Deposit placed into escrow"
+          },
+          {
+            "id": "DEP-1774402915272-2",
+            "date": "2026-03-01",
+            "message": "Inspection initiated"
+          }
+        ]
+      },
+      "disputes": [
+        {
+          "id": "DSP-1774402915272-1",
+          "title": "January payment marked failed",
+          "category": "payment",
+          "status": "under_review",
+          "createdAt": "2026-01-03",
+          "evidence": [
+            {
+              "id": "EVD-1774402915272-1",
+              "name": "bank-statement-jan.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774402915272-1",
+              "by": "tenant",
+              "message": "Payment was debited from my account.",
+              "at": "2026-03-25T01:41:55.272Z"
+            },
+            {
+              "id": "MSG-1774402915272-2",
+              "by": "landlord",
+              "message": "Finance team is investigating this case.",
+              "at": "2026-03-25T01:41:55.272Z"
+            }
+          ]
+        }
+      ],
+      "notifications": {
+        "preferences": {
+          "paymentReminders": true,
+          "paymentConfirmations": true,
+          "verificationUpdates": true,
+          "disputeUpdates": true,
+          "leaseAlerts": true,
+          "depositAlerts": true
+        },
+        "items": [
+          {
+            "id": "NT-1774402915272-1",
+            "title": "Rent due soon",
+            "message": "April rent is due in 7 days.",
+            "type": "payment",
+            "read": false,
+            "createdAt": "2026-03-25T01:41:55.272Z"
+          },
+          {
+            "id": "NT-1774402915272-2",
+            "title": "Verification needed",
+            "message": "Complete identity verification to unlock all features.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T01:41:55.272Z"
+          },
+          {
+            "id": "NT-1774402915272-3",
+            "title": "Dispute update",
+            "message": "Your payment dispute is under review.",
+            "type": "dispute",
+            "read": true,
+            "createdAt": "2026-03-25T01:41:55.272Z"
+          }
+        ]
+      },
+      "documents": [
+        {
+          "id": "DOC-1774402915272-1",
+          "type": "receipt",
+          "name": "March Receipt.pdf",
+          "date": "2026-03-01",
+          "url": "data:text/plain;charset=utf-8,Document%20march-receipt.pdf"
+        },
+        {
+          "id": "DOC-1774402915272-2",
+          "type": "statement",
+          "name": "2025 Annual Statement.pdf",
+          "date": "2025-12-31",
+          "url": "data:text/plain;charset=utf-8,Document%20annual-statement-2025.pdf"
+        },
+        {
+          "id": "DOC-1774402915272-3",
+          "type": "lease",
+          "name": "Lease Agreement.pdf",
+          "date": "2025-08-01",
+          "url": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf"
+        }
+      ],
+      "profile": {
+        "fullName": "Unified Tenant",
+        "email": "tenant.unified.1774402915@example.com",
+        "phone": "+1 555 0188",
+        "twoFactorEnabled": false,
+        "linkedAccounts": [
+          {
+            "id": "ACC-1774402915272-1",
+            "label": "Main Checking Account (****1122)"
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "SES-1774402915272-1",
+          "device": "Chrome on Windows",
+          "location": "Nairobi, KE",
+          "lastActive": "Today",
+          "current": true
+        },
+        {
+          "id": "SES-1774402915272-2",
+          "device": "Mobile Safari",
+          "location": "Nairobi, KE",
+          "lastActive": "2 days ago",
+          "current": false
+        }
+      ],
+      "support": {
+        "faq": [
+          {
+            "q": "How do I avoid late payments?",
+            "a": "Enable auto-pay and set payment reminders from settings."
+          },
+          {
+            "q": "When does credit update?",
+            "a": "Credit updates after verified rent settlements each month."
+          },
+          {
+            "q": "How does escrow work?",
+            "a": "Deposit funds are held and tracked until lease closure."
+          }
+        ],
+        "articles": [
+          {
+            "id": "ART-1",
+            "title": "Payment best practices"
+          },
+          {
+            "id": "ART-2",
+            "title": "How to submit KYC documents"
+          },
+          {
+            "id": "ART-3",
+            "title": "Understanding dispute timelines"
+          }
+        ],
+        "tickets": []
+      },
+      "activity": [
+        {
+          "id": "ACT-1774402915272-1",
+          "message": "March rent payment recorded"
+        },
+        {
+          "id": "ACT-1774402915272-2",
+          "message": "Credit score increased by 5 points"
+        },
+        {
+          "id": "ACT-1774402915272-3",
+          "message": "Dispute response posted by landlord"
+        }
+      ]
+    },
+    "USR-1774405056884-9211": {
+      "tenantId": "USR-1774405056884-9211",
+      "verification": {
+        "status": "approved",
+        "requiredSteps": [
+          "Confirm your legal name",
+          "Upload a government ID",
+          "Upload proof of current address",
+          "Review and submit"
+        ],
+        "documents": [],
+        "submittedAt": "",
+        "reviewedAt": "2026-03-25T02:17:36.980Z",
+        "reviewNote": "approved in test"
+      },
+      "rent": {
+        "amountDue": 1200,
+        "nextPaymentDate": "2026-04-01",
+        "status": "pending",
+        "autoPayEnabled": false,
+        "currentMonthLabel": "March 2026"
+      },
+      "paymentMethods": [
+        {
+          "id": "PM-1774405056886-1",
+          "label": "Test Main Bank",
+          "type": "bank",
+          "last4": "1122",
+          "isPrimary": true
+        }
+      ],
+      "payments": {
+        "upcoming": [
+          {
+            "id": "UP-1774405056886-1",
+            "date": "2026-04-01",
+            "amount": 1200,
+            "label": "April Rent"
+          },
+          {
+            "id": "UP-1774405056886-2",
+            "date": "2026-05-01",
+            "amount": 1200,
+            "label": "May Rent"
+          }
+        ],
+        "history": [
+          {
+            "id": "PAY-1774405056886-1",
+            "date": "2026-03-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20march-rent"
+          },
+          {
+            "id": "PAY-1774405056886-2",
+            "date": "2026-02-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20feb-rent"
+          },
+          {
+            "id": "PAY-1774405056886-3",
+            "date": "2026-01-01",
+            "amount": 1200,
+            "status": "failed",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20jan-rent"
+          }
+        ]
+      },
+      "credit": {
+        "currentScore": 684,
+        "tier": "Good",
+        "history": [
+          {
+            "month": "Oct",
+            "score": 642
+          },
+          {
+            "month": "Nov",
+            "score": 653
+          },
+          {
+            "month": "Dec",
+            "score": 664
+          },
+          {
+            "month": "Jan",
+            "score": 671
+          },
+          {
+            "month": "Feb",
+            "score": 679
+          },
+          {
+            "month": "Mar",
+            "score": 684
+          }
+        ],
+        "onTimePercentage": 92,
+        "latePaymentCount": 1,
+        "paymentStreak": 5,
+        "calculationRule": "Score is weighted by on-time payments, payment consistency, and dispute resolution performance.",
+        "reportUrl": "data:text/plain;charset=utf-8,Document%20credit-report.pdf",
+        "reportShareLink": "https://rentcredit.example/share/credit-report"
+      },
+      "lease": {
+        "startDate": "2025-08-01",
+        "endDate": "2026-07-31",
+        "propertyAddress": "14 Riverside Drive, Unit B4",
+        "unit": "B4",
+        "rentAmount": 1200,
+        "terms": [
+          "Rent due on the 1st of every month",
+          "Late fee applies after 5 days",
+          "Pets allowed with additional rider"
+        ],
+        "documentUrl": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf",
+        "landlord": {
+          "name": "Daniel K",
+          "email": "admin@crenit.com"
+        },
+        "renewalWarning": "renewal_due_soon"
+      },
+      "deposit": {
+        "totalAmount": 1800,
+        "escrowStatus": "active",
+        "refundStatus": "pending_review",
+        "deductions": [
+          {
+            "id": "DED-1774405056886-1",
+            "reason": "Paint touch-up",
+            "amount": 120
+          }
+        ],
+        "timeline": [
+          {
+            "id": "DEP-1774405056886-1",
+            "date": "2025-08-01",
+            "message": "Deposit placed into escrow"
+          },
+          {
+            "id": "DEP-1774405056886-2",
+            "date": "2026-03-01",
+            "message": "Inspection initiated"
+          }
+        ]
+      },
+      "disputes": [
+        {
+          "id": "DSP-1774405056886-1",
+          "title": "January payment marked failed",
+          "category": "payment",
+          "status": "under_review",
+          "createdAt": "2026-01-03",
+          "evidence": [
+            {
+              "id": "EVD-1774405056886-1",
+              "name": "bank-statement-jan.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774405056886-1",
+              "by": "tenant",
+              "message": "Payment was debited from my account.",
+              "at": "2026-03-25T02:17:36.886Z"
+            },
+            {
+              "id": "MSG-1774405056886-2",
+              "by": "landlord",
+              "message": "Finance team is investigating this case.",
+              "at": "2026-03-25T02:17:36.886Z"
+            }
+          ]
+        }
+      ],
+      "notifications": {
+        "preferences": {
+          "paymentReminders": true,
+          "paymentConfirmations": true,
+          "verificationUpdates": true,
+          "disputeUpdates": true,
+          "leaseAlerts": true,
+          "depositAlerts": true
+        },
+        "items": [
+          {
+            "id": "NT-1774405056980-kyc-review",
+            "title": "KYC status updated",
+            "message": "Your verification status is now approved.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T02:17:36.980Z"
+          },
+          {
+            "id": "NT-1774405056886-1",
+            "title": "Rent due soon",
+            "message": "April rent is due in 7 days.",
+            "type": "payment",
+            "read": false,
+            "createdAt": "2026-03-25T02:17:36.886Z"
+          },
+          {
+            "id": "NT-1774405056886-2",
+            "title": "Verification needed",
+            "message": "Complete identity verification to unlock all features.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T02:17:36.886Z"
+          },
+          {
+            "id": "NT-1774405056886-3",
+            "title": "Dispute update",
+            "message": "Your payment dispute is under review.",
+            "type": "dispute",
+            "read": true,
+            "createdAt": "2026-03-25T02:17:36.886Z"
+          }
+        ]
+      },
+      "documents": [
+        {
+          "id": "DOC-1774405056886-1",
+          "type": "receipt",
+          "name": "March Receipt.pdf",
+          "date": "2026-03-01",
+          "url": "data:text/plain;charset=utf-8,Document%20march-receipt.pdf"
+        },
+        {
+          "id": "DOC-1774405056886-2",
+          "type": "statement",
+          "name": "2025 Annual Statement.pdf",
+          "date": "2025-12-31",
+          "url": "data:text/plain;charset=utf-8,Document%20annual-statement-2025.pdf"
+        },
+        {
+          "id": "DOC-1774405056886-3",
+          "type": "lease",
+          "name": "Lease Agreement.pdf",
+          "date": "2025-08-01",
+          "url": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf"
+        }
+      ],
+      "profile": {
+        "fullName": "Test Tenant",
+        "email": "tenant.1774405056@example.com",
+        "phone": "+1 555 0188",
+        "twoFactorEnabled": false,
+        "linkedAccounts": [
+          {
+            "id": "ACC-1774405056886-1",
+            "label": "Main Checking Account (****1122)"
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "SES-1774405056886-1",
+          "device": "Chrome on Windows",
+          "location": "Nairobi, KE",
+          "lastActive": "Today",
+          "current": true
+        },
+        {
+          "id": "SES-1774405056886-2",
+          "device": "Mobile Safari",
+          "location": "Nairobi, KE",
+          "lastActive": "2 days ago",
+          "current": false
+        }
+      ],
+      "support": {
+        "faq": [
+          {
+            "q": "How do I avoid late payments?",
+            "a": "Enable auto-pay and set payment reminders from settings."
+          },
+          {
+            "q": "When does credit update?",
+            "a": "Credit updates after verified rent settlements each month."
+          },
+          {
+            "q": "How does escrow work?",
+            "a": "Deposit funds are held and tracked until lease closure."
+          }
+        ],
+        "articles": [
+          {
+            "id": "ART-1",
+            "title": "Payment best practices"
+          },
+          {
+            "id": "ART-2",
+            "title": "How to submit KYC documents"
+          },
+          {
+            "id": "ART-3",
+            "title": "Understanding dispute timelines"
+          }
+        ],
+        "tickets": []
+      },
+      "activity": [
+        {
+          "id": "ACT-1774405056886-1",
+          "message": "March rent payment recorded"
+        },
+        {
+          "id": "ACT-1774405056886-2",
+          "message": "Credit score increased by 5 points"
+        },
+        {
+          "id": "ACT-1774405056886-3",
+          "message": "Dispute response posted by landlord"
+        }
+      ]
+    },
+    "USR-1774433225689-2348": {
+      "tenantId": "USR-1774433225689-2348",
+      "verification": {
+        "status": "not_submitted",
+        "requiredSteps": [
+          "Confirm your legal name",
+          "Upload a government ID",
+          "Upload proof of current address",
+          "Review and submit"
+        ],
+        "documents": [],
+        "submittedAt": ""
+      },
+      "rent": {
+        "amountDue": 1200,
+        "nextPaymentDate": "2026-04-01",
+        "status": "pending",
+        "autoPayEnabled": false,
+        "currentMonthLabel": "March 2026"
+      },
+      "paymentMethods": [
+        {
+          "id": "PM-1774433225691-1",
+          "label": "David Main Bank",
+          "type": "bank",
+          "last4": "1122",
+          "isPrimary": true
+        }
+      ],
+      "payments": {
+        "upcoming": [
+          {
+            "id": "UP-1774433225691-1",
+            "date": "2026-04-01",
+            "amount": 1200,
+            "label": "April Rent"
+          },
+          {
+            "id": "UP-1774433225691-2",
+            "date": "2026-05-01",
+            "amount": 1200,
+            "label": "May Rent"
+          }
+        ],
+        "history": [
+          {
+            "id": "PAY-1774433225691-1",
+            "date": "2026-03-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20march-rent"
+          },
+          {
+            "id": "PAY-1774433225691-2",
+            "date": "2026-02-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20feb-rent"
+          },
+          {
+            "id": "PAY-1774433225691-3",
+            "date": "2026-01-01",
+            "amount": 1200,
+            "status": "failed",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20jan-rent"
+          }
+        ]
+      },
+      "credit": {
+        "currentScore": 684,
+        "tier": "Good",
+        "history": [
+          {
+            "month": "Oct",
+            "score": 642
+          },
+          {
+            "month": "Nov",
+            "score": 653
+          },
+          {
+            "month": "Dec",
+            "score": 664
+          },
+          {
+            "month": "Jan",
+            "score": 671
+          },
+          {
+            "month": "Feb",
+            "score": 679
+          },
+          {
+            "month": "Mar",
+            "score": 684
+          }
+        ],
+        "onTimePercentage": 92,
+        "latePaymentCount": 1,
+        "paymentStreak": 5,
+        "calculationRule": "Score is weighted by on-time payments, payment consistency, and dispute resolution performance.",
+        "reportUrl": "data:text/plain;charset=utf-8,Document%20credit-report.pdf",
+        "reportShareLink": "https://rentcredit.example/share/credit-report"
+      },
+      "lease": {
+        "startDate": "2025-08-01",
+        "endDate": "2026-07-31",
+        "propertyAddress": "14 Riverside Drive, Unit B4",
+        "unit": "B4",
+        "rentAmount": 1200,
+        "terms": [
+          "Rent due on the 1st of every month",
+          "Late fee applies after 5 days",
+          "Pets allowed with additional rider"
+        ],
+        "documentUrl": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf",
+        "landlord": {
+          "name": "Daniel K",
+          "email": "admin@crenit.com"
+        },
+        "renewalWarning": "renewal_due_soon"
+      },
+      "deposit": {
+        "totalAmount": 1800,
+        "escrowStatus": "active",
+        "refundStatus": "pending_review",
+        "deductions": [
+          {
+            "id": "DED-1774433225691-1",
+            "reason": "Paint touch-up",
+            "amount": 120
+          }
+        ],
+        "timeline": [
+          {
+            "id": "DEP-1774433225691-1",
+            "date": "2025-08-01",
+            "message": "Deposit placed into escrow"
+          },
+          {
+            "id": "DEP-1774433225691-2",
+            "date": "2026-03-01",
+            "message": "Inspection initiated"
+          }
+        ]
+      },
+      "disputes": [
+        {
+          "id": "DSP-1774433225691-1",
+          "title": "January payment marked failed",
+          "category": "payment",
+          "status": "under_review",
+          "createdAt": "2026-01-03",
+          "evidence": [
+            {
+              "id": "EVD-1774433225691-1",
+              "name": "bank-statement-jan.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774433225691-1",
+              "by": "tenant",
+              "message": "Payment was debited from my account.",
+              "at": "2026-03-25T10:07:05.691Z"
+            },
+            {
+              "id": "MSG-1774433225691-2",
+              "by": "landlord",
+              "message": "Finance team is investigating this case.",
+              "at": "2026-03-25T10:07:05.691Z"
+            }
+          ]
+        }
+      ],
+      "notifications": {
+        "preferences": {
+          "paymentReminders": true,
+          "paymentConfirmations": true,
+          "verificationUpdates": true,
+          "disputeUpdates": true,
+          "leaseAlerts": true,
+          "depositAlerts": true
+        },
+        "items": [
+          {
+            "id": "NT-1774433225691-1",
+            "title": "Rent due soon",
+            "message": "April rent is due in 7 days.",
+            "type": "payment",
+            "read": false,
+            "createdAt": "2026-03-25T10:07:05.691Z"
+          },
+          {
+            "id": "NT-1774433225691-2",
+            "title": "Verification needed",
+            "message": "Complete identity verification to unlock all features.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T10:07:05.691Z"
+          },
+          {
+            "id": "NT-1774433225691-3",
+            "title": "Dispute update",
+            "message": "Your payment dispute is under review.",
+            "type": "dispute",
+            "read": true,
+            "createdAt": "2026-03-25T10:07:05.691Z"
+          }
+        ]
+      },
+      "documents": [
+        {
+          "id": "DOC-1774433225691-1",
+          "type": "receipt",
+          "name": "March Receipt.pdf",
+          "date": "2026-03-01",
+          "url": "data:text/plain;charset=utf-8,Document%20march-receipt.pdf"
+        },
+        {
+          "id": "DOC-1774433225691-2",
+          "type": "statement",
+          "name": "2025 Annual Statement.pdf",
+          "date": "2025-12-31",
+          "url": "data:text/plain;charset=utf-8,Document%20annual-statement-2025.pdf"
+        },
+        {
+          "id": "DOC-1774433225691-3",
+          "type": "lease",
+          "name": "Lease Agreement.pdf",
+          "date": "2025-08-01",
+          "url": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf"
+        }
+      ],
+      "profile": {
+        "fullName": "David Phillipus",
+        "email": "224068199@nust.na",
+        "phone": "+1 555 0188",
+        "twoFactorEnabled": false,
+        "linkedAccounts": [
+          {
+            "id": "ACC-1774433225691-1",
+            "label": "Main Checking Account (****1122)"
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "SES-1774433225691-1",
+          "device": "Chrome on Windows",
+          "location": "Nairobi, KE",
+          "lastActive": "Today",
+          "current": true
+        },
+        {
+          "id": "SES-1774433225691-2",
+          "device": "Mobile Safari",
+          "location": "Nairobi, KE",
+          "lastActive": "2 days ago",
+          "current": false
+        }
+      ],
+      "support": {
+        "faq": [
+          {
+            "q": "How do I avoid late payments?",
+            "a": "Enable auto-pay and set payment reminders from settings."
+          },
+          {
+            "q": "When does credit update?",
+            "a": "Credit updates after verified rent settlements each month."
+          },
+          {
+            "q": "How does escrow work?",
+            "a": "Deposit funds are held and tracked until lease closure."
+          }
+        ],
+        "articles": [
+          {
+            "id": "ART-1",
+            "title": "Payment best practices"
+          },
+          {
+            "id": "ART-2",
+            "title": "How to submit KYC documents"
+          },
+          {
+            "id": "ART-3",
+            "title": "Understanding dispute timelines"
+          }
+        ],
+        "tickets": []
+      },
+      "activity": [
+        {
+          "id": "ACT-1774433225691-1",
+          "message": "March rent payment recorded"
+        },
+        {
+          "id": "ACT-1774433225691-2",
+          "message": "Credit score increased by 5 points"
+        },
+        {
+          "id": "ACT-1774433225691-3",
+          "message": "Dispute response posted by landlord"
+        }
+      ]
+    },
+    "USR-1774436626642-3591": {
+      "tenantId": "USR-1774436626642-3591",
+      "verification": {
+        "status": "not_submitted",
+        "requiredSteps": [
+          "Confirm your legal name",
+          "Upload a government ID",
+          "Upload proof of current address",
+          "Review and submit"
+        ],
+        "documents": [],
+        "submittedAt": ""
+      },
+      "rent": {
+        "amountDue": 1200,
+        "nextPaymentDate": "2026-04-01",
+        "status": "pending",
+        "autoPayEnabled": false,
+        "currentMonthLabel": "March 2026"
+      },
+      "paymentMethods": [
+        {
+          "id": "PM-1774436626645-1",
+          "label": "Booking Main Bank",
+          "type": "bank",
+          "last4": "1122",
+          "isPrimary": true
+        }
+      ],
+      "payments": {
+        "upcoming": [
+          {
+            "id": "UP-1774436626645-1",
+            "date": "2026-04-01",
+            "amount": 1200,
+            "label": "April Rent"
+          },
+          {
+            "id": "UP-1774436626645-2",
+            "date": "2026-05-01",
+            "amount": 1200,
+            "label": "May Rent"
+          }
+        ],
+        "history": [
+          {
+            "id": "PAY-1774436626646-1",
+            "date": "2026-03-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20march-rent"
+          },
+          {
+            "id": "PAY-1774436626646-2",
+            "date": "2026-02-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20feb-rent"
+          },
+          {
+            "id": "PAY-1774436626646-3",
+            "date": "2026-01-01",
+            "amount": 1200,
+            "status": "failed",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20jan-rent"
+          }
+        ]
+      },
+      "credit": {
+        "currentScore": 684,
+        "tier": "Good",
+        "history": [
+          {
+            "month": "Oct",
+            "score": 642
+          },
+          {
+            "month": "Nov",
+            "score": 653
+          },
+          {
+            "month": "Dec",
+            "score": 664
+          },
+          {
+            "month": "Jan",
+            "score": 671
+          },
+          {
+            "month": "Feb",
+            "score": 679
+          },
+          {
+            "month": "Mar",
+            "score": 684
+          }
+        ],
+        "onTimePercentage": 92,
+        "latePaymentCount": 1,
+        "paymentStreak": 5,
+        "calculationRule": "Score is weighted by on-time payments, payment consistency, and dispute resolution performance.",
+        "reportUrl": "data:text/plain;charset=utf-8,Document%20credit-report.pdf",
+        "reportShareLink": "https://rentcredit.example/share/credit-report"
+      },
+      "lease": {
+        "startDate": "2025-08-01",
+        "endDate": "2026-07-31",
+        "propertyAddress": "14 Riverside Drive, Unit B4",
+        "unit": "B4",
+        "rentAmount": 1200,
+        "terms": [
+          "Rent due on the 1st of every month",
+          "Late fee applies after 5 days",
+          "Pets allowed with additional rider"
+        ],
+        "documentUrl": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf",
+        "landlord": {
+          "name": "Daniel K",
+          "email": "admin@crenit.com"
+        },
+        "renewalWarning": "renewal_due_soon"
+      },
+      "deposit": {
+        "totalAmount": 1800,
+        "escrowStatus": "active",
+        "refundStatus": "pending_review",
+        "deductions": [
+          {
+            "id": "DED-1774436626646-1",
+            "reason": "Paint touch-up",
+            "amount": 120
+          }
+        ],
+        "timeline": [
+          {
+            "id": "DEP-1774436626646-1",
+            "date": "2025-08-01",
+            "message": "Deposit placed into escrow"
+          },
+          {
+            "id": "DEP-1774436626646-2",
+            "date": "2026-03-01",
+            "message": "Inspection initiated"
+          }
+        ]
+      },
+      "disputes": [
+        {
+          "id": "DSP-1774436626646-1",
+          "title": "January payment marked failed",
+          "category": "payment",
+          "status": "under_review",
+          "createdAt": "2026-01-03",
+          "evidence": [
+            {
+              "id": "EVD-1774436626646-1",
+              "name": "bank-statement-jan.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774436626646-1",
+              "by": "tenant",
+              "message": "Payment was debited from my account.",
+              "at": "2026-03-25T11:03:46.645Z"
+            },
+            {
+              "id": "MSG-1774436626646-2",
+              "by": "landlord",
+              "message": "Finance team is investigating this case.",
+              "at": "2026-03-25T11:03:46.645Z"
+            }
+          ]
+        }
+      ],
+      "notifications": {
+        "preferences": {
+          "paymentReminders": true,
+          "paymentConfirmations": true,
+          "verificationUpdates": true,
+          "disputeUpdates": true,
+          "leaseAlerts": true,
+          "depositAlerts": true
+        },
+        "items": [
+          {
+            "id": "NT-1774436626646-1",
+            "title": "Rent due soon",
+            "message": "April rent is due in 7 days.",
+            "type": "payment",
+            "read": false,
+            "createdAt": "2026-03-25T11:03:46.645Z"
+          },
+          {
+            "id": "NT-1774436626646-2",
+            "title": "Verification needed",
+            "message": "Complete identity verification to unlock all features.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T11:03:46.645Z"
+          },
+          {
+            "id": "NT-1774436626646-3",
+            "title": "Dispute update",
+            "message": "Your payment dispute is under review.",
+            "type": "dispute",
+            "read": true,
+            "createdAt": "2026-03-25T11:03:46.645Z"
+          }
+        ]
+      },
+      "documents": [
+        {
+          "id": "DOC-1774436626646-1",
+          "type": "receipt",
+          "name": "March Receipt.pdf",
+          "date": "2026-03-01",
+          "url": "data:text/plain;charset=utf-8,Document%20march-receipt.pdf"
+        },
+        {
+          "id": "DOC-1774436626646-2",
+          "type": "statement",
+          "name": "2025 Annual Statement.pdf",
+          "date": "2025-12-31",
+          "url": "data:text/plain;charset=utf-8,Document%20annual-statement-2025.pdf"
+        },
+        {
+          "id": "DOC-1774436626646-3",
+          "type": "lease",
+          "name": "Lease Agreement.pdf",
+          "date": "2025-08-01",
+          "url": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf"
+        }
+      ],
+      "profile": {
+        "fullName": "Booking Flow Tenant",
+        "email": "tenant.booking.flow.1774436626459.5334@example.com",
+        "phone": "+1 555 0188",
+        "twoFactorEnabled": false,
+        "linkedAccounts": [
+          {
+            "id": "ACC-1774436626646-1",
+            "label": "Main Checking Account (****1122)"
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "SES-1774436626646-1",
+          "device": "Chrome on Windows",
+          "location": "Nairobi, KE",
+          "lastActive": "Today",
+          "current": true
+        },
+        {
+          "id": "SES-1774436626646-2",
+          "device": "Mobile Safari",
+          "location": "Nairobi, KE",
+          "lastActive": "2 days ago",
+          "current": false
+        }
+      ],
+      "support": {
+        "faq": [
+          {
+            "q": "How do I avoid late payments?",
+            "a": "Enable auto-pay and set payment reminders from settings."
+          },
+          {
+            "q": "When does credit update?",
+            "a": "Credit updates after verified rent settlements each month."
+          },
+          {
+            "q": "How does escrow work?",
+            "a": "Deposit funds are held and tracked until lease closure."
+          }
+        ],
+        "articles": [
+          {
+            "id": "ART-1",
+            "title": "Payment best practices"
+          },
+          {
+            "id": "ART-2",
+            "title": "How to submit KYC documents"
+          },
+          {
+            "id": "ART-3",
+            "title": "Understanding dispute timelines"
+          }
+        ],
+        "tickets": []
+      },
+      "activity": [
+        {
+          "id": "ACT-1774436626646-1",
+          "message": "March rent payment recorded"
+        },
+        {
+          "id": "ACT-1774436626646-2",
+          "message": "Credit score increased by 5 points"
+        },
+        {
+          "id": "ACT-1774436626646-3",
+          "message": "Dispute response posted by landlord"
+        }
+      ]
+    },
+    "USR-1774436832844-2362": {
+      "tenantId": "USR-1774436832844-2362",
+      "verification": {
+        "status": "not_submitted",
+        "requiredSteps": [
+          "Confirm your legal name",
+          "Upload a government ID",
+          "Upload proof of current address",
+          "Review and submit"
+        ],
+        "documents": [],
+        "submittedAt": ""
+      },
+      "rent": {
+        "amountDue": 1200,
+        "nextPaymentDate": "2026-04-01",
+        "status": "pending",
+        "autoPayEnabled": false,
+        "currentMonthLabel": "March 2026"
+      },
+      "paymentMethods": [
+        {
+          "id": "PM-1774436832845-1",
+          "label": "Non-Booking Main Bank",
+          "type": "bank",
+          "last4": "1122",
+          "isPrimary": true
+        }
+      ],
+      "payments": {
+        "upcoming": [
+          {
+            "id": "UP-1774436832845-1",
+            "date": "2026-04-01",
+            "amount": 1200,
+            "label": "April Rent"
+          },
+          {
+            "id": "UP-1774436832845-2",
+            "date": "2026-05-01",
+            "amount": 1200,
+            "label": "May Rent"
+          }
+        ],
+        "history": [
+          {
+            "id": "PAY-1774436832845-1",
+            "date": "2026-03-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20march-rent"
+          },
+          {
+            "id": "PAY-1774436832845-2",
+            "date": "2026-02-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20feb-rent"
+          },
+          {
+            "id": "PAY-1774436832845-3",
+            "date": "2026-01-01",
+            "amount": 1200,
+            "status": "failed",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20jan-rent"
+          }
+        ]
+      },
+      "credit": {
+        "currentScore": 684,
+        "tier": "Good",
+        "history": [
+          {
+            "month": "Oct",
+            "score": 642
+          },
+          {
+            "month": "Nov",
+            "score": 653
+          },
+          {
+            "month": "Dec",
+            "score": 664
+          },
+          {
+            "month": "Jan",
+            "score": 671
+          },
+          {
+            "month": "Feb",
+            "score": 679
+          },
+          {
+            "month": "Mar",
+            "score": 684
+          }
+        ],
+        "onTimePercentage": 92,
+        "latePaymentCount": 1,
+        "paymentStreak": 5,
+        "calculationRule": "Score is weighted by on-time payments, payment consistency, and dispute resolution performance.",
+        "reportUrl": "data:text/plain;charset=utf-8,Document%20credit-report.pdf",
+        "reportShareLink": "https://rentcredit.example/share/credit-report"
+      },
+      "lease": {
+        "startDate": "2025-08-01",
+        "endDate": "2026-07-31",
+        "propertyAddress": "14 Riverside Drive, Unit B4",
+        "unit": "B4",
+        "rentAmount": 1200,
+        "terms": [
+          "Rent due on the 1st of every month",
+          "Late fee applies after 5 days",
+          "Pets allowed with additional rider"
+        ],
+        "documentUrl": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf",
+        "landlord": {
+          "name": "Daniel K",
+          "email": "admin@crenit.com"
+        },
+        "renewalWarning": "renewal_due_soon"
+      },
+      "deposit": {
+        "totalAmount": 1800,
+        "escrowStatus": "active",
+        "refundStatus": "pending_review",
+        "deductions": [
+          {
+            "id": "DED-1774436832845-1",
+            "reason": "Paint touch-up",
+            "amount": 120
+          }
+        ],
+        "timeline": [
+          {
+            "id": "DEP-1774436832845-1",
+            "date": "2025-08-01",
+            "message": "Deposit placed into escrow"
+          },
+          {
+            "id": "DEP-1774436832845-2",
+            "date": "2026-03-01",
+            "message": "Inspection initiated"
+          }
+        ]
+      },
+      "disputes": [
+        {
+          "id": "DSP-1774436832845-1",
+          "title": "January payment marked failed",
+          "category": "payment",
+          "status": "under_review",
+          "createdAt": "2026-01-03",
+          "evidence": [
+            {
+              "id": "EVD-1774436832845-1",
+              "name": "bank-statement-jan.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774436832845-1",
+              "by": "tenant",
+              "message": "Payment was debited from my account.",
+              "at": "2026-03-25T11:07:12.845Z"
+            },
+            {
+              "id": "MSG-1774436832845-2",
+              "by": "landlord",
+              "message": "Finance team is investigating this case.",
+              "at": "2026-03-25T11:07:12.845Z"
+            }
+          ]
+        }
+      ],
+      "notifications": {
+        "preferences": {
+          "paymentReminders": true,
+          "paymentConfirmations": true,
+          "verificationUpdates": true,
+          "disputeUpdates": true,
+          "leaseAlerts": true,
+          "depositAlerts": true
+        },
+        "items": [
+          {
+            "id": "NT-1774436832845-1",
+            "title": "Rent due soon",
+            "message": "April rent is due in 7 days.",
+            "type": "payment",
+            "read": false,
+            "createdAt": "2026-03-25T11:07:12.845Z"
+          },
+          {
+            "id": "NT-1774436832845-2",
+            "title": "Verification needed",
+            "message": "Complete identity verification to unlock all features.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T11:07:12.845Z"
+          },
+          {
+            "id": "NT-1774436832845-3",
+            "title": "Dispute update",
+            "message": "Your payment dispute is under review.",
+            "type": "dispute",
+            "read": true,
+            "createdAt": "2026-03-25T11:07:12.845Z"
+          }
+        ]
+      },
+      "documents": [
+        {
+          "id": "DOC-1774436832845-1",
+          "type": "receipt",
+          "name": "March Receipt.pdf",
+          "date": "2026-03-01",
+          "url": "data:text/plain;charset=utf-8,Document%20march-receipt.pdf"
+        },
+        {
+          "id": "DOC-1774436832845-2",
+          "type": "statement",
+          "name": "2025 Annual Statement.pdf",
+          "date": "2025-12-31",
+          "url": "data:text/plain;charset=utf-8,Document%20annual-statement-2025.pdf"
+        },
+        {
+          "id": "DOC-1774436832845-3",
+          "type": "lease",
+          "name": "Lease Agreement.pdf",
+          "date": "2025-08-01",
+          "url": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf"
+        }
+      ],
+      "profile": {
+        "fullName": "Updated Name",
+        "email": "tenant.nonbooking.1774436832702.3170@example.com",
+        "phone": "+1 555 9999",
+        "twoFactorEnabled": false,
+        "linkedAccounts": [
+          {
+            "id": "ACC-1774436832845-1",
+            "label": "Main Checking Account (****1122)"
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "SES-1774436832845-1",
+          "device": "Chrome on Windows",
+          "location": "Nairobi, KE",
+          "lastActive": "Today",
+          "current": true
+        },
+        {
+          "id": "SES-1774436832845-2",
+          "device": "Mobile Safari",
+          "location": "Nairobi, KE",
+          "lastActive": "2 days ago",
+          "current": false
+        }
+      ],
+      "support": {
+        "faq": [
+          {
+            "q": "How do I avoid late payments?",
+            "a": "Enable auto-pay and set payment reminders from settings."
+          },
+          {
+            "q": "When does credit update?",
+            "a": "Credit updates after verified rent settlements each month."
+          },
+          {
+            "q": "How does escrow work?",
+            "a": "Deposit funds are held and tracked until lease closure."
+          }
+        ],
+        "articles": [
+          {
+            "id": "ART-1",
+            "title": "Payment best practices"
+          },
+          {
+            "id": "ART-2",
+            "title": "How to submit KYC documents"
+          },
+          {
+            "id": "ART-3",
+            "title": "Understanding dispute timelines"
+          }
+        ],
+        "tickets": []
+      },
+      "activity": [
+        {
+          "id": "ACT-1774436832845-1",
+          "message": "March rent payment recorded"
+        },
+        {
+          "id": "ACT-1774436832845-2",
+          "message": "Credit score increased by 5 points"
+        },
+        {
+          "id": "ACT-1774436832845-3",
+          "message": "Dispute response posted by landlord"
+        }
+      ]
+    },
+    "USR-1774436894526-4274": {
+      "tenantId": "USR-1774436894526-4274",
+      "verification": {
+        "status": "pending",
+        "requiredSteps": [
+          "Confirm your legal name",
+          "Upload a government ID",
+          "Upload proof of current address",
+          "Review and submit"
+        ],
+        "documents": [
+          {
+            "id": "KYC-1774436894613-1",
+            "type": "id",
+            "name": "passport.pdf",
+            "uploadedAt": "2026-03-25T11:08:14.613Z"
+          },
+          {
+            "id": "KYC-1774436894613-2",
+            "type": "proof_of_address",
+            "name": "utility_bill.pdf",
+            "uploadedAt": "2026-03-25T11:08:14.613Z"
+          }
+        ],
+        "submittedAt": "2026-03-25T11:08:14.613Z"
+      },
+      "rent": {
+        "amountDue": 1200,
+        "nextPaymentDate": "2026-04-01",
+        "status": "pending",
+        "autoPayEnabled": false,
+        "currentMonthLabel": "March 2026"
+      },
+      "paymentMethods": [
+        {
+          "id": "PM-1774436894528-1",
+          "label": "Non-Booking Main Bank",
+          "type": "bank",
+          "last4": "1122",
+          "isPrimary": true
+        }
+      ],
+      "payments": {
+        "upcoming": [
+          {
+            "id": "UP-1774436894528-1",
+            "date": "2026-04-01",
+            "amount": 1200,
+            "label": "April Rent"
+          },
+          {
+            "id": "UP-1774436894528-2",
+            "date": "2026-05-01",
+            "amount": 1200,
+            "label": "May Rent"
+          }
+        ],
+        "history": [
+          {
+            "id": "PAY-1774436894528-1",
+            "date": "2026-03-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20march-rent"
+          },
+          {
+            "id": "PAY-1774436894528-2",
+            "date": "2026-02-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20feb-rent"
+          },
+          {
+            "id": "PAY-1774436894528-3",
+            "date": "2026-01-01",
+            "amount": 1200,
+            "status": "failed",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20jan-rent"
+          }
+        ]
+      },
+      "credit": {
+        "currentScore": 684,
+        "tier": "Good",
+        "history": [
+          {
+            "month": "Oct",
+            "score": 642
+          },
+          {
+            "month": "Nov",
+            "score": 653
+          },
+          {
+            "month": "Dec",
+            "score": 664
+          },
+          {
+            "month": "Jan",
+            "score": 671
+          },
+          {
+            "month": "Feb",
+            "score": 679
+          },
+          {
+            "month": "Mar",
+            "score": 684
+          }
+        ],
+        "onTimePercentage": 92,
+        "latePaymentCount": 1,
+        "paymentStreak": 5,
+        "calculationRule": "Score is weighted by on-time payments, payment consistency, and dispute resolution performance.",
+        "reportUrl": "data:text/plain;charset=utf-8,Document%20credit-report.pdf",
+        "reportShareLink": "https://rentcredit.example/share/credit-report"
+      },
+      "lease": {
+        "startDate": "2025-08-01",
+        "endDate": "2026-07-31",
+        "propertyAddress": "14 Riverside Drive, Unit B4",
+        "unit": "B4",
+        "rentAmount": 1200,
+        "terms": [
+          "Rent due on the 1st of every month",
+          "Late fee applies after 5 days",
+          "Pets allowed with additional rider"
+        ],
+        "documentUrl": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf",
+        "landlord": {
+          "name": "Daniel K",
+          "email": "admin@crenit.com"
+        },
+        "renewalWarning": "renewal_due_soon"
+      },
+      "deposit": {
+        "totalAmount": 1800,
+        "escrowStatus": "active",
+        "refundStatus": "pending_review",
+        "deductions": [
+          {
+            "id": "DED-1774436894528-1",
+            "reason": "Paint touch-up",
+            "amount": 120
+          }
+        ],
+        "timeline": [
+          {
+            "id": "DEP-1774436894528-1",
+            "date": "2025-08-01",
+            "message": "Deposit placed into escrow"
+          },
+          {
+            "id": "DEP-1774436894528-2",
+            "date": "2026-03-01",
+            "message": "Inspection initiated"
+          }
+        ]
+      },
+      "disputes": [
+        {
+          "id": "DSP-1774436894648-527",
+          "title": "Test Dispute",
+          "category": "maintenance",
+          "status": "open",
+          "createdAt": "2026-03-25T11:08:14.648Z",
+          "evidence": [
+            {
+              "id": "EVD-1774436894648-1",
+              "name": "test_evidence.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774436894648-1",
+              "by": "tenant",
+              "message": "This is a test dispute",
+              "at": "2026-03-25T11:08:14.648Z"
+            }
+          ]
+        },
+        {
+          "id": "DSP-1774436894528-1",
+          "title": "January payment marked failed",
+          "category": "payment",
+          "status": "under_review",
+          "createdAt": "2026-01-03",
+          "evidence": [
+            {
+              "id": "EVD-1774436894528-1",
+              "name": "bank-statement-jan.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774436894529-1",
+              "by": "tenant",
+              "message": "Payment was debited from my account.",
+              "at": "2026-03-25T11:08:14.528Z"
+            },
+            {
+              "id": "MSG-1774436894529-2",
+              "by": "landlord",
+              "message": "Finance team is investigating this case.",
+              "at": "2026-03-25T11:08:14.528Z"
+            }
+          ]
+        }
+      ],
+      "notifications": {
+        "preferences": {
+          "paymentReminders": true,
+          "paymentConfirmations": true,
+          "verificationUpdates": true,
+          "disputeUpdates": true,
+          "leaseAlerts": true,
+          "depositAlerts": true
+        },
+        "items": [
+          {
+            "id": "NT-1774436894613-kyc",
+            "title": "Verification submitted",
+            "message": "Your KYC package has been submitted for review.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T11:08:14.613Z"
+          },
+          {
+            "id": "NT-1774436894529-1",
+            "title": "Rent due soon",
+            "message": "April rent is due in 7 days.",
+            "type": "payment",
+            "read": false,
+            "createdAt": "2026-03-25T11:08:14.528Z"
+          },
+          {
+            "id": "NT-1774436894529-2",
+            "title": "Verification needed",
+            "message": "Complete identity verification to unlock all features.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T11:08:14.528Z"
+          },
+          {
+            "id": "NT-1774436894529-3",
+            "title": "Dispute update",
+            "message": "Your payment dispute is under review.",
+            "type": "dispute",
+            "read": true,
+            "createdAt": "2026-03-25T11:08:14.528Z"
+          }
+        ]
+      },
+      "documents": [
+        {
+          "id": "DOC-1774436894529-1",
+          "type": "receipt",
+          "name": "March Receipt.pdf",
+          "date": "2026-03-01",
+          "url": "data:text/plain;charset=utf-8,Document%20march-receipt.pdf"
+        },
+        {
+          "id": "DOC-1774436894529-2",
+          "type": "statement",
+          "name": "2025 Annual Statement.pdf",
+          "date": "2025-12-31",
+          "url": "data:text/plain;charset=utf-8,Document%20annual-statement-2025.pdf"
+        },
+        {
+          "id": "DOC-1774436894529-3",
+          "type": "lease",
+          "name": "Lease Agreement.pdf",
+          "date": "2025-08-01",
+          "url": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf"
+        }
+      ],
+      "profile": {
+        "fullName": "Updated Name",
+        "email": "tenant.nonbooking.1774436894424.8422@example.com",
+        "phone": "+1 555 9999",
+        "twoFactorEnabled": false,
+        "linkedAccounts": [
+          {
+            "id": "ACC-1774436894529-1",
+            "label": "Main Checking Account (****1122)"
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "SES-1774436894529-1",
+          "device": "Chrome on Windows",
+          "location": "Nairobi, KE",
+          "lastActive": "Today",
+          "current": true
+        },
+        {
+          "id": "SES-1774436894529-2",
+          "device": "Mobile Safari",
+          "location": "Nairobi, KE",
+          "lastActive": "2 days ago",
+          "current": false
+        }
+      ],
+      "support": {
+        "faq": [
+          {
+            "q": "How do I avoid late payments?",
+            "a": "Enable auto-pay and set payment reminders from settings."
+          },
+          {
+            "q": "When does credit update?",
+            "a": "Credit updates after verified rent settlements each month."
+          },
+          {
+            "q": "How does escrow work?",
+            "a": "Deposit funds are held and tracked until lease closure."
+          }
+        ],
+        "articles": [
+          {
+            "id": "ART-1",
+            "title": "Payment best practices"
+          },
+          {
+            "id": "ART-2",
+            "title": "How to submit KYC documents"
+          },
+          {
+            "id": "ART-3",
+            "title": "Understanding dispute timelines"
+          }
+        ],
+        "tickets": []
+      },
+      "activity": [
+        {
+          "id": "ACT-1774436894648-dispute",
+          "message": "Dispute created: Test Dispute"
+        },
+        {
+          "id": "ACT-1774436894529-1",
+          "message": "March rent payment recorded"
+        },
+        {
+          "id": "ACT-1774436894529-2",
+          "message": "Credit score increased by 5 points"
+        },
+        {
+          "id": "ACT-1774436894529-3",
+          "message": "Dispute response posted by landlord"
+        }
+      ]
+    },
+    "USR-1774436907622-8143": {
+      "tenantId": "USR-1774436907622-8143",
+      "verification": {
+        "status": "pending",
+        "requiredSteps": [
+          "Confirm your legal name",
+          "Upload a government ID",
+          "Upload proof of current address",
+          "Review and submit"
+        ],
+        "documents": [
+          {
+            "id": "KYC-1774436907707-1",
+            "type": "id",
+            "name": "passport.pdf",
+            "uploadedAt": "2026-03-25T11:08:27.707Z"
+          },
+          {
+            "id": "KYC-1774436907707-2",
+            "type": "proof_of_address",
+            "name": "utility_bill.pdf",
+            "uploadedAt": "2026-03-25T11:08:27.707Z"
+          }
+        ],
+        "submittedAt": "2026-03-25T11:08:27.707Z"
+      },
+      "rent": {
+        "amountDue": 1200,
+        "nextPaymentDate": "2026-04-01",
+        "status": "pending",
+        "autoPayEnabled": false,
+        "currentMonthLabel": "March 2026"
+      },
+      "paymentMethods": [
+        {
+          "id": "PM-1774436907624-1",
+          "label": "Non-Booking Main Bank",
+          "type": "bank",
+          "last4": "1122",
+          "isPrimary": true
+        }
+      ],
+      "payments": {
+        "upcoming": [
+          {
+            "id": "UP-1774436907624-1",
+            "date": "2026-04-01",
+            "amount": 1200,
+            "label": "April Rent"
+          },
+          {
+            "id": "UP-1774436907624-2",
+            "date": "2026-05-01",
+            "amount": 1200,
+            "label": "May Rent"
+          }
+        ],
+        "history": [
+          {
+            "id": "PAY-1774436907624-1",
+            "date": "2026-03-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20march-rent"
+          },
+          {
+            "id": "PAY-1774436907624-2",
+            "date": "2026-02-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20feb-rent"
+          },
+          {
+            "id": "PAY-1774436907624-3",
+            "date": "2026-01-01",
+            "amount": 1200,
+            "status": "failed",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20jan-rent"
+          }
+        ]
+      },
+      "credit": {
+        "currentScore": 684,
+        "tier": "Good",
+        "history": [
+          {
+            "month": "Oct",
+            "score": 642
+          },
+          {
+            "month": "Nov",
+            "score": 653
+          },
+          {
+            "month": "Dec",
+            "score": 664
+          },
+          {
+            "month": "Jan",
+            "score": 671
+          },
+          {
+            "month": "Feb",
+            "score": 679
+          },
+          {
+            "month": "Mar",
+            "score": 684
+          }
+        ],
+        "onTimePercentage": 92,
+        "latePaymentCount": 1,
+        "paymentStreak": 5,
+        "calculationRule": "Score is weighted by on-time payments, payment consistency, and dispute resolution performance.",
+        "reportUrl": "data:text/plain;charset=utf-8,Document%20credit-report.pdf",
+        "reportShareLink": "https://rentcredit.example/share/credit-report"
+      },
+      "lease": {
+        "startDate": "2025-08-01",
+        "endDate": "2026-07-31",
+        "propertyAddress": "14 Riverside Drive, Unit B4",
+        "unit": "B4",
+        "rentAmount": 1200,
+        "terms": [
+          "Rent due on the 1st of every month",
+          "Late fee applies after 5 days",
+          "Pets allowed with additional rider"
+        ],
+        "documentUrl": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf",
+        "landlord": {
+          "name": "Daniel K",
+          "email": "admin@crenit.com"
+        },
+        "renewalWarning": "renewal_due_soon"
+      },
+      "deposit": {
+        "totalAmount": 1800,
+        "escrowStatus": "active",
+        "refundStatus": "pending_review",
+        "deductions": [
+          {
+            "id": "DED-1774436907624-1",
+            "reason": "Paint touch-up",
+            "amount": 120
+          }
+        ],
+        "timeline": [
+          {
+            "id": "DEP-1774436907624-1",
+            "date": "2025-08-01",
+            "message": "Deposit placed into escrow"
+          },
+          {
+            "id": "DEP-1774436907624-2",
+            "date": "2026-03-01",
+            "message": "Inspection initiated"
+          }
+        ]
+      },
+      "disputes": [
+        {
+          "id": "DSP-1774436907738-251",
+          "title": "Test Dispute",
+          "category": "maintenance",
+          "status": "open",
+          "createdAt": "2026-03-25T11:08:27.738Z",
+          "evidence": [
+            {
+              "id": "EVD-1774436907738-1",
+              "name": "test_evidence.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774436907738-1",
+              "by": "tenant",
+              "message": "This is a test dispute",
+              "at": "2026-03-25T11:08:27.738Z"
+            }
+          ]
+        },
+        {
+          "id": "DSP-1774436907624-1",
+          "title": "January payment marked failed",
+          "category": "payment",
+          "status": "under_review",
+          "createdAt": "2026-01-03",
+          "evidence": [
+            {
+              "id": "EVD-1774436907624-1",
+              "name": "bank-statement-jan.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774436907624-1",
+              "by": "tenant",
+              "message": "Payment was debited from my account.",
+              "at": "2026-03-25T11:08:27.624Z"
+            },
+            {
+              "id": "MSG-1774436907624-2",
+              "by": "landlord",
+              "message": "Finance team is investigating this case.",
+              "at": "2026-03-25T11:08:27.624Z"
+            }
+          ]
+        }
+      ],
+      "notifications": {
+        "preferences": {
+          "paymentReminders": true,
+          "paymentConfirmations": true,
+          "verificationUpdates": true,
+          "disputeUpdates": true,
+          "leaseAlerts": true,
+          "depositAlerts": true
+        },
+        "items": [
+          {
+            "id": "NT-1774436907707-kyc",
+            "title": "Verification submitted",
+            "message": "Your KYC package has been submitted for review.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T11:08:27.707Z"
+          },
+          {
+            "id": "NT-1774436907624-1",
+            "title": "Rent due soon",
+            "message": "April rent is due in 7 days.",
+            "type": "payment",
+            "read": false,
+            "createdAt": "2026-03-25T11:08:27.624Z"
+          },
+          {
+            "id": "NT-1774436907624-2",
+            "title": "Verification needed",
+            "message": "Complete identity verification to unlock all features.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T11:08:27.624Z"
+          },
+          {
+            "id": "NT-1774436907624-3",
+            "title": "Dispute update",
+            "message": "Your payment dispute is under review.",
+            "type": "dispute",
+            "read": true,
+            "createdAt": "2026-03-25T11:08:27.624Z"
+          }
+        ]
+      },
+      "documents": [
+        {
+          "id": "DOC-1774436907624-1",
+          "type": "receipt",
+          "name": "March Receipt.pdf",
+          "date": "2026-03-01",
+          "url": "data:text/plain;charset=utf-8,Document%20march-receipt.pdf"
+        },
+        {
+          "id": "DOC-1774436907624-2",
+          "type": "statement",
+          "name": "2025 Annual Statement.pdf",
+          "date": "2025-12-31",
+          "url": "data:text/plain;charset=utf-8,Document%20annual-statement-2025.pdf"
+        },
+        {
+          "id": "DOC-1774436907624-3",
+          "type": "lease",
+          "name": "Lease Agreement.pdf",
+          "date": "2025-08-01",
+          "url": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf"
+        }
+      ],
+      "profile": {
+        "fullName": "Updated Name",
+        "email": "tenant.nonbooking.1774436907474.2672@example.com",
+        "phone": "+1 555 9999",
+        "twoFactorEnabled": false,
+        "linkedAccounts": [
+          {
+            "id": "ACC-1774436907624-1",
+            "label": "Main Checking Account (****1122)"
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "SES-1774436907624-1",
+          "device": "Chrome on Windows",
+          "location": "Nairobi, KE",
+          "lastActive": "Today",
+          "current": true
+        },
+        {
+          "id": "SES-1774436907624-2",
+          "device": "Mobile Safari",
+          "location": "Nairobi, KE",
+          "lastActive": "2 days ago",
+          "current": false
+        }
+      ],
+      "support": {
+        "faq": [
+          {
+            "q": "How do I avoid late payments?",
+            "a": "Enable auto-pay and set payment reminders from settings."
+          },
+          {
+            "q": "When does credit update?",
+            "a": "Credit updates after verified rent settlements each month."
+          },
+          {
+            "q": "How does escrow work?",
+            "a": "Deposit funds are held and tracked until lease closure."
+          }
+        ],
+        "articles": [
+          {
+            "id": "ART-1",
+            "title": "Payment best practices"
+          },
+          {
+            "id": "ART-2",
+            "title": "How to submit KYC documents"
+          },
+          {
+            "id": "ART-3",
+            "title": "Understanding dispute timelines"
+          }
+        ],
+        "tickets": []
+      },
+      "activity": [
+        {
+          "id": "ACT-1774436907738-dispute",
+          "message": "Dispute created: Test Dispute"
+        },
+        {
+          "id": "ACT-1774436907624-1",
+          "message": "March rent payment recorded"
+        },
+        {
+          "id": "ACT-1774436907624-2",
+          "message": "Credit score increased by 5 points"
+        },
+        {
+          "id": "ACT-1774436907624-3",
+          "message": "Dispute response posted by landlord"
+        }
+      ]
+    },
+    "USR-1774436927627-5365": {
+      "tenantId": "USR-1774436927627-5365",
+      "verification": {
+        "status": "pending",
+        "requiredSteps": [
+          "Confirm your legal name",
+          "Upload a government ID",
+          "Upload proof of current address",
+          "Review and submit"
+        ],
+        "documents": [
+          {
+            "id": "KYC-1774436927710-1",
+            "type": "id",
+            "name": "passport.pdf",
+            "uploadedAt": "2026-03-25T11:08:47.710Z"
+          },
+          {
+            "id": "KYC-1774436927710-2",
+            "type": "proof_of_address",
+            "name": "utility_bill.pdf",
+            "uploadedAt": "2026-03-25T11:08:47.710Z"
+          }
+        ],
+        "submittedAt": "2026-03-25T11:08:47.710Z"
+      },
+      "rent": {
+        "amountDue": 1200,
+        "nextPaymentDate": "2026-04-01",
+        "status": "pending",
+        "autoPayEnabled": false,
+        "currentMonthLabel": "March 2026"
+      },
+      "paymentMethods": [
+        {
+          "id": "PM-1774436927629-1",
+          "label": "Non-Booking Main Bank",
+          "type": "bank",
+          "last4": "1122",
+          "isPrimary": true
+        }
+      ],
+      "payments": {
+        "upcoming": [
+          {
+            "id": "UP-1774436927629-1",
+            "date": "2026-04-01",
+            "amount": 1200,
+            "label": "April Rent"
+          },
+          {
+            "id": "UP-1774436927629-2",
+            "date": "2026-05-01",
+            "amount": 1200,
+            "label": "May Rent"
+          }
+        ],
+        "history": [
+          {
+            "id": "PAY-1774436927629-1",
+            "date": "2026-03-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20march-rent"
+          },
+          {
+            "id": "PAY-1774436927629-2",
+            "date": "2026-02-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20feb-rent"
+          },
+          {
+            "id": "PAY-1774436927629-3",
+            "date": "2026-01-01",
+            "amount": 1200,
+            "status": "failed",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20jan-rent"
+          }
+        ]
+      },
+      "credit": {
+        "currentScore": 684,
+        "tier": "Good",
+        "history": [
+          {
+            "month": "Oct",
+            "score": 642
+          },
+          {
+            "month": "Nov",
+            "score": 653
+          },
+          {
+            "month": "Dec",
+            "score": 664
+          },
+          {
+            "month": "Jan",
+            "score": 671
+          },
+          {
+            "month": "Feb",
+            "score": 679
+          },
+          {
+            "month": "Mar",
+            "score": 684
+          }
+        ],
+        "onTimePercentage": 92,
+        "latePaymentCount": 1,
+        "paymentStreak": 5,
+        "calculationRule": "Score is weighted by on-time payments, payment consistency, and dispute resolution performance.",
+        "reportUrl": "data:text/plain;charset=utf-8,Document%20credit-report.pdf",
+        "reportShareLink": "https://rentcredit.example/share/credit-report"
+      },
+      "lease": {
+        "startDate": "2025-08-01",
+        "endDate": "2026-07-31",
+        "propertyAddress": "14 Riverside Drive, Unit B4",
+        "unit": "B4",
+        "rentAmount": 1200,
+        "terms": [
+          "Rent due on the 1st of every month",
+          "Late fee applies after 5 days",
+          "Pets allowed with additional rider"
+        ],
+        "documentUrl": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf",
+        "landlord": {
+          "name": "Daniel K",
+          "email": "admin@crenit.com"
+        },
+        "renewalWarning": "renewal_due_soon"
+      },
+      "deposit": {
+        "totalAmount": 1800,
+        "escrowStatus": "active",
+        "refundStatus": "pending_review",
+        "deductions": [
+          {
+            "id": "DED-1774436927629-1",
+            "reason": "Paint touch-up",
+            "amount": 120
+          }
+        ],
+        "timeline": [
+          {
+            "id": "DEP-1774436927629-1",
+            "date": "2025-08-01",
+            "message": "Deposit placed into escrow"
+          },
+          {
+            "id": "DEP-1774436927629-2",
+            "date": "2026-03-01",
+            "message": "Inspection initiated"
+          }
+        ]
+      },
+      "disputes": [
+        {
+          "id": "DSP-1774436927744-233",
+          "title": "Test Dispute",
+          "category": "maintenance",
+          "status": "open",
+          "createdAt": "2026-03-25T11:08:47.744Z",
+          "evidence": [
+            {
+              "id": "EVD-1774436927744-1",
+              "name": "test_evidence.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774436927744-1",
+              "by": "tenant",
+              "message": "This is a test dispute",
+              "at": "2026-03-25T11:08:47.744Z"
+            }
+          ]
+        },
+        {
+          "id": "DSP-1774436927629-1",
+          "title": "January payment marked failed",
+          "category": "payment",
+          "status": "under_review",
+          "createdAt": "2026-01-03",
+          "evidence": [
+            {
+              "id": "EVD-1774436927629-1",
+              "name": "bank-statement-jan.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774436927629-1",
+              "by": "tenant",
+              "message": "Payment was debited from my account.",
+              "at": "2026-03-25T11:08:47.629Z"
+            },
+            {
+              "id": "MSG-1774436927629-2",
+              "by": "landlord",
+              "message": "Finance team is investigating this case.",
+              "at": "2026-03-25T11:08:47.629Z"
+            }
+          ]
+        }
+      ],
+      "notifications": {
+        "preferences": {
+          "paymentReminders": true,
+          "paymentConfirmations": true,
+          "verificationUpdates": true,
+          "disputeUpdates": true,
+          "leaseAlerts": true,
+          "depositAlerts": true
+        },
+        "items": [
+          {
+            "id": "NT-1774436927759-support",
+            "title": "Support ticket created",
+            "message": "Your support request has been submitted.",
+            "type": "support",
+            "read": false,
+            "createdAt": "2026-03-25T11:08:47.759Z"
+          },
+          {
+            "id": "NT-1774436927710-kyc",
+            "title": "Verification submitted",
+            "message": "Your KYC package has been submitted for review.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T11:08:47.710Z"
+          },
+          {
+            "id": "NT-1774436927629-1",
+            "title": "Rent due soon",
+            "message": "April rent is due in 7 days.",
+            "type": "payment",
+            "read": false,
+            "createdAt": "2026-03-25T11:08:47.629Z"
+          },
+          {
+            "id": "NT-1774436927629-2",
+            "title": "Verification needed",
+            "message": "Complete identity verification to unlock all features.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T11:08:47.629Z"
+          },
+          {
+            "id": "NT-1774436927629-3",
+            "title": "Dispute update",
+            "message": "Your payment dispute is under review.",
+            "type": "dispute",
+            "read": true,
+            "createdAt": "2026-03-25T11:08:47.629Z"
+          }
+        ]
+      },
+      "documents": [
+        {
+          "id": "DOC-1774436927629-1",
+          "type": "receipt",
+          "name": "March Receipt.pdf",
+          "date": "2026-03-01",
+          "url": "data:text/plain;charset=utf-8,Document%20march-receipt.pdf"
+        },
+        {
+          "id": "DOC-1774436927629-2",
+          "type": "statement",
+          "name": "2025 Annual Statement.pdf",
+          "date": "2025-12-31",
+          "url": "data:text/plain;charset=utf-8,Document%20annual-statement-2025.pdf"
+        },
+        {
+          "id": "DOC-1774436927629-3",
+          "type": "lease",
+          "name": "Lease Agreement.pdf",
+          "date": "2025-08-01",
+          "url": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf"
+        }
+      ],
+      "profile": {
+        "fullName": "Updated Name",
+        "email": "tenant.nonbooking.1774436927534.199@example.com",
+        "phone": "+1 555 9999",
+        "twoFactorEnabled": false,
+        "linkedAccounts": [
+          {
+            "id": "ACC-1774436927629-1",
+            "label": "Main Checking Account (****1122)"
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "SES-1774436927629-1",
+          "device": "Chrome on Windows",
+          "location": "Nairobi, KE",
+          "lastActive": "Today",
+          "current": true
+        },
+        {
+          "id": "SES-1774436927629-2",
+          "device": "Mobile Safari",
+          "location": "Nairobi, KE",
+          "lastActive": "2 days ago",
+          "current": false
+        }
+      ],
+      "support": {
+        "faq": [
+          {
+            "q": "How do I avoid late payments?",
+            "a": "Enable auto-pay and set payment reminders from settings."
+          },
+          {
+            "q": "When does credit update?",
+            "a": "Credit updates after verified rent settlements each month."
+          },
+          {
+            "q": "How does escrow work?",
+            "a": "Deposit funds are held and tracked until lease closure."
+          }
+        ],
+        "articles": [
+          {
+            "id": "ART-1",
+            "title": "Payment best practices"
+          },
+          {
+            "id": "ART-2",
+            "title": "How to submit KYC documents"
+          },
+          {
+            "id": "ART-3",
+            "title": "Understanding dispute timelines"
+          }
+        ],
+        "tickets": [
+          {
+            "id": "TKT-1774436927759-856",
+            "topic": "Test Support Topic",
+            "message": "This is a test support request.",
+            "status": "open",
+            "createdAt": "2026-03-25T11:08:47.759Z"
+          }
+        ]
+      },
+      "activity": [
+        {
+          "id": "ACT-1774436927744-dispute",
+          "message": "Dispute created: Test Dispute"
+        },
+        {
+          "id": "ACT-1774436927629-1",
+          "message": "March rent payment recorded"
+        },
+        {
+          "id": "ACT-1774436927629-2",
+          "message": "Credit score increased by 5 points"
+        },
+        {
+          "id": "ACT-1774436927629-3",
+          "message": "Dispute response posted by landlord"
+        }
+      ]
+    },
+    "USR-1774436950560-8780": {
+      "tenantId": "USR-1774436950560-8780",
+      "verification": {
+        "status": "pending",
+        "requiredSteps": [
+          "Confirm your legal name",
+          "Upload a government ID",
+          "Upload proof of current address",
+          "Review and submit"
+        ],
+        "documents": [
+          {
+            "id": "KYC-1774436950644-1",
+            "type": "id",
+            "name": "passport.pdf",
+            "uploadedAt": "2026-03-25T11:09:10.644Z"
+          },
+          {
+            "id": "KYC-1774436950644-2",
+            "type": "proof_of_address",
+            "name": "utility_bill.pdf",
+            "uploadedAt": "2026-03-25T11:09:10.644Z"
+          }
+        ],
+        "submittedAt": "2026-03-25T11:09:10.644Z"
+      },
+      "rent": {
+        "amountDue": 1200,
+        "nextPaymentDate": "2026-04-01",
+        "status": "pending",
+        "autoPayEnabled": false,
+        "currentMonthLabel": "March 2026"
+      },
+      "paymentMethods": [
+        {
+          "id": "PM-1774436950562-1",
+          "label": "Non-Booking Main Bank",
+          "type": "bank",
+          "last4": "1122",
+          "isPrimary": true
+        }
+      ],
+      "payments": {
+        "upcoming": [
+          {
+            "id": "UP-1774436950562-1",
+            "date": "2026-04-01",
+            "amount": 1200,
+            "label": "April Rent"
+          },
+          {
+            "id": "UP-1774436950562-2",
+            "date": "2026-05-01",
+            "amount": 1200,
+            "label": "May Rent"
+          }
+        ],
+        "history": [
+          {
+            "id": "PAY-1774436950562-1",
+            "date": "2026-03-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20march-rent"
+          },
+          {
+            "id": "PAY-1774436950562-2",
+            "date": "2026-02-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20feb-rent"
+          },
+          {
+            "id": "PAY-1774436950562-3",
+            "date": "2026-01-01",
+            "amount": 1200,
+            "status": "failed",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20jan-rent"
+          }
+        ]
+      },
+      "credit": {
+        "currentScore": 684,
+        "tier": "Good",
+        "history": [
+          {
+            "month": "Oct",
+            "score": 642
+          },
+          {
+            "month": "Nov",
+            "score": 653
+          },
+          {
+            "month": "Dec",
+            "score": 664
+          },
+          {
+            "month": "Jan",
+            "score": 671
+          },
+          {
+            "month": "Feb",
+            "score": 679
+          },
+          {
+            "month": "Mar",
+            "score": 684
+          }
+        ],
+        "onTimePercentage": 92,
+        "latePaymentCount": 1,
+        "paymentStreak": 5,
+        "calculationRule": "Score is weighted by on-time payments, payment consistency, and dispute resolution performance.",
+        "reportUrl": "data:text/plain;charset=utf-8,Document%20credit-report.pdf",
+        "reportShareLink": "https://rentcredit.example/share/credit-report"
+      },
+      "lease": {
+        "startDate": "2025-08-01",
+        "endDate": "2026-07-31",
+        "propertyAddress": "14 Riverside Drive, Unit B4",
+        "unit": "B4",
+        "rentAmount": 1200,
+        "terms": [
+          "Rent due on the 1st of every month",
+          "Late fee applies after 5 days",
+          "Pets allowed with additional rider"
+        ],
+        "documentUrl": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf",
+        "landlord": {
+          "name": "Daniel K",
+          "email": "admin@crenit.com"
+        },
+        "renewalWarning": "renewal_due_soon"
+      },
+      "deposit": {
+        "totalAmount": 1800,
+        "escrowStatus": "active",
+        "refundStatus": "pending_review",
+        "deductions": [
+          {
+            "id": "DED-1774436950562-1",
+            "reason": "Paint touch-up",
+            "amount": 120
+          }
+        ],
+        "timeline": [
+          {
+            "id": "DEP-1774436950562-1",
+            "date": "2025-08-01",
+            "message": "Deposit placed into escrow"
+          },
+          {
+            "id": "DEP-1774436950562-2",
+            "date": "2026-03-01",
+            "message": "Inspection initiated"
+          }
+        ]
+      },
+      "disputes": [
+        {
+          "id": "DSP-1774436950682-805",
+          "title": "Test Dispute",
+          "category": "maintenance",
+          "status": "open",
+          "createdAt": "2026-03-25T11:09:10.682Z",
+          "evidence": [
+            {
+              "id": "EVD-1774436950683-1",
+              "name": "test_evidence.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774436950683-1",
+              "by": "tenant",
+              "message": "This is a test dispute",
+              "at": "2026-03-25T11:09:10.683Z"
+            }
+          ]
+        },
+        {
+          "id": "DSP-1774436950562-1",
+          "title": "January payment marked failed",
+          "category": "payment",
+          "status": "under_review",
+          "createdAt": "2026-01-03",
+          "evidence": [
+            {
+              "id": "EVD-1774436950562-1",
+              "name": "bank-statement-jan.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774436950562-1",
+              "by": "tenant",
+              "message": "Payment was debited from my account.",
+              "at": "2026-03-25T11:09:10.562Z"
+            },
+            {
+              "id": "MSG-1774436950562-2",
+              "by": "landlord",
+              "message": "Finance team is investigating this case.",
+              "at": "2026-03-25T11:09:10.562Z"
+            }
+          ]
+        }
+      ],
+      "notifications": {
+        "preferences": {
+          "paymentReminders": true,
+          "paymentConfirmations": true,
+          "verificationUpdates": true,
+          "disputeUpdates": true,
+          "leaseAlerts": true,
+          "depositAlerts": true
+        },
+        "items": [
+          {
+            "id": "NT-1774436950701-support",
+            "title": "Support ticket created",
+            "message": "Your support request has been submitted.",
+            "type": "support",
+            "read": false,
+            "createdAt": "2026-03-25T11:09:10.701Z"
+          },
+          {
+            "id": "NT-1774436950644-kyc",
+            "title": "Verification submitted",
+            "message": "Your KYC package has been submitted for review.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T11:09:10.644Z"
+          },
+          {
+            "id": "NT-1774436950562-1",
+            "title": "Rent due soon",
+            "message": "April rent is due in 7 days.",
+            "type": "payment",
+            "read": false,
+            "createdAt": "2026-03-25T11:09:10.562Z"
+          },
+          {
+            "id": "NT-1774436950562-2",
+            "title": "Verification needed",
+            "message": "Complete identity verification to unlock all features.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T11:09:10.562Z"
+          },
+          {
+            "id": "NT-1774436950562-3",
+            "title": "Dispute update",
+            "message": "Your payment dispute is under review.",
+            "type": "dispute",
+            "read": true,
+            "createdAt": "2026-03-25T11:09:10.562Z"
+          }
+        ]
+      },
+      "documents": [
+        {
+          "id": "DOC-1774436950562-1",
+          "type": "receipt",
+          "name": "March Receipt.pdf",
+          "date": "2026-03-01",
+          "url": "data:text/plain;charset=utf-8,Document%20march-receipt.pdf"
+        },
+        {
+          "id": "DOC-1774436950562-2",
+          "type": "statement",
+          "name": "2025 Annual Statement.pdf",
+          "date": "2025-12-31",
+          "url": "data:text/plain;charset=utf-8,Document%20annual-statement-2025.pdf"
+        },
+        {
+          "id": "DOC-1774436950562-3",
+          "type": "lease",
+          "name": "Lease Agreement.pdf",
+          "date": "2025-08-01",
+          "url": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf"
+        }
+      ],
+      "profile": {
+        "fullName": "Updated Name",
+        "email": "tenant.nonbooking.1774436950428.2161@example.com",
+        "phone": "+1 555 9999",
+        "twoFactorEnabled": false,
+        "linkedAccounts": [
+          {
+            "id": "ACC-1774436950562-1",
+            "label": "Main Checking Account (****1122)"
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "SES-1774436950562-1",
+          "device": "Chrome on Windows",
+          "location": "Nairobi, KE",
+          "lastActive": "Today",
+          "current": true
+        },
+        {
+          "id": "SES-1774436950562-2",
+          "device": "Mobile Safari",
+          "location": "Nairobi, KE",
+          "lastActive": "2 days ago",
+          "current": false
+        }
+      ],
+      "support": {
+        "faq": [
+          {
+            "q": "How do I avoid late payments?",
+            "a": "Enable auto-pay and set payment reminders from settings."
+          },
+          {
+            "q": "When does credit update?",
+            "a": "Credit updates after verified rent settlements each month."
+          },
+          {
+            "q": "How does escrow work?",
+            "a": "Deposit funds are held and tracked until lease closure."
+          }
+        ],
+        "articles": [
+          {
+            "id": "ART-1",
+            "title": "Payment best practices"
+          },
+          {
+            "id": "ART-2",
+            "title": "How to submit KYC documents"
+          },
+          {
+            "id": "ART-3",
+            "title": "Understanding dispute timelines"
+          }
+        ],
+        "tickets": [
+          {
+            "id": "TKT-1774436950701-579",
+            "topic": "Test Support Topic",
+            "message": "This is a test support request.",
+            "status": "open",
+            "createdAt": "2026-03-25T11:09:10.701Z"
+          }
+        ]
+      },
+      "activity": [
+        {
+          "id": "ACT-1774436950683-dispute",
+          "message": "Dispute created: Test Dispute"
+        },
+        {
+          "id": "ACT-1774436950562-1",
+          "message": "March rent payment recorded"
+        },
+        {
+          "id": "ACT-1774436950562-2",
+          "message": "Credit score increased by 5 points"
+        },
+        {
+          "id": "ACT-1774436950562-3",
+          "message": "Dispute response posted by landlord"
+        }
+      ]
+    },
+    "USR-1774439537258-7911": {
+      "tenantId": "USR-1774439537258-7911",
+      "verification": {
+        "status": "not_submitted",
+        "requiredSteps": [
+          "Confirm your legal name",
+          "Upload a government ID",
+          "Upload proof of current address",
+          "Review and submit"
+        ],
+        "documents": [],
+        "submittedAt": ""
+      },
+      "rent": {
+        "amountDue": 1200,
+        "nextPaymentDate": "2026-04-01",
+        "status": "pending",
+        "autoPayEnabled": false,
+        "currentMonthLabel": "March 2026"
+      },
+      "paymentMethods": [
+        {
+          "id": "PM-1774439537266-1",
+          "label": "John Main Bank",
+          "type": "bank",
+          "last4": "1122",
+          "isPrimary": true
+        }
+      ],
+      "payments": {
+        "upcoming": [
+          {
+            "id": "UP-1774439537266-1",
+            "date": "2026-04-01",
+            "amount": 1200,
+            "label": "April Rent"
+          },
+          {
+            "id": "UP-1774439537266-2",
+            "date": "2026-05-01",
+            "amount": 1200,
+            "label": "May Rent"
+          }
+        ],
+        "history": [
+          {
+            "id": "PAY-1774439537266-1",
+            "date": "2026-03-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20march-rent"
+          },
+          {
+            "id": "PAY-1774439537266-2",
+            "date": "2026-02-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20feb-rent"
+          },
+          {
+            "id": "PAY-1774439537266-3",
+            "date": "2026-01-01",
+            "amount": 1200,
+            "status": "failed",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20jan-rent"
+          }
+        ]
+      },
+      "credit": {
+        "currentScore": 684,
+        "tier": "Good",
+        "history": [
+          {
+            "month": "Oct",
+            "score": 642
+          },
+          {
+            "month": "Nov",
+            "score": 653
+          },
+          {
+            "month": "Dec",
+            "score": 664
+          },
+          {
+            "month": "Jan",
+            "score": 671
+          },
+          {
+            "month": "Feb",
+            "score": 679
+          },
+          {
+            "month": "Mar",
+            "score": 684
+          }
+        ],
+        "onTimePercentage": 92,
+        "latePaymentCount": 1,
+        "paymentStreak": 5,
+        "calculationRule": "Score is weighted by on-time payments, payment consistency, and dispute resolution performance.",
+        "reportUrl": "data:text/plain;charset=utf-8,Document%20credit-report.pdf",
+        "reportShareLink": "https://rentcredit.example/share/credit-report"
+      },
+      "lease": {
+        "startDate": "2025-08-01",
+        "endDate": "2026-07-31",
+        "propertyAddress": "14 Riverside Drive, Unit B4",
+        "unit": "B4",
+        "rentAmount": 1200,
+        "terms": [
+          "Rent due on the 1st of every month",
+          "Late fee applies after 5 days",
+          "Pets allowed with additional rider"
+        ],
+        "documentUrl": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf",
+        "landlord": {
+          "name": "Daniel K",
+          "email": "admin@crenit.com"
+        },
+        "renewalWarning": "renewal_due_soon"
+      },
+      "deposit": {
+        "totalAmount": 1800,
+        "escrowStatus": "active",
+        "refundStatus": "pending_review",
+        "deductions": [
+          {
+            "id": "DED-1774439537266-1",
+            "reason": "Paint touch-up",
+            "amount": 120
+          }
+        ],
+        "timeline": [
+          {
+            "id": "DEP-1774439537266-1",
+            "date": "2025-08-01",
+            "message": "Deposit placed into escrow"
+          },
+          {
+            "id": "DEP-1774439537266-2",
+            "date": "2026-03-01",
+            "message": "Inspection initiated"
+          }
+        ]
+      },
+      "disputes": [
+        {
+          "id": "DSP-1774439537266-1",
+          "title": "January payment marked failed",
+          "category": "payment",
+          "status": "under_review",
+          "createdAt": "2026-01-03",
+          "evidence": [
+            {
+              "id": "EVD-1774439537266-1",
+              "name": "bank-statement-jan.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774439537266-1",
+              "by": "tenant",
+              "message": "Payment was debited from my account.",
+              "at": "2026-03-25T11:52:17.266Z"
+            },
+            {
+              "id": "MSG-1774439537266-2",
+              "by": "landlord",
+              "message": "Finance team is investigating this case.",
+              "at": "2026-03-25T11:52:17.266Z"
+            }
+          ]
+        }
+      ],
+      "notifications": {
+        "preferences": {
+          "paymentReminders": true,
+          "paymentConfirmations": true,
+          "verificationUpdates": true,
+          "disputeUpdates": true,
+          "leaseAlerts": true,
+          "depositAlerts": true
+        },
+        "items": [
+          {
+            "id": "NT-1774439537266-1",
+            "title": "Rent due soon",
+            "message": "April rent is due in 7 days.",
+            "type": "payment",
+            "read": false,
+            "createdAt": "2026-03-25T11:52:17.266Z"
+          },
+          {
+            "id": "NT-1774439537266-2",
+            "title": "Verification needed",
+            "message": "Complete identity verification to unlock all features.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-25T11:52:17.266Z"
+          },
+          {
+            "id": "NT-1774439537266-3",
+            "title": "Dispute update",
+            "message": "Your payment dispute is under review.",
+            "type": "dispute",
+            "read": true,
+            "createdAt": "2026-03-25T11:52:17.266Z"
+          }
+        ]
+      },
+      "documents": [
+        {
+          "id": "DOC-1774439537266-1",
+          "type": "receipt",
+          "name": "March Receipt.pdf",
+          "date": "2026-03-01",
+          "url": "data:text/plain;charset=utf-8,Document%20march-receipt.pdf"
+        },
+        {
+          "id": "DOC-1774439537266-2",
+          "type": "statement",
+          "name": "2025 Annual Statement.pdf",
+          "date": "2025-12-31",
+          "url": "data:text/plain;charset=utf-8,Document%20annual-statement-2025.pdf"
+        },
+        {
+          "id": "DOC-1774439537266-3",
+          "type": "lease",
+          "name": "Lease Agreement.pdf",
+          "date": "2025-08-01",
+          "url": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf"
+        }
+      ],
+      "profile": {
+        "fullName": "John Doe",
+        "email": "tukunamulundu@gmail.com",
+        "phone": "+1 555 0188",
+        "twoFactorEnabled": false,
+        "linkedAccounts": [
+          {
+            "id": "ACC-1774439537266-1",
+            "label": "Main Checking Account (****1122)"
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "SES-1774439537266-1",
+          "device": "Chrome on Windows",
+          "location": "Nairobi, KE",
+          "lastActive": "Today",
+          "current": true
+        },
+        {
+          "id": "SES-1774439537266-2",
+          "device": "Mobile Safari",
+          "location": "Nairobi, KE",
+          "lastActive": "2 days ago",
+          "current": false
+        }
+      ],
+      "support": {
+        "faq": [
+          {
+            "q": "How do I avoid late payments?",
+            "a": "Enable auto-pay and set payment reminders from settings."
+          },
+          {
+            "q": "When does credit update?",
+            "a": "Credit updates after verified rent settlements each month."
+          },
+          {
+            "q": "How does escrow work?",
+            "a": "Deposit funds are held and tracked until lease closure."
+          }
+        ],
+        "articles": [
+          {
+            "id": "ART-1",
+            "title": "Payment best practices"
+          },
+          {
+            "id": "ART-2",
+            "title": "How to submit KYC documents"
+          },
+          {
+            "id": "ART-3",
+            "title": "Understanding dispute timelines"
+          }
+        ],
+        "tickets": []
+      },
+      "activity": [
+        {
+          "id": "ACT-1774439537266-1",
+          "message": "March rent payment recorded"
+        },
+        {
+          "id": "ACT-1774439537266-2",
+          "message": "Credit score increased by 5 points"
+        },
+        {
+          "id": "ACT-1774439537266-3",
+          "message": "Dispute response posted by landlord"
+        }
+      ]
+    },
+    "USR-1774629443375-5348": {
+      "tenantId": "USR-1774629443375-5348",
+      "verification": {
+        "status": "not_submitted",
+        "requiredSteps": [
+          "Confirm your legal name",
+          "Upload a government ID",
+          "Upload proof of current address",
+          "Review and submit"
+        ],
+        "documents": [],
+        "submittedAt": ""
+      },
+      "rent": {
+        "amountDue": 1200,
+        "nextPaymentDate": "2026-04-01",
+        "status": "pending",
+        "autoPayEnabled": false,
+        "currentMonthLabel": "March 2026"
+      },
+      "paymentMethods": [
+        {
+          "id": "PM-1774629443486-1",
+          "label": "feijo Main Bank",
+          "type": "bank",
+          "last4": "1122",
+          "isPrimary": true
+        }
+      ],
+      "payments": {
+        "upcoming": [
+          {
+            "id": "UP-1774629443486-1",
+            "date": "2026-04-01",
+            "amount": 1200,
+            "label": "April Rent"
+          },
+          {
+            "id": "UP-1774629443486-2",
+            "date": "2026-05-01",
+            "amount": 1200,
+            "label": "May Rent"
+          }
+        ],
+        "history": [
+          {
+            "id": "PAY-1774629443486-1",
+            "date": "2026-03-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20march-rent"
+          },
+          {
+            "id": "PAY-1774629443486-2",
+            "date": "2026-02-01",
+            "amount": 1200,
+            "status": "paid",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20feb-rent"
+          },
+          {
+            "id": "PAY-1774629443486-3",
+            "date": "2026-01-01",
+            "amount": 1200,
+            "status": "failed",
+            "receiptUrl": "data:text/plain;charset=utf-8,Receipt%20jan-rent"
+          }
+        ]
+      },
+      "credit": {
+        "currentScore": 684,
+        "tier": "Good",
+        "history": [
+          {
+            "month": "Oct",
+            "score": 642
+          },
+          {
+            "month": "Nov",
+            "score": 653
+          },
+          {
+            "month": "Dec",
+            "score": 664
+          },
+          {
+            "month": "Jan",
+            "score": 671
+          },
+          {
+            "month": "Feb",
+            "score": 679
+          },
+          {
+            "month": "Mar",
+            "score": 684
+          }
+        ],
+        "onTimePercentage": 92,
+        "latePaymentCount": 1,
+        "paymentStreak": 5,
+        "calculationRule": "Score is weighted by on-time payments, payment consistency, and dispute resolution performance.",
+        "reportUrl": "data:text/plain;charset=utf-8,Document%20credit-report.pdf",
+        "reportShareLink": "https://rentcredit.example/share/credit-report"
+      },
+      "lease": {
+        "startDate": "2025-08-01",
+        "endDate": "2026-07-31",
+        "propertyAddress": "14 Riverside Drive, Unit B4",
+        "unit": "B4",
+        "rentAmount": 1200,
+        "terms": [
+          "Rent due on the 1st of every month",
+          "Late fee applies after 5 days",
+          "Pets allowed with additional rider"
+        ],
+        "documentUrl": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf",
+        "landlord": {
+          "name": "Daniel K",
+          "email": "admin@crenit.com"
+        },
+        "renewalWarning": "renewal_due_soon"
+      },
+      "deposit": {
+        "totalAmount": 1800,
+        "escrowStatus": "active",
+        "refundStatus": "pending_review",
+        "deductions": [
+          {
+            "id": "DED-1774629443486-1",
+            "reason": "Paint touch-up",
+            "amount": 120
+          }
+        ],
+        "timeline": [
+          {
+            "id": "DEP-1774629443486-1",
+            "date": "2025-08-01",
+            "message": "Deposit placed into escrow"
+          },
+          {
+            "id": "DEP-1774629443486-2",
+            "date": "2026-03-01",
+            "message": "Inspection initiated"
+          }
+        ]
+      },
+      "disputes": [
+        {
+          "id": "DSP-1774629443486-1",
+          "title": "January payment marked failed",
+          "category": "payment",
+          "status": "under_review",
+          "createdAt": "2026-01-03",
+          "evidence": [
+            {
+              "id": "EVD-1774629443486-1",
+              "name": "bank-statement-jan.pdf"
+            }
+          ],
+          "messages": [
+            {
+              "id": "MSG-1774629443486-1",
+              "by": "tenant",
+              "message": "Payment was debited from my account.",
+              "at": "2026-03-27T16:37:23.486Z"
+            },
+            {
+              "id": "MSG-1774629443486-2",
+              "by": "landlord",
+              "message": "Finance team is investigating this case.",
+              "at": "2026-03-27T16:37:23.486Z"
+            }
+          ]
+        }
+      ],
+      "notifications": {
+        "preferences": {
+          "paymentReminders": true,
+          "paymentConfirmations": true,
+          "verificationUpdates": true,
+          "disputeUpdates": true,
+          "leaseAlerts": true,
+          "depositAlerts": true
+        },
+        "items": [
+          {
+            "id": "NT-1774629443486-1",
+            "title": "Rent due soon",
+            "message": "April rent is due in 7 days.",
+            "type": "payment",
+            "read": false,
+            "createdAt": "2026-03-27T16:37:23.486Z"
+          },
+          {
+            "id": "NT-1774629443486-2",
+            "title": "Verification needed",
+            "message": "Complete identity verification to unlock all features.",
+            "type": "verification",
+            "read": false,
+            "createdAt": "2026-03-27T16:37:23.486Z"
+          },
+          {
+            "id": "NT-1774629443486-3",
+            "title": "Dispute update",
+            "message": "Your payment dispute is under review.",
+            "type": "dispute",
+            "read": true,
+            "createdAt": "2026-03-27T16:37:23.486Z"
+          }
+        ]
+      },
+      "documents": [
+        {
+          "id": "DOC-1774629443486-1",
+          "type": "receipt",
+          "name": "March Receipt.pdf",
+          "date": "2026-03-01",
+          "url": "data:text/plain;charset=utf-8,Document%20march-receipt.pdf"
+        },
+        {
+          "id": "DOC-1774629443486-2",
+          "type": "statement",
+          "name": "2025 Annual Statement.pdf",
+          "date": "2025-12-31",
+          "url": "data:text/plain;charset=utf-8,Document%20annual-statement-2025.pdf"
+        },
+        {
+          "id": "DOC-1774629443486-3",
+          "type": "lease",
+          "name": "Lease Agreement.pdf",
+          "date": "2025-08-01",
+          "url": "data:text/plain;charset=utf-8,Document%20lease-agreement.pdf"
+        }
+      ],
+      "profile": {
+        "fullName": "feijo",
+        "email": "robertofeijon@gmail.com",
+        "phone": "+1 555 0188",
+        "twoFactorEnabled": false,
+        "linkedAccounts": [
+          {
+            "id": "ACC-1774629443486-1",
+            "label": "Main Checking Account (****1122)"
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "SES-1774629443486-1",
+          "device": "Chrome on Windows",
+          "location": "Nairobi, KE",
+          "lastActive": "Today",
+          "current": true
+        },
+        {
+          "id": "SES-1774629443486-2",
+          "device": "Mobile Safari",
+          "location": "Nairobi, KE",
+          "lastActive": "2 days ago",
+          "current": false
+        }
+      ],
+      "support": {
+        "faq": [
+          {
+            "q": "How do I avoid late payments?",
+            "a": "Enable auto-pay and set payment reminders from settings."
+          },
+          {
+            "q": "When does credit update?",
+            "a": "Credit updates after verified rent settlements each month."
+          },
+          {
+            "q": "How does escrow work?",
+            "a": "Deposit funds are held and tracked until lease closure."
+          }
+        ],
+        "articles": [
+          {
+            "id": "ART-1",
+            "title": "Payment best practices"
+          },
+          {
+            "id": "ART-2",
+            "title": "How to submit KYC documents"
+          },
+          {
+            "id": "ART-3",
+            "title": "Understanding dispute timelines"
+          }
+        ],
+        "tickets": []
+      },
+      "activity": [
+        {
+          "id": "ACT-1774629443486-1",
+          "message": "March rent payment recorded"
+        },
+        {
+          "id": "ACT-1774629443486-2",
+          "message": "Credit score increased by 5 points"
+        },
+        {
+          "id": "ACT-1774629443486-3",
+          "message": "Dispute response posted by landlord"
+        }
+      ]
+    }
+  }
+}

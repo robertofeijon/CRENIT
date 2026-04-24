@@ -1,0 +1,145 @@
+{
+  "bookings": [
+    {
+      "id": "BK-1774393866155-2356",
+      "fullName": "Test Guest",
+      "email": "guest@example.com",
+      "date": "2026-04-01",
+      "slot": "08:00 - 11:00",
+      "bookingType": "pool-day",
+      "notes": "Birthday swim",
+      "status": "approved",
+      "history": [
+        {
+          "action": "created",
+          "at": "2026-03-24T23:11:06.156Z",
+          "by": "customer"
+        },
+        {
+          "action": "confirmed",
+          "at": "2026-03-24T23:11:06.198Z",
+          "by": "Ops Admin"
+        },
+        {
+          "action": "approved",
+          "at": "2026-03-24T23:11:06.201Z",
+          "by": "Ops Admin"
+        }
+      ],
+      "createdAt": "2026-03-24T23:11:06.156Z",
+      "updatedAt": "2026-03-24T23:11:06.201Z"
+    },
+    {
+      "id": "BK-1774394497591-2875",
+      "fullName": "React Split Test",
+      "email": "reactsplit@example.com",
+      "date": "2026-04-03",
+      "slot": "11:00 - 14:00",
+      "bookingType": "pool-day",
+      "notes": "Frontend/Backend split verification",
+      "status": "approved",
+      "history": [
+        {
+          "action": "created",
+          "at": "2026-03-24T23:21:37.591Z",
+          "by": "customer"
+        },
+        {
+          "action": "confirmed",
+          "at": "2026-03-24T23:21:37.659Z",
+          "by": "Admin QA"
+        },
+        {
+          "action": "approved",
+          "at": "2026-03-24T23:21:37.664Z",
+          "by": "Admin QA"
+        }
+      ],
+      "createdAt": "2026-03-24T23:21:37.591Z",
+      "updatedAt": "2026-03-24T23:21:37.664Z"
+    },
+    {
+      "id": "BK-1774395354072-8389",
+      "fullName": "Customer One",
+      "email": "customer1@example.com",
+      "date": "2026-04-20",
+      "slot": "08:00 - 11:00",
+      "bookingType": "pool-day",
+      "notes": "Landing/Auth validation",
+      "status": "approved",
+      "history": [
+        {
+          "action": "created",
+          "at": "2026-03-24T23:35:54.072Z",
+          "by": "Customer One"
+        },
+        {
+          "action": "confirmed",
+          "at": "2026-03-24T23:35:54.087Z",
+          "by": "System Admin"
+        },
+        {
+          "action": "approved",
+          "at": "2026-03-24T23:35:54.091Z",
+          "by": "System Admin"
+        }
+      ],
+      "createdAt": "2026-03-24T23:35:54.072Z",
+      "updatedAt": "2026-03-24T23:35:54.091Z"
+    },
+    {
+      "id": "BK-1774436626674-9824",
+      "fullName": "Booking Flow Tenant",
+      "email": "tenant.booking.flow.1774436626459.5334@example.com",
+      "date": "2026-04-10",
+      "slot": "10:00-12:00",
+      "bookingType": "event-space",
+      "notes": "E2E booking flow test",
+      "status": "approved",
+      "history": [
+        {
+          "action": "created",
+          "at": "2026-03-25T11:03:46.674Z",
+          "by": "Booking Flow Tenant"
+        },
+        {
+          "action": "confirmed",
+          "at": "2026-03-25T11:03:46.696Z",
+          "by": "Booking Flow Landlord"
+        },
+        {
+          "action": "approved",
+          "at": "2026-03-25T11:03:46.703Z",
+          "by": "Booking Flow Landlord"
+        }
+      ],
+      "createdAt": "2026-03-25T11:03:46.674Z",
+      "updatedAt": "2026-03-25T11:03:46.703Z"
+    },
+    {
+      "id": "BK-1774436626730-9416",
+      "fullName": "Booking Flow Tenant",
+      "email": "tenant.booking.flow.1774436626459.5334@example.com",
+      "date": "2026-04-12",
+      "slot": "13:00-15:00",
+      "bookingType": "spa",
+      "notes": "Direct reject flow",
+      "status": "rejected",
+      "history": [
+        {
+          "action": "created",
+          "at": "2026-03-25T11:03:46.730Z",
+          "by": "Booking Flow Tenant"
+        },
+        {
+          "action": "rejected",
+          "at": "2026-03-25T11:03:46.738Z",
+          "by": "Booking Flow Landlord",
+          "reason": "No availability"
+        }
+      ],
+      "createdAt": "2026-03-25T11:03:46.730Z",
+      "updatedAt": "2026-03-25T11:03:46.738Z"
+    }
+  ]
+}

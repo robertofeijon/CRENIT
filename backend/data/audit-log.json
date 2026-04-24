@@ -1,0 +1,32 @@
+{
+  "events": [
+    {
+      "id": "AUD-1774436950731-5689",
+      "at": "2026-03-25T11:09:10.731Z",
+      "action": "landlord.kyc.submitted",
+      "actor": {
+        "id": "USR-1774436950591-2242",
+        "role": "landlord",
+        "email": "landlord.nonbooking.1774436950428.3001@example.com"
+      },
+      "details": {
+        "status": "pending"
+      }
+    },
+    {
+      "id": "AUD-1774405056989-8480",
+      "at": "2026-03-25T02:17:36.989Z",
+      "action": "tenant.kyc.reviewed",
+      "actor": {
+        "id": "USR-ADMIN-1",
+        "role": "admin",
+        "email": "admin@crenit.com"
+      },
+      "details": {
+        "tenantId": "USR-1774405056884-9211",
+        "status": "approved",
+        "note": "approved in test"
+      }
+    }
+  ]
+}
