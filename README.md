@@ -54,9 +54,19 @@ RentCredit is a fintech monorepo scaffold for Namibia. The platform turns rent p
 ## Setup
 
 1. Copy `.env.example` to `.env` and set required Supabase values
-2. Copy `apps/web/.env.local.example` to `apps/web/.env.local`
-3. Run `npm install` at the repository root
-4. Start development:
+2. Add admin emails to `ADMIN_EMAILS` in `.env` if you want manual admin login:
+   - `ADMIN_EMAILS=admin@example.com,ops@example.com`
+   - The admin account must also exist in Supabase auth and have a matching `profiles` row with `role = 'ADMIN'`.
+   - Look up the auth user's UUID first, then insert the profile row:
+     ```sql
+     select id from auth.users where email = 'admin@example.com';
+
+     insert into public.profiles (id, full_name, role)
+     values ('<USER_UUID>', 'Admin Name', 'ADMIN');
+     ```
+3. Copy `apps/web/.env.local.example` to `apps/web/.env.local`
+4. Run `npm install` at the repository root
+5. Start development:
    - `npm run dev:api` — backend on port 3001
    - `npm run dev:web` — frontend on port 3000
 

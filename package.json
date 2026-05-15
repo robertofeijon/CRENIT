@@ -1,14 +1,15 @@
 {
-  "name": "crenit-workspace",
+  "name": "rentcredit",
   "private": true,
-  "version": "1.0.0",
+  "workspaces": ["apps/*"],
   "scripts": {
-    "dev:backend": "npm --prefix backend run dev",
-    "dev:app": "npm --prefix frontend run dev",
-    "dev:all": "concurrently \"npm:dev:backend\" \"npm:dev:app\"",
-    "build:tenant": "npm --prefix frontend run build"
+    "dev:api": "npm --workspace apps/api run start:dev",
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "build": "npm --workspace apps/api run build && npm --workspace apps/web run build",
+    "lint": "npm --workspace apps/api run lint && npm --workspace apps/web run lint"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^8.0.0"
   }
 }

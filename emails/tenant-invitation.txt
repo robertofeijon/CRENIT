@@ -1,0 +1,29 @@
+RentCredit — Tenant Invitation
+
+Hello {{tenant_name}},
+
+{{landlord_name}} has invited you to join RentCredit — a platform that turns your rent payments into a verified credit score.
+
+Property Details:
+- Address: {{property_address}}
+- Monthly Rent: N$ {{rent_amount}}
+- Due Date: {{due_date}}th of each month
+- Lease Period: {{lease_start}} to {{lease_end}}
+
+Accept your invitation here:
+{{accept_invitation_url}}
+
+What happens next:
+1. Create your RentCredit account
+2. Complete KYC verification (required before platform access)
+3. Pay rent through RentCredit each month
+4. Build your credit score with every on-time payment
+5. Use your score for loans, mortgages, or new tenancies
+
+IMPORTANT: You must complete KYC verification immediately after signing up. Until verified, you cannot access your dashboard, pay rent, or view your credit score.
+
+This invitation expires in {{expires_in_days}} days ({{expires_at}}).
+
+---
+RentCredit — Turning rent payments into financial identity
+Windhoek, Namibia | rentcredit.co
