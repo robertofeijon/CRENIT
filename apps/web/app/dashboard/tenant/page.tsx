@@ -77,6 +77,8 @@ export default function TenantDashboard() {
 
   const role = user ? ((user.user_metadata as Record<string, unknown>)?.role as string)?.toUpperCase() : null;
   const isLandlord = role === 'LANDLORD';
+  const nextAutoPayDate = autoPayStatus?.next_payment;
+  const displayedPayments = fullHistory.length ? fullHistory : dashboard?.recentPayments || [];
 
   useEffect(() => {
     if (!loading && !user) {
@@ -454,8 +456,8 @@ export default function TenantDashboard() {
           <div className="mt-5 space-y-3">
             {historyError ? (
               <p className="text-sm text-red-600">{historyError}</p>
-            ) : (fullHistory.length ? fullHistory : dashboard?.recentPayments || []).length ? (
-              (fullHistory.length ? fullHistory : dashboard?.recentPayments).map((payment: PaymentRecord) => (
+            ) : displayedPayments.length ? (
+              displayedPayments.map((payment: PaymentRecord) => (
                 <div key={payment.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -493,8 +495,8 @@ export default function TenantDashboard() {
           <div className="mt-6 rounded-3xl bg-slate-50 p-6">
             <p className="text-sm text-slate-500">Auto-pay status</p>
             <p className="mt-2 text-lg font-semibold text-slate-900">{autoPayStatus ? (autoPayStatus.auto_pay_enabled ? 'Enabled' : 'Disabled') : 'Loading...'}</p>
-            {autoPayStatus?.next_payment && (
-              <p className="mt-2 text-sm text-slate-600">Next scheduled payment: {new Date(autoPayStatus.next_payment).toLocaleDateString()}</p>
+            {nextAutoPayDate && (
+              <p className="mt-2 text-sm text-slate-600">Next scheduled payment: {new Date(nextAutoPayDate).toLocaleDateString()}</p>
             )}
             <div className="mt-6 space-y-4">
               <div>
