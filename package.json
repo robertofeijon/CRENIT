@@ -1,0 +1,16 @@
+{
+  "name": "rentcredit",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev:api": "npm run start:dev -w rentcredit-api",
+    "dev:web": "npm run dev -w rentcredit-web",
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "build": "npm --workspace apps/api run build && npm --workspace apps/web run build",
+    "lint": "npm --workspace apps/api run lint && npm --workspace apps/web run lint",
+    "seed:demo": "node scripts/seed-demo-users.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0"
+  }
+}

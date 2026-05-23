@@ -1,0 +1,12 @@
+import { Module } from '@nestjs/common';
+import { TenantsController } from './tenants.controller';
+import { TenantsService } from './tenants.service';
+import { CreditScoreModule } from '../credit-score/credit-score.module';
+
+@Module({
+  imports: [CreditScoreModule],
+  controllers: [TenantsController],
+  providers: [TenantsService],
+  exports: [TenantsService],
+})
+export class TenantsModule {}

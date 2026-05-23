@@ -1,0 +1,134 @@
+import Link from 'next/link';
+
+const pageData: Record<string, { title: string; headline: string; description: string; bullets: string[] }> = {
+  'products/rent-payments': {
+    title: 'Rent Payments',
+    headline: 'Simplify rent collection with transparent payments.',
+    description:
+      'Automate rent reconciliation, provide tenants with digital receipts, and turn every verified payment into reusable portfolio performance data.',
+    bullets: ['Online rent tracking', 'Verified payment history', 'Automated landlord reporting'],
+  },
+  'products/credit-score': {
+    title: 'Credit Score',
+    headline: 'Build verified credit history from rental behavior.',
+    description:
+      'Help tenants convert on-time rent payments into trusted credit data while landlords get insight into renter creditworthiness.',
+    bullets: ['Real-time scoring', 'Rental payment reporting', 'Lender-friendly insights'],
+  },
+  'products/deposit-management': {
+    title: 'Deposit Management',
+    headline: 'Securely manage tenant deposits from move-in to move-out.',
+    description:
+      'Keep funds secure, track deposit claims, and build trust with transparent deposit handling for both tenants and landlords.',
+    bullets: ['Secure deposit holding', 'Claim tracking', 'Automated reconciliation'],
+  },
+  'products/market-data': {
+    title: 'Market Data',
+    headline: 'Unlock verified rent and occupancy insights across Namibia.',
+    description:
+      'Use our unique rent dataset to make smarter pricing, underwriting, and portfolio decisions backed by real tenant payments.',
+    bullets: ['Verified rent metrics', 'Local market trends', 'Data-driven decisions'],
+  },
+  'solutions/for-tenants': {
+    title: 'For Tenants',
+    headline: 'Turn every payment into a stronger financial profile.',
+    description:
+      'Build credit, prove rental reliability, and access better housing and lending options using your rent payment history.',
+    bullets: ['Credit-building renter profile', 'Digital payment records', 'Faster approvals'],
+  },
+  'solutions/for-landlords': {
+    title: 'For Landlords',
+    headline: 'Manage your portfolio with confidence.',
+    description:
+      'Streamline operations, reduce risk, and offer tenants a value-added experience with verified rent reporting and portfolio insights.',
+    bullets: ['Tenant onboarding', 'Payment verification', 'Performance dashboards'],
+  },
+  'solutions/for-banks-lenders': {
+    title: 'For Banks & Lenders',
+    headline: 'Access rental-backed credit signals for better underwriting.',
+    description:
+      'Leverage our verified rent data to underwrite more accurately and expand lending to underserved rental customers.',
+    bullets: ['Verified rental data', 'Credit decision support', 'Risk-adjusted lending'],
+  },
+  'solutions/for-developers': {
+    title: 'For Developers',
+    headline: 'Build better rental communities with data-driven leasing.',
+    description:
+      'Use RentCredit insights to set pricing, attract long-term tenants, and position new developments for financial success.',
+    bullets: ['Market intelligence', 'Tenant credit visibility', 'Demand forecasting'],
+  },
+  'company/about-us': {
+    title: 'About Us',
+    headline: 'RentCredit is building a new rental credit economy.',
+    description:
+      'We help landlords, tenants, and financial partners turn rent payments into verified financial identity through trusted technology and local market expertise.',
+    bullets: ['Mission-driven fintech', 'Namibia-first rental data', 'Trusted rental partners'],
+  },
+  'company/how-it-works': {
+    title: 'How It Works',
+    headline: 'A seamless experience for payments, scoring, and reporting.',
+    description:
+      'RentCredit connects landlords, tenants, and lenders through verified rental payment flows, transparent score updates, and actionable market data.',
+    bullets: ['Tenant rent verification', 'Landlord dashboard', 'Credit reporting'],
+  },
+  'company/blog': {
+    title: 'Blog',
+    headline: 'Latest insights from the rent credit ecosystem.',
+    description:
+      'Stay informed with product updates, market analysis, and stories from landlords and tenants who are building stronger financial futures.',
+    bullets: ['Product news', 'Market commentary', 'Partner stories'],
+  },
+  'company/contact': {
+    title: 'Contact',
+    headline: 'Get in touch with the RentCredit team.',
+    description:
+      "We're here to answer questions from landlords, tenants, and financial partners. Reach out for a demo, onboarding support, or partnership inquiries.",
+    bullets: ['Sales inquiries', 'Partner support', 'General questions'],
+  },
+};
+
+export default function SectionPage({ params }: { params: { section: string; slug: string } }) {
+  const key = `${params.section}/${params.slug}`;
+  const page = pageData[key];
+
+  if (!page) {
+    return (
+      <main className="min-h-[80vh] bg-[#F5F5F5] py-20">
+        <div className="mx-auto max-w-4xl rounded-[2rem] bg-white p-12 shadow-xl">
+          <h1 className="text-3xl font-semibold text-[#1A1A1A]">Page not found</h1>
+          <p className="mt-4 text-slate-600">The page you requested does not exist yet.</p>
+          <Link href="/" className="mt-8 inline-flex rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white hover:bg-[#992d24]">
+            Return Home
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-[80vh] bg-[#F5F5F5] py-20">
+      <div className="mx-auto max-w-6xl px-6 sm:px-8">
+        <div className="mb-10 rounded-[2rem] bg-white p-10 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
+          <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">{page.title}</p>
+          <h1 className="mt-4 text-4xl font-semibold text-[#1A1A1A] sm:text-5xl">{page.headline}</h1>
+          <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">{page.description}</p>
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            {page.bullets.map((item) => (
+              <div key={item} className="rounded-3xl border border-slate-200 bg-[#F8F8F8] p-5 text-sm text-slate-700">
+                {item}
+              </div>
+            ))}
+          </div>
+          <div className="mt-10 flex flex-wrap gap-4">
+            <Link href="/auth" className="inline-flex items-center justify-center rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white hover:bg-[#992d24]">
+              Get Started
+            </Link>
+            <Link href="/" className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-[#1A1A1A] hover:bg-slate-100">
+              Back to Home
+            </Link>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
