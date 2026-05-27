@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { PaymentsService } from './payments.service';
 import { CreditScoreService } from '../credit-score/credit-score.service';
 
@@ -12,15 +12,19 @@ export class PaymentsSchedulerService {
     private readonly creditScoreService: CreditScoreService,
   ) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async handleDailyPaymentTasks() {
-    this.logger.log('Running daily payment tasks: overdue status update and auto-pay processing');
+  @Cron('0 9 * * *', { timeZone: 'Africa/Windhoek' })
+  async handleOverdueUpdateJob() {
+    this.logger.log('Running overdue payment status update job');
     try {
       await this.paymentsService.recordOverduePayments();
     } catch (error) {
       this.logger.error('Daily overdue payment status update failed', error as any);
     }
+  }
 
+  @Cron('0 7 * * *', { timeZone: 'Africa/Windhoek' })
+  async handleAutoPayJob() {
+    this.logger.log('Running auto-pay processing job');
     try {
       await this.paymentsService.processAutoPayments();
     } catch (error) {
@@ -28,13 +32,13 @@ export class PaymentsSchedulerService {
     }
   }
 
-  @Cron('0 0 1 * *')
-  async handleMonthlyScoreRecalculation() {
-    this.logger.log('Running monthly tenant credit score recalculation');
+  @Cron('0 2 * * *', { timeZone: 'Africa/Windhoek' })
+  async handleNightlyScoreRecalculation() {
+    this.logger.log('Running nightly tenant credit score recalculation for recent payment updates');
     try {
-      await this.creditScoreService.calculateAllScores();
+      await this.creditScoreService.calculateScoresForRecentPaymentUpdates(24);
     } catch (error) {
-      this.logger.error('Monthly credit score recalculation failed', error as any);
+      this.logger.error('Nightly credit score recalculation failed', error as any);
     }
   }
 }

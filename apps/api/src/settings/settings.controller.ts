@@ -70,4 +70,26 @@ export class SettingsController {
     const data = await this.settingsService.updateLandlordSettings(profile.id, body);
     return { success: true, data, error: null };
   }
+
+  @Patch('notifications')
+  async updateNotifications(
+    @Headers('authorization') authHeader: string,
+    @Body()
+    body: {
+      email_enabled?: boolean;
+      sms_enabled?: boolean;
+      rent_reminders?: boolean;
+      payment_confirmations?: boolean;
+      kyc_updates?: boolean;
+      lease_events?: boolean;
+      deposit_events?: boolean;
+    },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    if (body.sms_enabled && process.env.SMS_ENABLED !== 'true') {
+      throw new BadRequestException('SMS notifications are currently disabled.');
+    }
+    const data = await this.settingsService.updateNotificationPreferences(profile.id, body);
+    return { success: true, data, error: null };
+  }
 }

@@ -14,6 +14,7 @@ export default function LandlordLeasesPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [selectedLease, setSelectedLease] = useState<any>(null);
+  const [renewals, setRenewals] = useState<any[]>([]);
   const [form, setForm] = useState({
     tenant_id: '',
     tenant_email: '',
@@ -22,12 +23,14 @@ export default function LandlordLeasesPage() {
     start_date: '',
     end_date: '',
     status: 'ACTIVE',
+    payment_method: 'PLATFORM',
   });
   const [updateForm, setUpdateForm] = useState({
     monthly_rent: '',
     end_date: '',
     status: '',
   });
+  const [counterByRenewal, setCounterByRenewal] = useState<Record<string, { proposed_rent: string; proposed_end_date: string }>>({});
 
   useEffect(() => {
     if (!loading && !user) {
@@ -44,6 +47,7 @@ export default function LandlordLeasesPage() {
     if (!user || role !== 'LANDLORD') return;
     loadLeases();
     loadUnits();
+    loadRenewals();
   }, [user, role]);
 
   const loadLeases = async () => {
@@ -75,6 +79,54 @@ export default function LandlordLeasesPage() {
     }
   };
 
+  const loadRenewals = async () => {
+    try {
+      const res = await api.get('/landlords/renewals');
+      setRenewals(res.data?.data || []);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to load renewal proposals.');
+    }
+  };
+
+  const respondRenewal = async (renewalId: string, action: 'APPROVE' | 'REJECT') => {
+    setIsLoading(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await api.post(`/landlords/renewals/${renewalId}/respond`, { action });
+      setMessage(`Renewal ${action.toLowerCase()}d.`);
+      await loadRenewals();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to update renewal.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const submitCounterRenewal = async (renewalId: string) => {
+    const counter = counterByRenewal[renewalId];
+    if (!counter?.proposed_rent && !counter?.proposed_end_date) {
+      setError('Provide a counter rent or counter end date before sending.');
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await api.post(`/landlords/renewals/${renewalId}/respond`, {
+        action: 'COUNTER',
+        proposed_rent: counter?.proposed_rent ? Number(counter.proposed_rent) : undefined,
+        proposed_end_date: counter?.proposed_end_date || undefined,
+      });
+      setMessage('Counter-offer sent.');
+      await loadRenewals();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to send counter-offer.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleCreateLease = async () => {
     if (!form.unit_id || !form.monthly_rent || (!form.tenant_id && !form.tenant_email)) {
       setError('Unit, tenant information, and monthly rent are required.');
@@ -90,6 +142,7 @@ export default function LandlordLeasesPage() {
         unit_id: form.unit_id,
         monthly_rent: Number(form.monthly_rent),
         status: form.status,
+        payment_method: form.payment_method,
       };
 
       if (form.tenant_id) {
@@ -107,7 +160,7 @@ export default function LandlordLeasesPage() {
 
       await api.post('/landlords/leases', payload);
       setMessage('Lease created successfully.');
-      setForm({ tenant_id: '', tenant_email: '', unit_id: '', monthly_rent: '', start_date: '', end_date: '', status: 'ACTIVE' });
+      setForm({ tenant_id: '', tenant_email: '', unit_id: '', monthly_rent: '', start_date: '', end_date: '', status: 'ACTIVE', payment_method: 'PLATFORM' });
       await loadLeases();
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to create lease.');
@@ -246,6 +299,14 @@ export default function LandlordLeasesPage() {
                 onChange={(e) => setForm((prev) => ({ ...prev, tenant_id: e.target.value }))}
                 className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900"
               />
+              <select
+                value={form.payment_method}
+                onChange={(e) => setForm((prev) => ({ ...prev, payment_method: e.target.value }))}
+                className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900"
+              >
+                <option value="PLATFORM">Platform Payments</option>
+                <option value="DIRECT">Direct Payments</option>
+              </select>
               <input
                 placeholder="Tenant email (optional)"
                 value={form.tenant_email}
@@ -309,6 +370,9 @@ export default function LandlordLeasesPage() {
                   <p className="mt-1 font-semibold text-slate-900">{selectedLease.id}</p>
                   <p className="mt-2 text-sm text-slate-600">Tenant: {selectedLease.tenant_name || selectedLease.tenant_id}</p>
                   <p className="mt-1 text-sm text-slate-600">Unit: {selectedLease.unit_identifier || selectedLease.unit_id}</p>
+                  <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${selectedLease.payment_method === 'PLATFORM' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
+                    {selectedLease.payment_method === 'PLATFORM' ? 'Platform Payments' : 'Direct Payments'}
+                  </span>
                 </div>
                 <div className="grid gap-4">
                   <input
@@ -400,10 +464,111 @@ export default function LandlordLeasesPage() {
                     <p className="text-sm text-slate-600">Start: {lease.start_date || 'N/A'}</p>
                     <p className="text-sm text-slate-600">End: {lease.end_date || 'N/A'}</p>
                   </div>
+                  <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${lease.payment_method === 'PLATFORM' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
+                    {lease.payment_method === 'PLATFORM' ? 'Platform Payments' : 'Direct Payments'}
+                  </span>
                 </button>
               ))
             ) : (
               <p className="text-sm text-slate-500">No leases found. Create one to get started.</p>
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900">Lease renewal proposals</h2>
+              <p className="mt-2 text-sm text-slate-500">Review and respond to upcoming lease renewals.</p>
+            </div>
+            <button
+              type="button"
+              onClick={loadRenewals}
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+            >
+              Refresh
+            </button>
+          </div>
+          <div className="space-y-3">
+            {renewals.length ? (
+              renewals.slice(0, 10).map((renewal) => (
+                <div key={renewal.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-900">Lease {renewal.lease_id}</p>
+                      <p className="mt-1 text-sm text-slate-600">
+                        End {renewal.current_end_date} → Proposed {renewal.proposed_end_date} • N$
+                        {Number(renewal.proposed_rent || 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-slate-700">
+                      {renewal.status}
+                    </span>
+                  </div>
+                  {renewal.status !== 'APPROVED' && renewal.status !== 'REJECTED' ? (
+                    <div className="mt-3 space-y-3">
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <input
+                          type="number"
+                          placeholder="Counter rent (optional)"
+                          value={counterByRenewal[renewal.id]?.proposed_rent ?? ''}
+                          onChange={(event) =>
+                            setCounterByRenewal((prev) => ({
+                              ...prev,
+                              [renewal.id]: {
+                                proposed_rent: event.target.value,
+                                proposed_end_date: prev[renewal.id]?.proposed_end_date ?? '',
+                              },
+                            }))
+                          }
+                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900"
+                        />
+                        <input
+                          type="date"
+                          value={counterByRenewal[renewal.id]?.proposed_end_date ?? ''}
+                          onChange={(event) =>
+                            setCounterByRenewal((prev) => ({
+                              ...prev,
+                              [renewal.id]: {
+                                proposed_rent: prev[renewal.id]?.proposed_rent ?? '',
+                                proposed_end_date: event.target.value,
+                              },
+                            }))
+                          }
+                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => submitCounterRenewal(renewal.id)}
+                          className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+                        >
+                          Send counter
+                        </button>
+                      </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => respondRenewal(renewal.id, 'APPROVE')}
+                        className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => respondRenewal(renewal.id, 'REJECT')}
+                        className="rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                    </div>
+                  ) : null}
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">No renewal proposals yet.</p>
             )}
           </div>
         </section>

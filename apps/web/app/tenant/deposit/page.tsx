@@ -108,11 +108,11 @@ export default function TenantDepositPage() {
   };
 
   if (loading || !user) {
-    return <div className="min-h-screen bg-slate-50 p-8">Preparing deposit tools...</div>;
+    return <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-8">Loading data...</div>;
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -130,7 +130,7 @@ export default function TenantDepositPage() {
         <div className="mt-8 rounded-3xl bg-slate-50 p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-slate-900">Current deposit</h2>
           {isLoading ? (
-            <p className="mt-4 text-sm text-slate-500">Loading deposit data...</p>
+            <p className="mt-4 text-sm text-slate-500">Loading data...</p>
           ) : error ? (
             <p className="mt-4 text-sm text-red-600">{error}</p>
           ) : deposit ? (
@@ -219,7 +219,7 @@ export default function TenantDepositPage() {
                   disabled={submitLoading || !deposit}
                   className="rounded-2xl bg-brand-red px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {submitLoading ? 'Submitting dispute...' : 'Submit dispute'}
+                  {submitLoading ? 'Saving dispute...' : 'Submit dispute'}
                 </button>
                 <button
                   onClick={() => router.push('/tenant/payments')}
@@ -247,7 +247,7 @@ export default function TenantDepositPage() {
                 disabled={disputeLoading || !disputeId}
                 className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {disputeLoading ? 'Loading dispute...' : 'Load dispute'}
+                {disputeLoading ? 'Loading dispute details...' : 'Load dispute details'}
               </button>
               {disputeError ? <p className="text-sm text-red-600">{disputeError}</p> : null}
               {dispute ? (

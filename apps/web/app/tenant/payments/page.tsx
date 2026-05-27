@@ -119,11 +119,11 @@ export default function TenantPaymentsPage() {
   };
 
   if (loading || !user) {
-    return <div className="min-h-screen bg-slate-50 p-8">Preparing payments...</div>;
+    return <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-8">Loading data...</div>;
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -163,7 +163,7 @@ export default function TenantPaymentsPage() {
                             disabled={receiptLoadingId === payment.id}
                             className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {receiptLoadingId === payment.id ? 'Downloading...' : 'Download receipt'}
+                            {receiptLoadingId === payment.id ? 'Downloading receipt...' : 'Download receipt'}
                           </button>
                         ) : null}
                       </div>
@@ -209,7 +209,7 @@ export default function TenantPaymentsPage() {
                     disabled={autoPayLoading}
                     className="rounded-2xl bg-brand-red px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {autoPayLoading ? 'Applying...' : 'Enable auto-pay'}
+                    {autoPayLoading ? 'Saving auto-pay...' : 'Enable auto-pay'}
                   </button>
                   <button
                     onClick={handleCancelAutoPay}

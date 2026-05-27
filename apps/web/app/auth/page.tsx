@@ -103,11 +103,19 @@ export default function AuthPage() {
         </div>
 
         <div className="rounded-3xl bg-white p-8 shadow-sm">
-          <div className="mb-6 flex items-center gap-4 text-sm font-semibold text-slate-700">
-            <button type="button" className={mode === 'login' ? 'text-brand-red' : ''} onClick={() => setMode('login')}>
+          <div className="mb-6 inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-semibold text-slate-700">
+            <button
+              type="button"
+              className={`rounded-full px-4 py-1.5 transition ${mode === 'login' ? 'bg-white text-brand-red shadow-sm' : 'text-slate-600'}`}
+              onClick={() => setMode('login')}
+            >
               Login
             </button>
-            <button type="button" className={mode === 'register' ? 'text-brand-red' : ''} onClick={() => setMode('register')}>
+            <button
+              type="button"
+              className={`rounded-full px-4 py-1.5 transition ${mode === 'register' ? 'bg-white text-brand-red shadow-sm' : 'text-slate-600'}`}
+              onClick={() => setMode('register')}
+            >
               Register
             </button>
           </div>

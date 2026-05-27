@@ -4,6 +4,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 @Injectable()
 export class MarketDataService {
   constructor(private readonly supabaseService: SupabaseService) {}
+  private readonly minimumSample = 5;
 
   async getSuburbs() {
     const client = this.supabaseService.getClient();
@@ -26,7 +27,9 @@ export class MarketDataService {
       }
     });
 
-    return Array.from(latestBySuburb.values()).map((entry) => ({
+    return Array.from(latestBySuburb.values())
+      .filter((entry) => Number(entry.sample_count || 0) >= this.minimumSample)
+      .map((entry) => ({
       suburb: entry.suburb,
       city: entry.city,
       property_type: entry.property_type,
@@ -39,6 +42,7 @@ export class MarketDataService {
       avg_days_to_pay: entry.avg_days_to_pay,
       sample_count: entry.sample_count,
       snapshot_date: entry.snapshot_date,
+      minimum_sample_not_met: false,
     }));
   }
 
@@ -59,6 +63,15 @@ export class MarketDataService {
     }
 
     const latest = data[data.length - 1];
+    if (Number(latest.sample_count || 0) < this.minimumSample) {
+      return {
+        suburb,
+        minimum_sample_not_met: true,
+        required_minimum_sample: this.minimumSample,
+        sample_count: Number(latest.sample_count || 0),
+      };
+    }
+
     const previous = data.length > 1 ? data[data.length - 2] : null;
     const trend = previous
       ? latest.avg_rent > previous.avg_rent
@@ -70,6 +83,7 @@ export class MarketDataService {
 
     return {
       suburb: latest.suburb,
+      minimum_sample_not_met: false,
       city: latest.city,
       property_type: latest.property_type,
       bedrooms: latest.bedrooms,
@@ -113,7 +127,9 @@ export class MarketDataService {
       }
     });
 
-    const latestSnapshots = Array.from(latestPerSuburb.values());
+    const latestSnapshots = Array.from(latestPerSuburb.values()).filter(
+      (entry) => Number(entry.sample_count || 0) >= this.minimumSample,
+    );
     const summary = latestSnapshots.reduce(
       (acc, entry) => {
         acc.suburb_count += 1;
@@ -150,6 +166,7 @@ export class MarketDataService {
       avg_days_to_pay: summary.suburb_count ? summary.avg_days_to_pay / summary.suburb_count : 0,
       total_sample_count: summary.total_sample_count,
       latest_snapshot_date: latestSnapshots.length > 0 ? latestSnapshots[0].snapshot_date : null,
+      minimum_sample_not_met: latestSnapshots.length === 0,
     };
   }
 

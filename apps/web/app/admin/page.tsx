@@ -28,7 +28,7 @@ export default function AdminPage() {
   }, [user, role]);
 
   if (loading || !user || role !== 'ADMIN') {
-    return <p className="text-sm text-gray-500">Loading…</p>;
+    return <p className="text-sm text-gray-500">Loading data...</p>;
   }
 
   return (
@@ -47,7 +47,7 @@ export default function AdminPage() {
           <StatCard label="Active tenants" value={stats.active_tenants ?? '—'} />
         </div>
       ) : (
-        <p className="text-sm text-gray-500">Loading stats…</p>
+        <p className="text-sm text-gray-500">Loading data...</p>
       )}
     </div>
   );

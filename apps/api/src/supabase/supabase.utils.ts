@@ -66,6 +66,7 @@ export async function ensureUserProfile(client: SupabaseClient, user: any) {
         full_name,
         role,
         kyc_status: role === 'TENANT' ? 'NOT_SUBMITTED' : 'APPROVED',
+        partner_approval_status: role === 'LANDLORD' ? 'PENDING_APPROVAL' : 'APPROVED',
       },
     ], { onConflict: 'id' })
     .select()
@@ -91,6 +92,17 @@ export function assertRole(profile: { role?: string }, requiredRole: string) {
   }
   if (profile.role.toString().toUpperCase() !== requiredRole.toUpperCase()) {
     throw new UnauthorizedException('Insufficient permissions');
+  }
+}
+
+export function assertPartnerApproved(profile: { role?: string; partner_approval_status?: string }, message?: string) {
+  const role = profile?.role?.toString().toUpperCase();
+  if (role !== 'LANDLORD') return;
+  const status = profile?.partner_approval_status?.toString().toUpperCase() || 'APPROVED';
+  if (status !== 'APPROVED') {
+    throw new UnauthorizedException(
+      message || 'Your landlord account is under review. You can continue once partner approval is complete.',
+    );
   }
 }
 

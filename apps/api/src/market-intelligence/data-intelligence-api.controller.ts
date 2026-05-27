@@ -5,6 +5,7 @@ import {
   Param,
   Res,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { MarketIntelligenceService } from './market-intelligence.service';
@@ -21,9 +22,16 @@ export class DataIntelligenceApiController {
     if (!keyRecord) {
       throw new UnauthorizedException('Invalid or revoked API key');
     }
+    if ((keyRecord as any).expired) {
+      throw new UnauthorizedException('API key expired — contact RentCredit to renew');
+    }
     const client = keyRecord.b2b_clients as { id: string; subscription_status: string; rate_limit_per_hour: number };
     if (client.subscription_status !== 'active') {
       throw new UnauthorizedException('Client subscription is not active');
+    }
+    const exceeded = await this.marketIntelligenceService.hasExceededTierLimit(client.id, (client as any).access_tier || 'Monthly subscription');
+    if (exceeded) {
+      throw new BadRequestException('Daily API tier limit reached');
     }
     return { keyRecord, client };
   }
@@ -34,30 +42,30 @@ export class DataIntelligenceApiController {
     @Param('name') suburb: string,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { client } = await this.resolveClient(apiKey);
+    const { client, keyRecord } = await this.resolveClient(apiKey);
     try {
       const data = await this.marketIntelligenceService.getSuburbDetail(suburb);
-      await this.marketIntelligenceService.logApiUsage(client.id, `/api/v1/suburb/${suburb}`, 200);
+      await this.marketIntelligenceService.logApiUsage(client.id, `/api/v1/suburb/${suburb}`, 200, (keyRecord as any)?.id);
       return { success: true, data, error: null };
     } catch (e) {
-      await this.marketIntelligenceService.logApiUsage(client.id, `/api/v1/suburb/${suburb}`, 404);
+      await this.marketIntelligenceService.logApiUsage(client.id, `/api/v1/suburb/${suburb}`, 404, (keyRecord as any)?.id);
       throw e;
     }
   }
 
   @Get('city-overview')
   async getCityOverview(@Headers('x-rentcredit-key') apiKey: string) {
-    const { client } = await this.resolveClient(apiKey);
+    const { client, keyRecord } = await this.resolveClient(apiKey);
     const data = await this.marketIntelligenceService.getCityOverview();
-    await this.marketIntelligenceService.logApiUsage(client.id, '/api/v1/city-overview', 200);
+    await this.marketIntelligenceService.logApiUsage(client.id, '/api/v1/city-overview', 200, (keyRecord as any)?.id);
     return { success: true, data, error: null };
   }
 
   @Get('lender-risk/:suburb')
   async getLenderRisk(@Headers('x-rentcredit-key') apiKey: string, @Param('suburb') suburb: string) {
-    const { client } = await this.resolveClient(apiKey);
+    const { client, keyRecord } = await this.resolveClient(apiKey);
     const data = await this.marketIntelligenceService.getLenderRisk(suburb);
-    await this.marketIntelligenceService.logApiUsage(client.id, `/api/v1/lender-risk/${suburb}`, 200);
+    await this.marketIntelligenceService.logApiUsage(client.id, `/api/v1/lender-risk/${suburb}`, 200, (keyRecord as any)?.id);
     return { success: true, data, error: null };
   }
 }

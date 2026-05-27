@@ -15,6 +15,8 @@ export default function AdminKycPage() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [rejectingUserId, setRejectingUserId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [auditByUser, setAuditByUser] = useState<Record<string, any[]>>({});
+  const [auditLoadingUserId, setAuditLoadingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -72,8 +74,20 @@ export default function AdminKycPage() {
     }
   };
 
+  const loadAuditLog = async (userId: string) => {
+    setAuditLoadingUserId(userId);
+    try {
+      const res = await api.get(`/admin/kyc/audit/${userId}?limit=20`);
+      setAuditByUser((prev) => ({ ...prev, [userId]: res.data?.data || [] }));
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to load KYC audit log.');
+    } finally {
+      setAuditLoadingUserId(null);
+    }
+  };
+
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -86,7 +100,7 @@ export default function AdminKycPage() {
               disabled={isLoading}
               className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Refresh
+              Refresh queue
             </button>
           </div>
         </div>
@@ -95,7 +109,7 @@ export default function AdminKycPage() {
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           {actionMessage ? <p className="mb-4 text-sm text-emerald-700">{actionMessage}</p> : null}
           {isLoading ? (
-            <p className="text-sm text-slate-600">Loading submissions...</p>
+            <p className="text-sm text-slate-600">Loading data...</p>
           ) : submissions.length ? (
             <div className="space-y-4">
               {submissions.map((submission) => (
@@ -109,7 +123,46 @@ export default function AdminKycPage() {
                       {submission.status}
                     </span>
                   </div>
+                  {submission.quality_flags?.length ? (
+                    <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
+                      <p className="font-semibold">⚠ Review Carefully</p>
+                      <ul className="mt-1 space-y-1">
+                        {submission.quality_flags.map((flag: any) => (
+                          <li key={flag.id}>
+                            {flag.flag_type}: {flag.flag_note || 'Flagged for manual review'}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                   <p className="mt-3 text-sm text-slate-600">Submitted: {new Date(submission.submitted_at).toLocaleString()}</p>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => loadAuditLog(submission.user_id)}
+                      disabled={auditLoadingUserId === submission.user_id}
+                      className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+                    >
+                      {auditLoadingUserId === submission.user_id ? 'Loading audit trail...' : 'View KYC audit trail'}
+                    </button>
+                  </div>
+                  {auditByUser[submission.user_id]?.length ? (
+                    <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">KYC audit trail</p>
+                      <div className="mt-3 space-y-2">
+                        {auditByUser[submission.user_id].map((row: any) => (
+                          <div key={row.id} className="rounded-xl bg-slate-50 p-3 text-xs text-slate-700">
+                            <p className="font-semibold">{row.action}</p>
+                            <p className="mt-1">
+                              {row.previous_status || 'N/A'} → {row.next_status || 'N/A'}
+                            </p>
+                            {row.reason ? <p className="mt-1">Reason: {row.reason}</p> : null}
+                            <p className="mt-1 text-slate-500">{new Date(row.created_at).toLocaleString()}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     {submission.documents.map((doc: any) => (
                       <div key={`${doc.type}-${doc.file_name}`} className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -137,7 +190,7 @@ export default function AdminKycPage() {
                           disabled={actionLoadingId === submission.user_id}
                           className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {actionLoadingId === submission.user_id ? 'Submitting...' : 'Confirm rejection'}
+                          {actionLoadingId === submission.user_id ? 'Saving decision...' : 'Confirm rejection'}
                         </button>
                         <button
                           onClick={() => {
@@ -157,7 +210,7 @@ export default function AdminKycPage() {
                         disabled={actionLoadingId === submission.user_id}
                         className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {actionLoadingId === submission.user_id ? 'Processing...' : 'Approve KYC'}
+                        {actionLoadingId === submission.user_id ? 'Saving decision...' : 'Approve KYC'}
                       </button>
                       <button
                         onClick={() => {

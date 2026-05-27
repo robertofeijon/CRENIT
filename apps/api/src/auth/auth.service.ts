@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { SupabaseService } from '../supabase/supabase.service';
 import { ConsentService } from '../market-intelligence/consent.service';
 import { ensureUserProfile, resolveProfileRole } from '../supabase/supabase.utils';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AuthService {
@@ -10,6 +11,7 @@ export class AuthService {
   constructor(
     private readonly supabase: SupabaseService,
     private readonly consentService: ConsentService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   getWelcomeMessage(): string {
@@ -79,6 +81,7 @@ export class AuthService {
             full_name: payload.full_name,
             role,
             kyc_status: role === 'TENANT' ? 'NOT_SUBMITTED' : 'APPROVED',
+            partner_approval_status: role === 'LANDLORD' ? 'PENDING_APPROVAL' : 'APPROVED',
           },
         ],
         { onConflict: 'id' },
@@ -92,7 +95,7 @@ export class AuthService {
             {
               user_id: user.id,
               business_name: payload.full_name,
-              partner_status: 'APPROVED',
+              partner_status: 'PENDING_APPROVAL',
             },
           ],
           { onConflict: 'user_id' },
@@ -154,7 +157,48 @@ export class AuthService {
       throw new NotFoundException('Invitation not found');
     }
 
-    return data;
+    const existingUser = await this.findExistingUserByEmail(data.invited_email);
+    let landlordName: string | null = null;
+    let unitLabel: string | null = null;
+
+    if (data.landlord_id) {
+      const { data: landlord } = await client
+        .from('landlord_profiles')
+        .select('business_name')
+        .eq('id', data.landlord_id)
+        .maybeSingle();
+      landlordName = landlord?.business_name ?? null;
+    }
+
+    if (data.unit_id) {
+      const { data: unit } = await client.from('units').select('id, unit_identifier, property_id, is_occupied').eq('id', data.unit_id).maybeSingle();
+      unitLabel = unit?.unit_identifier ?? null;
+      if (!unit) {
+        throw new BadRequestException('Invite unit is invalid. Contact your landlord.');
+      }
+      const { data: property } = await client.from('properties').select('landlord_id').eq('id', unit.property_id).maybeSingle();
+      if (!property?.landlord_id) {
+        throw new BadRequestException('Invite unit is not linked to a verified landlord. Contact your landlord.');
+      }
+      if (unit.is_occupied) {
+        const { data: activeLease } = await client
+          .from('leases')
+          .select('id')
+          .eq('unit_id', unit.id)
+          .eq('status', 'ACTIVE')
+          .limit(1);
+        if ((activeLease || []).length > 0) {
+          throw new BadRequestException('Invite unit is already occupied. Contact your landlord.');
+        }
+      }
+    }
+
+    return {
+      ...data,
+      landlord_name: landlordName,
+      unit_label: unitLabel,
+      has_existing_account: Boolean(existingUser),
+    };
   }
 
   async acceptInvitation(token: string, payload: { password?: string; full_name: string }) {
@@ -184,6 +228,9 @@ export class AuthService {
     if (existingUser) {
       const profile = await ensureUserProfile(client, existingUser);
       tenantId = profile.id;
+      if (payload.full_name?.trim()) {
+        await client.from('profiles').update({ full_name: payload.full_name.trim() }).eq('id', tenantId);
+      }
     } else {
       if (!payload.password) {
         throw new BadRequestException('Password is required for new account registration');
@@ -225,8 +272,66 @@ export class AuthService {
       throw updateError;
     }
 
+    const { data: landlordProfile } = invitation.landlord_id
+      ? await client.from('landlord_profiles').select('id, user_id, business_name').eq('id', invitation.landlord_id).maybeSingle()
+      : { data: null };
+
+    if (landlordProfile?.user_id) {
+      await this.notificationsService.createNotification({
+        user_id: landlordProfile.user_id,
+        type: 'INVITE_ACCEPTED',
+        title: 'Tenant invitation accepted',
+        message: `${payload.full_name} accepted an invitation${landlordProfile.business_name ? ` for ${landlordProfile.business_name}` : ''}.`,
+        metadata: {
+          invitation_token: token,
+          tenant_id: tenantId,
+          unit_id: invitation.unit_id ?? null,
+        },
+      });
+    }
+
+    await this.notificationsService.createNotification({
+      user_id: tenantId,
+      type: 'INVITE_ACCEPTED',
+      title: 'Welcome to RentCredit',
+      message: 'Your tenant invitation has been accepted and your onboarding is now active.',
+      metadata: {
+        invitation_token: token,
+        landlord_id: invitation.landlord_id ?? null,
+        unit_id: invitation.unit_id ?? null,
+      },
+    });
+
     let lease = null;
     if (invitation.unit_id) {
+      const { data: unitValidation } = await client
+        .from('units')
+        .select('id, property_id, is_occupied')
+        .eq('id', invitation.unit_id)
+        .maybeSingle();
+      if (!unitValidation) {
+        throw new BadRequestException('Invite unit is invalid. Contact your landlord.');
+      }
+      const { data: propertyValidation } = await client
+        .from('properties')
+        .select('landlord_id')
+        .eq('id', unitValidation.property_id)
+        .maybeSingle();
+      if (!propertyValidation?.landlord_id) {
+        throw new BadRequestException('Invite unit is not linked to a verified landlord. Contact your landlord.');
+      }
+      if (unitValidation.is_occupied) {
+        const { data: activeLease } = await client
+          .from('leases')
+          .select('id, tenant_id')
+          .eq('unit_id', invitation.unit_id)
+          .eq('status', 'ACTIVE')
+          .limit(1);
+        if ((activeLease || []).some((lease: any) => lease.tenant_id !== tenantId)) {
+          throw new BadRequestException('Invite unit is already occupied. Contact your landlord.');
+        }
+      }
+
       const { data: existingLease, error: leaseError } = await client
         .from('leases')
         .select('*')
@@ -257,6 +362,26 @@ export class AuthService {
           }
           lease = leaseInsert.data;
           await client.from('units').update({ is_occupied: true }).eq('id', invitation.unit_id);
+          await client.from('payments').insert([
+            {
+              lease_id: lease.id,
+              tenant_id: tenantId,
+              landlord_id: landlordId,
+              unit_id: invitation.unit_id,
+              amount_gross: Number(unit.monthly_rent || 0),
+              commission_rate: 0.01,
+              commission_amount: Number((Number(unit.monthly_rent || 0) * 0.01).toFixed(2)),
+              amount_net: Number((Number(unit.monthly_rent || 0) * 0.99).toFixed(2)),
+              due_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString().slice(0, 10),
+              payment_method: 'EFT',
+              status: 'PENDING',
+              is_simulated: true,
+              sim_transaction_id: `INVITE-${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
+              notes: JSON.stringify({ source: 'invite_acceptance_seed' }),
+              days_overdue: 0,
+              late_fee: 0,
+            },
+          ]);
         }
       } else {
         lease = existingLease;

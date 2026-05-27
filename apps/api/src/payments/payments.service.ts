@@ -3,6 +3,7 @@ import { Response } from 'express';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreditScoreService } from '../credit-score/credit-score.service';
 import { MarketIntelligenceCaptureService } from '../market-intelligence/market-intelligence-capture.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type PaymentInitiationPayload = {
   property_unit_id: string;
@@ -20,6 +21,7 @@ export class PaymentsService {
     private readonly supabase: SupabaseService,
     private readonly creditScoreService: CreditScoreService,
     private readonly marketCapture: MarketIntelligenceCaptureService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private async onPaymentConfirmed(payment: Record<string, unknown> | null) {
@@ -261,6 +263,13 @@ export class PaymentsService {
       });
 
       await this.creditScoreService.calculateScore(tenantId);
+      await this.notificationsService.createNotification({
+        user_id: tenantId,
+        type: 'PAYMENT_CONFIRMED',
+        title: 'Payment confirmed',
+        message: `Your payment of N$${Number(body.amount || 0).toLocaleString()} has been confirmed.`,
+        metadata: { payment_id: payment?.id, payment_method: body.payment_method },
+      });
 
       return {
         payment_id: payment?.id,
@@ -419,6 +428,13 @@ export class PaymentsService {
     if (payment && payment.tenant_id) {
       try {
         await this.creditScoreService.calculateScore(payment.tenant_id);
+        await this.notificationsService.createNotification({
+          user_id: payment.tenant_id,
+          type: 'PAYMENT_CONFIRMED',
+          title: 'Payment confirmed',
+          message: `Your payment of N$${Number(payment.amount_gross || 0).toLocaleString()} has been confirmed.`,
+          metadata: { payment_id: payment.id },
+        });
       } catch (e) {
         this.logger.error('Failed to recalculate credit score after webhook payment', e as any);
       }
@@ -519,7 +535,11 @@ export class PaymentsService {
     doc.pipe(res);
   }
 
-  async confirmLandlordPayment(landlordUserId: string, paymentId: string) {
+  async confirmLandlordPayment(
+    landlordUserId: string,
+    paymentId: string,
+    payload?: { received_date?: string; amount?: number },
+  ) {
     const client = this.getClient();
     const landlordProfileId = await this.getLandlordProfileId(landlordUserId);
 
@@ -537,20 +557,22 @@ export class PaymentsService {
       throw new BadRequestException(`Cannot confirm payment with status ${payment.status}`);
     }
 
-    const now = new Date().toISOString();
+    const receivedDate = payload?.received_date ? new Date(payload.received_date).toISOString() : new Date().toISOString();
+    const effectiveAmount = payload?.amount != null ? Number(payload.amount) : Number(payment.amount_gross || 0);
     const daysOverdue = Number(payment.days_overdue || 0);
     const transactionType = daysOverdue > 0 ? 'rent_late' : 'rent_on_time';
-    const commission = this.calculateCommission(Number(payment.amount_gross), transactionType);
+    const commission = this.calculateCommission(effectiveAmount, transactionType);
 
     const { data: updated, error: updateError } = await client
       .from('payments')
       .update({
         status: 'PAID',
-        paid_date: now,
+        paid_date: receivedDate,
+        amount_gross: effectiveAmount,
         commission_rate: commission.commissionRate / 100,
         commission_amount: commission.commissionAmount,
         amount_net: commission.netAmount,
-        updated_at: now,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', paymentId)
       .select()
@@ -564,6 +586,13 @@ export class PaymentsService {
     if (confirmed?.tenant_id) {
       try {
         await this.creditScoreService.calculateScore(confirmed.tenant_id);
+        await this.notificationsService.createNotification({
+          user_id: confirmed.tenant_id,
+          type: 'PAYMENT_CONFIRMED',
+          title: 'Payment confirmed',
+          message: `Your payment of N$${Number(confirmed.amount_gross || 0).toLocaleString()} has been confirmed by landlord.`,
+          metadata: { payment_id: confirmed.id },
+        });
       } catch (e) {
         this.logger.error('Failed to recalculate credit score after payment confirmation', e as any);
       }
@@ -575,7 +604,7 @@ export class PaymentsService {
 
   async getLandlordPayments(
     landlordUserId: string,
-    filters: { propertyUnitId?: string; status?: string; month?: string; page: number; limit: number },
+    filters: { propertyUnitId?: string; status?: string; month?: string; paymentMethod?: string; page: number; limit: number },
   ) {
     const client = this.getClient();
     const landlordProfileId = await this.getLandlordProfileId(landlordUserId);
@@ -586,6 +615,9 @@ export class PaymentsService {
     }
     if (filters.status) {
       query = query.eq('status', filters.status);
+    }
+    if (filters.paymentMethod) {
+      query = query.eq('payment_method', filters.paymentMethod);
     }
     if (filters.month) {
       const [year, month] = filters.month.split('-').map(Number);
@@ -612,9 +644,13 @@ export class PaymentsService {
       tenant_name: payment.tenant_id,
       property: payment.unit_id,
       amount: payment.amount_gross,
+      amount_gross: payment.amount_gross,
       commission: payment.commission_amount,
       net_amount: payment.amount_net,
       status: payment.status,
+      payment_method: payment.payment_method,
+      due_date: payment.due_date,
+      paid_date: payment.paid_date,
       date: payment.paid_date,
       month: payment.due_date ? payment.due_date.slice(0, 7) : null,
     }));
@@ -645,20 +681,31 @@ export class PaymentsService {
 
     for (const payment of payments || []) {
       await client.from('payments').update({ status: 'OVERDUE', updated_at: new Date().toISOString() }).eq('id', payment.id);
+      if (payment.tenant_id) {
+        await this.notificationsService.createNotification({
+          user_id: payment.tenant_id,
+          type: 'PAYMENT_OVERDUE',
+          title: 'Payment overdue',
+          message: `Your rent payment due on ${payment.due_date} is now overdue.`,
+          metadata: { payment_id: payment.id, lease_id: payment.lease_id, due_date: payment.due_date },
+        });
+      }
     }
   }
 
   async processAutoPayments() {
     const client = this.getClient();
-    const today = new Date().toISOString().slice(0, 10);
-    const { data: configs, error } = await client
-      .from('auto_pay_config')
-      .select('*')
-      .eq('is_active', true)
-      .lte('next_payment_date', today);
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const dayOfMonth = now.getDate();
+    const { data: configs, error } = await client.from('auto_pay_config').select('*').eq('is_active', true);
     if (error) throw error;
 
-    for (const config of configs || []) {
+    for (const config of (configs || []).filter((cfg: any) => {
+      const byDate = cfg.next_payment_date ? cfg.next_payment_date <= today : false;
+      const byDay = typeof cfg.day_of_month === 'number' ? cfg.day_of_month === dayOfMonth : false;
+      return byDate || byDay;
+    })) {
       try {
         await this.processAutoPayment(config.tenant_id, config.payment_method_id, config.pay_day_offset || 1);
         const nextDate = this.getNextPaymentDate(config.pay_day_offset || 1);

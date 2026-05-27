@@ -4,9 +4,10 @@ import { DisputesController } from './disputes.controller';
 import { AdminDisputesController } from './admin-disputes.controller';
 import { DepositsService } from './deposits.service';
 import { SupabaseModule } from '../supabase/supabase.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [SupabaseModule],
+  imports: [SupabaseModule, NotificationsModule],
   controllers: [DepositsController, DisputesController, AdminDisputesController],
   providers: [DepositsService],
   exports: [DepositsService],

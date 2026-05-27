@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Param, Query, Headers, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Headers, BadRequestException, Body } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { SupabaseService } from '../supabase/supabase.service';
-import { getUserProfileFromAuthHeader, assertRole } from '../supabase/supabase.utils';
+import { getUserProfileFromAuthHeader, assertRole, assertPartnerApproved } from '../supabase/supabase.utils';
 
 @Controller('landlords/payments')
 export class LandlordPaymentsController {
@@ -15,12 +15,14 @@ export class LandlordPaymentsController {
     @Headers('authorization') authHeader: string,
     @Query('property_unit_id') unitId?: string,
     @Query('status') status?: string,
+    @Query('payment_method') paymentMethod?: string,
     @Query('month') month?: string,
     @Query('page') page = '1',
     @Query('limit') limit = '20',
   ) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'LANDLORD');
+    assertPartnerApproved(profile, 'Your landlord account is under review. Payment confirmations are locked until approval.');
 
     const pageNumber = Number(page) || 1;
     const pageSize = Number(limit) || 20;
@@ -33,6 +35,7 @@ export class LandlordPaymentsController {
       propertyUnitId: unitId,
       status: status?.toUpperCase(),
       month,
+      paymentMethod: paymentMethod?.toUpperCase(),
       page: pageNumber,
       limit: pageSize,
     });
@@ -44,15 +47,17 @@ export class LandlordPaymentsController {
   async confirm(
     @Headers('authorization') authHeader: string,
     @Param('paymentId') paymentId: string,
+    @Body() body: { received_date?: string; amount?: number },
   ) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'LANDLORD');
+    assertPartnerApproved(profile, 'Your landlord account is under review. Payment confirmations are locked until approval.');
 
     if (!paymentId) {
       throw new BadRequestException('paymentId is required');
     }
 
-    const payment = await this.paymentsService.confirmLandlordPayment(profile.id, paymentId);
+    const payment = await this.paymentsService.confirmLandlordPayment(profile.id, paymentId, body || {});
     return { success: true, data: payment, error: null };
   }
 }

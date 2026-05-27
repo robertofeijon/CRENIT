@@ -24,6 +24,7 @@ type MarketRecord = {
 @Injectable()
 export class MarketIntelligenceService {
   constructor(private readonly supabase: SupabaseService) {}
+  private readonly minimumSample = 5;
 
   private mi() {
     return this.supabase.getClient().schema('market_intelligence');
@@ -103,7 +104,7 @@ export class MarketIntelligenceService {
       }
 
       const suburbs = [...bySuburb.entries()]
-        .filter(([, rows]) => rows.length >= MIN_SUBURB_SAMPLE)
+        .filter(([, rows]) => rows.length >= this.minimumSample)
         .map(([suburb, rows]) => {
           const rents = rows.map((r) => Number(r.verified_rent_amount));
           const twoBr = rows.filter((r) => r.bedrooms === 2);
@@ -118,6 +119,11 @@ export class MarketIntelligenceService {
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([month, vals]) => ({ month, avg: average(vals) }));
 
+          const latestRecordAt = rows
+            .map((r) => new Date(r.captured_at).getTime())
+            .sort((a, b) => b - a)[0];
+          const daysSince = latestRecordAt ? Math.floor((Date.now() - latestRecordAt) / (24 * 60 * 60 * 1000)) : null;
+          const freshness_status = daysSince == null ? 'unknown' : daysSince > 180 ? 'inactive' : daysSince > 90 ? 'stale' : 'fresh';
           return {
             suburb,
             transaction_count: rows.length,
@@ -126,6 +132,9 @@ export class MarketIntelligenceService {
             on_time_rate: Math.round((onTime / rows.length) * 100),
             avg_days_to_pay: Math.round(average(rows.map((r) => r.days_to_pay)) * 10) / 10,
             trend: computeTrend(monthlyAvgs),
+            last_record_at: latestRecordAt ? new Date(latestRecordAt).toISOString() : null,
+            freshness_status,
+            minimum_sample_not_met: false,
           };
         })
         .sort((a, b) => b.transaction_count - a.transaction_count);
@@ -139,8 +148,13 @@ export class MarketIntelligenceService {
   async getSuburbDetail(suburb: string) {
     try {
       const records = (await this.fetchAllRecords()).filter((r) => r.suburb.toLowerCase() === suburb.toLowerCase());
-      if (records.length < MIN_SUBURB_SAMPLE) {
-        throw new NotFoundException(`Insufficient data for suburb (minimum ${MIN_SUBURB_SAMPLE} records required)`);
+      if (records.length < this.minimumSample) {
+        return {
+          suburb,
+          minimum_sample_not_met: true,
+          required_minimum_sample: this.minimumSample,
+          transaction_count: records.length,
+        };
       }
 
       const rents = records.map((r) => Number(r.verified_rent_amount));
@@ -159,6 +173,7 @@ export class MarketIntelligenceService {
 
       return {
         suburb,
+        minimum_sample_not_met: false,
         transaction_count: records.length,
         rent_distribution: rentBuckets,
         on_time_trend: onTimeTrend,
@@ -269,8 +284,25 @@ export class MarketIntelligenceService {
     doc.fontSize(9).text(previewJson.slice(0, 3500) + (previewJson.length > 3500 ? '\n…(truncated)' : ''));
     doc.end();
 
+    const sampleCount =
+      reportType === 'city_overview'
+        ? ((preview.preview as any)?.suburbs?.length ?? 0)
+        : ((preview.preview as any)?.transaction_count ?? 0);
     await this.mi().from('report_generations').insert([
       { report_type: reportType, suburb: suburb ?? null, generated_by: generatedBy ?? null },
+    ]);
+    await this.supabase.getClient().from('admin_audit_log').insert([
+      {
+        admin_id: generatedBy ?? null,
+        action: 'MARKET_DATA_EXPORT',
+        target_user_id: null,
+        details: {
+          report_type: reportType,
+          suburb: suburb ?? null,
+          sample_count: sampleCount,
+          generated_for_client: null,
+        },
+      },
     ]);
 
     const client = this.mi();
@@ -293,11 +325,12 @@ export class MarketIntelligenceService {
     }));
   }
 
-  async createApiKey(clientId: string, label?: string) {
+  async createApiKey(clientId: string, label?: string, expiresInDays = 90) {
     const { raw, prefix, hash } = generateApiKey();
+    const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await this.mi()
       .from('api_keys')
-      .insert([{ client_id: clientId, key_hash: hash, key_prefix: prefix, label: label ?? 'Default' }])
+      .insert([{ client_id: clientId, key_hash: hash, key_prefix: prefix, label: label ?? 'Default', expires_at: expiresAt }])
       .select()
       .limit(1);
     if (error) throw error;
@@ -323,13 +356,18 @@ export class MarketIntelligenceService {
         .from('api_keys')
         .select('*, b2b_clients(*)')
         .eq('key_hash', hash)
-        .eq('is_active', true)
         .maybeSingle();
       if (error) {
         console.warn('Market intelligence validateApiKey query failed:', error);
         return null;
       }
       if (!data) return null;
+      if (!data.is_active) return null;
+      if (data.expires_at && new Date(data.expires_at).getTime() < Date.now()) {
+        if (!data.grace_expires_at || new Date(data.grace_expires_at).getTime() < Date.now()) {
+          return { ...data, expired: true };
+        }
+      }
       return data;
     } catch (err) {
       console.warn('Market intelligence validateApiKey failed:', err);
@@ -337,12 +375,53 @@ export class MarketIntelligenceService {
     }
   }
 
-  async logApiUsage(clientId: string, endpoint: string, statusCode: number) {
+  async logApiUsage(clientId: string, endpoint: string, statusCode: number, keyId?: string) {
     try {
       await this.mi().from('api_usage_logs').insert([{ client_id: clientId, endpoint, status_code: statusCode }]);
+      await this.mi().from('api_usage_log').insert([{ client_id: clientId, key_id: keyId ?? null, endpoint, response_status: statusCode }]);
     } catch (err) {
       console.warn('Market intelligence logApiUsage failed:', err);
     }
+  }
+
+  async rotateApiKeyWithGrace(oldKeyId: string, clientId: string, label?: string) {
+    const created = await this.createApiKey(clientId, label);
+    const graceExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    await this.mi()
+      .from('api_keys')
+      .update({ grace_expires_at: graceExpiry, expires_at: graceExpiry })
+      .eq('id', oldKeyId);
+    return created;
+  }
+
+  getTierDailyLimit(accessTier: string) {
+    if (accessTier === 'One-time report') return 10;
+    if (accessTier === 'Monthly subscription') return 100;
+    return 1000;
+  }
+
+  async hasExceededTierLimit(clientId: string, accessTier: string) {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const { data, error } = await this.mi()
+      .from('api_usage_log')
+      .select('id')
+      .eq('client_id', clientId)
+      .gte('created_at', start.toISOString());
+    if (error) return false;
+    return (data?.length ?? 0) >= this.getTierDailyLimit(accessTier);
+  }
+
+  async findKeysExpiringWithin(days: number) {
+    const threshold = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await this.mi()
+      .from('api_keys')
+      .select('id, client_id, expires_at, b2b_clients(name)')
+      .not('expires_at', 'is', null)
+      .lte('expires_at', threshold)
+      .gte('expires_at', new Date().toISOString());
+    if (error) throw error;
+    return data || [];
   }
 
   async getApiConfig() {

@@ -59,6 +59,42 @@ export class AdminController {
     return { success: true, data: result, error: null };
   }
 
+  @Get('kyc/audit/:userId')
+  async getKycAuditLog(
+    @Headers('authorization') authHeader: string,
+    @Param('userId') userId: string,
+    @Query('limit') limit = '30',
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.adminService.getKycAuditLog(userId, Number(limit));
+    return { success: true, data: result, error: null };
+  }
+
+  @Get('kyc/compliance')
+  async kycCompliance(
+    @Headers('authorization') authHeader: string,
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.adminService.getKycComplianceOverview(Number(page), Number(limit));
+    return { success: true, data: result, error: null };
+  }
+
+  @Post('kyc/flags/:flagId/dismiss')
+  async dismissKycFlag(
+    @Headers('authorization') authHeader: string,
+    @Param('flagId') flagId: string,
+    @Body() body: { note?: string },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.adminService.dismissKycFlag(profile.id, flagId, body?.note || '');
+    return { success: true, data: result, error: null };
+  }
+
   @Get('users')
   async listUsers(
     @Headers('authorization') authHeader: string,
@@ -145,10 +181,101 @@ export class AdminController {
     @Headers('authorization') authHeader: string,
     @Query('page') page = '1',
     @Query('limit') limit = '30',
+    @Query('payment_method') paymentMethod?: string,
   ) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'ADMIN');
-    const result = await this.adminService.getPaymentOversight(Number(page), Number(limit));
+    const result = await this.adminService.getPaymentOversight(Number(page), Number(limit), paymentMethod);
+    return { success: true, data: result, error: null };
+  }
+
+  @Get('credit-scores/audit')
+  async creditScoreAudit(@Headers('authorization') authHeader: string, @Query('limit') limit = '100') {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.adminService.getCreditScoreAudit(Number(limit));
+    return { success: true, data: result, error: null };
+  }
+
+  @Get('credit-scores/:tenantId/history')
+  async creditScoreHistory(
+    @Headers('authorization') authHeader: string,
+    @Param('tenantId') tenantId: string,
+    @Query('limit') limit = '12',
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.adminService.getCreditScoreHistory(tenantId, Number(limit));
+    return { success: true, data: result, error: null };
+  }
+
+  @Post('credit-scores/:tenantId/flag-anomaly')
+  async flagAnomaly(
+    @Headers('authorization') authHeader: string,
+    @Param('tenantId') tenantId: string,
+    @Body() body: { note?: string },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.adminService.flagCreditScoreAnomaly(profile.id, tenantId, body?.note || 'Flagged anomaly');
+    return { success: true, data: result, error: null };
+  }
+
+  @Post('credit-scores/:tenantId/manual-override')
+  async overrideScore(
+    @Headers('authorization') authHeader: string,
+    @Param('tenantId') tenantId: string,
+    @Body() body: { score: number; reason: string },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    if (body.score == null || !body.reason?.trim()) {
+      throw new BadRequestException('score and reason are required');
+    }
+    const result = await this.adminService.manualOverrideCreditScore(profile.id, tenantId, Number(body.score), body.reason.trim());
+    return { success: true, data: result, error: null };
+  }
+
+  @Get('system-health/overview')
+  async systemHealth(@Headers('authorization') authHeader: string) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.adminService.getSystemHealthSnapshot();
+    return { success: true, data: result, error: null };
+  }
+
+  @Get('compliance/search-users')
+  async complianceSearchUsers(
+    @Headers('authorization') authHeader: string,
+    @Query('q') q = '',
+    @Query('limit') limit = '20',
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.adminService.listUsers({ search: q, page: 1, limit: Number(limit) });
+    return { success: true, data: result.users, error: null };
+  }
+
+  @Post('compliance/:userId/export')
+  async complianceExport(@Headers('authorization') authHeader: string, @Param('userId') userId: string) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.adminService.exportUserDataForGdpr(profile.id, userId);
+    return { success: true, data: result, error: null };
+  }
+
+  @Post('compliance/:userId/delete')
+  async complianceDelete(
+    @Headers('authorization') authHeader: string,
+    @Param('userId') userId: string,
+    @Body() body: { confirmation_text: string; expected_name?: string },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    if (!body?.confirmation_text?.trim()) {
+      throw new BadRequestException('confirmation_text is required');
+    }
+    const result = await this.adminService.anonymiseUserForGdpr(profile.id, userId);
     return { success: true, data: result, error: null };
   }
 
@@ -235,6 +362,30 @@ export class AdminController {
       false,
       body.rejection_reason,
     );
+    return { success: true, data: result, error: null };
+  }
+
+  @Get('partner-approvals')
+  async partnerApprovals(
+    @Headers('authorization') authHeader: string,
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.adminService.getPartnerApprovals(Number(page), Number(limit));
+    return { success: true, data: result, error: null };
+  }
+
+  @Post('partner-approvals/:submissionId/review')
+  async reviewPartnerApproval(
+    @Headers('authorization') authHeader: string,
+    @Param('submissionId') submissionId: string,
+    @Body() body: { action: 'APPROVE' | 'REJECT'; reason?: string },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.adminService.reviewPartnerApproval(profile.id, submissionId, body.action, body.reason);
     return { success: true, data: result, error: null };
   }
 }

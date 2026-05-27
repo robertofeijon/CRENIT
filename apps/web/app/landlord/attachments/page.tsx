@@ -278,7 +278,7 @@ export default function AttachmentsPage() {
                 disabled={loading}
               >
                 <p className="font-medium">Upload Documents ($99)</p>
-                <p className="text-xs text-gray-600">We'll upload your documents for you</p>
+                <p className="text-xs text-gray-600">We&apos;ll upload your documents for you</p>
               </button>
               <button
                 className="w-full border-2 border-gray-300 p-4 rounded text-left hover:bg-gray-50 transition"
@@ -286,7 +286,7 @@ export default function AttachmentsPage() {
                 disabled={loading}
               >
                 <p className="font-medium">Verify Documents ($50)</p>
-                <p className="text-xs text-gray-600">We'll verify existing documents with authorities</p>
+                <p className="text-xs text-gray-600">We&apos;ll verify existing documents with authorities</p>
               </button>
               <button
                 className="w-full border-2 border-gray-300 p-4 rounded text-left hover:bg-gray-50 transition"

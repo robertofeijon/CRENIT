@@ -1,7 +1,7 @@
 import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post } from '@nestjs/common';
 import { PropertiesService } from './properties.service';
 import { SupabaseService } from '../supabase/supabase.service';
-import { getUserProfileFromAuthHeader, assertRole } from '../supabase/supabase.utils';
+import { getUserProfileFromAuthHeader, assertRole, assertPartnerApproved } from '../supabase/supabase.utils';
 
 @Controller('landlords/properties')
 export class PropertiesController {
@@ -14,6 +14,7 @@ export class PropertiesController {
   async list(@Headers('authorization') authHeader: string) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'LANDLORD');
+    assertPartnerApproved(profile, 'Your landlord account is under review. Property creation is temporarily locked.');
     const properties = await this.propertiesService.listProperties(profile.id);
     return { success: true, data: properties, error: null };
   }
@@ -34,6 +35,7 @@ export class PropertiesController {
   ) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'LANDLORD');
+    assertPartnerApproved(profile, 'Your landlord account is under review. Unit creation is temporarily locked.');
 
     if (!body?.property_name || !body?.address_street || !body?.address_suburb || !body?.address_city || !body?.property_type) {
       throw new BadRequestException('property_name, address fields, and property_type are required');

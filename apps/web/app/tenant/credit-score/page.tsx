@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import RentalCreditModelCard from '../../components/credit/RentalCreditModelCard';
 
 const FACTOR_LABELS: Record<string, { label: string; weight: string }> = {
   payment_history: { label: 'Payment history', weight: '35%' },
   streak: { label: 'Payment streak', weight: '20%' },
   history_length: { label: 'Rental history length', weight: '20%' },
-  income_rent_ratio: { label: 'Income vs rent', weight: '15%' },
+  income_rent_ratio: { label: 'Income-to-rent ratio', weight: '15%' },
   deposit_management: { label: 'Deposit management', weight: '10%' },
 };
 
@@ -76,11 +77,11 @@ export default function TenantCreditScorePage() {
   const maxHistoryScore = useMemo(() => Math.max(...history.map((h) => h.score), score, 900), [history, score]);
 
   if (loading || !user) {
-    return <div className="min-h-screen bg-slate-50 p-8">Loading...</div>;
+    return <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-8">Loading data...</div>;
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -97,9 +98,10 @@ export default function TenantCreditScorePage() {
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
         {isLoading ? (
-          <p className="text-sm text-slate-500">Loading score...</p>
+          <p className="text-sm text-slate-500">Loading data...</p>
         ) : (
           <>
+            <RentalCreditModelCard />
             <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
               <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
                 <h2 className="text-lg font-semibold text-slate-900">Score gauge</h2>
@@ -130,7 +132,7 @@ export default function TenantCreditScorePage() {
                     disabled={recalcLoading}
                     className="mt-6 rounded-2xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60"
                   >
-                    {recalcLoading ? 'Recalculating...' : 'Recalculate score'}
+                    {recalcLoading ? 'Recalculating score...' : 'Recalculate score'}
                   </button>
                 </div>
                 {scoreData?.milestone ? (
@@ -148,7 +150,7 @@ export default function TenantCreditScorePage() {
 
               <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
                 <h2 className="text-lg font-semibold text-slate-900">Factor breakdown</h2>
-                <p className="mt-2 text-sm text-slate-500">Weighted model: 35% / 20% / 20% / 15% / 10%</p>
+                <p className="mt-2 text-sm text-slate-500">Weighted model: 35% / 20% / 20% / 15% / 10%.</p>
                 <div className="mt-6 space-y-4">
                   {factors.length ? (
                     factors.map((factor: any) => (

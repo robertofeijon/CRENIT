@@ -1,7 +1,7 @@
 import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, UnauthorizedException } from '@nestjs/common';
 import { LandlordsService } from './landlords.service';
 import { SupabaseService } from '../supabase/supabase.service';
-import { getUserFromAuthHeader, getUserProfileFromAuthHeader, assertRole } from '../supabase/supabase.utils';
+import { getUserFromAuthHeader, getUserProfileFromAuthHeader, assertRole, assertPartnerApproved } from '../supabase/supabase.utils';
 
 @Controller('landlords')
 export class LandlordsController {
@@ -80,6 +80,7 @@ export class LandlordsController {
     try {
       const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
       assertRole(profile, 'LANDLORD');
+      assertPartnerApproved(profile, 'Your landlord account is under review. Tenant invites are locked until approval.');
       if (!body?.email || !body?.full_name) {
         throw new BadRequestException('email and full_name are required');
       }
@@ -93,10 +94,47 @@ export class LandlordsController {
     }
   }
 
+  @Get('invites')
+  async listInvites(@Headers('authorization') authHeader: string) {
+    try {
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+      assertRole(profile, 'LANDLORD');
+      const invites = await this.landlordsService.listInvites(profile.id);
+      return { success: true, data: invites, error: null };
+    } catch (error: any) {
+      throw new BadRequestException(error?.message || 'Unable to list invites.');
+    }
+  }
+
+  @Post('invites/:inviteId/cancel')
+  async cancelInvite(@Headers('authorization') authHeader: string, @Param('inviteId') inviteId: string) {
+    try {
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+      assertRole(profile, 'LANDLORD');
+      const invite = await this.landlordsService.cancelInvite(profile.id, inviteId);
+      return { success: true, data: invite, error: null };
+    } catch (error: any) {
+      throw new BadRequestException(error?.message || 'Unable to cancel invite.');
+    }
+  }
+
+  @Post('invites/:inviteId/resend')
+  async resendInvite(@Headers('authorization') authHeader: string, @Param('inviteId') inviteId: string) {
+    try {
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+      assertRole(profile, 'LANDLORD');
+      const invite = await this.landlordsService.resendInvite(profile.id, inviteId);
+      return { success: true, data: invite, error: null };
+    } catch (error: any) {
+      throw new BadRequestException(error?.message || 'Unable to resend invite.');
+    }
+  }
+
   @Get('leases')
   async listLeases(@Headers('authorization') authHeader: string) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'LANDLORD');
+    assertPartnerApproved(profile, 'Your landlord account is under review. Lease creation is locked until approval.');
     const leases = await this.landlordsService.listLeases(profile.id);
     return { success: true, data: leases, error: null };
   }
@@ -118,6 +156,7 @@ export class LandlordsController {
       tenant_email?: string;
       unit_id: string;
       monthly_rent: number;
+      payment_method?: 'PLATFORM' | 'DIRECT';
       start_date?: string;
       end_date?: string;
       status?: string;
@@ -160,5 +199,92 @@ export class LandlordsController {
     assertRole(profile, 'LANDLORD');
     await this.landlordsService.deleteLease(profile.id, leaseId);
     return { success: true, data: { deleted: true }, error: null };
+  }
+
+  @Get('renewals')
+  async listRenewals(@Headers('authorization') authHeader: string) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    const renewals = await this.landlordsService.listRenewals(profile.id);
+    return { success: true, data: renewals, error: null };
+  }
+
+  @Post('renewals/:renewalId/respond')
+  async respondToRenewal(
+    @Headers('authorization') authHeader: string,
+    @Param('renewalId') renewalId: string,
+    @Body() body: { action: 'APPROVE' | 'REJECT' | 'COUNTER'; proposed_rent?: number; proposed_end_date?: string },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    const result = await this.landlordsService.respondToRenewal(profile.id, renewalId, body);
+    return { success: true, data: result, error: null };
+  }
+
+  @Post('leases/:leaseId/payment-method-switch/request')
+  async requestLeasePaymentMethodSwitch(
+    @Headers('authorization') authHeader: string,
+    @Param('leaseId') leaseId: string,
+    @Body() body: { requested_method: 'PLATFORM' | 'DIRECT' },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    const result = await this.landlordsService.requestLeasePaymentMethodSwitch(profile.id, leaseId, body.requested_method);
+    return { success: true, data: result, error: null };
+  }
+
+  @Post('lease/payment-method-switch/confirm')
+  async confirmLeasePaymentMethodSwitch(
+    @Headers('authorization') authHeader: string,
+    @Body() body: { request_id: string },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    const result = await this.landlordsService.confirmLeasePaymentMethodSwitch(profile.id, body.request_id);
+    return { success: true, data: result, error: null };
+  }
+
+  @Get('lease/payment-method-switch/requests')
+  async listLeasePaymentMethodSwitchRequests(@Headers('authorization') authHeader: string) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    const result = await this.landlordsService.listLeasePaymentMethodSwitchRequests(profile.id);
+    return { success: true, data: result, error: null };
+  }
+
+  @Get('onboarding/status')
+  async onboardingStatus(@Headers('authorization') authHeader: string) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    const result = await this.landlordsService.getOnboardingStatus(profile.id);
+    return { success: true, data: result, error: null };
+  }
+
+  @Post('onboarding/submit')
+  async submitOnboarding(
+    @Headers('authorization') authHeader: string,
+    @Headers('x-forwarded-for') forwardedFor: string,
+    @Headers('user-agent') userAgent: string,
+    @Body()
+    body: {
+      full_legal_name: string;
+      business_name?: string;
+      registration_number: string;
+      phone_number: string;
+      id_document_path: string;
+      ownership_document_path: string;
+      properties_intended: number;
+      tenants_estimated: number;
+      consent_text_version: string;
+    },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    const result = await this.landlordsService.submitOnboarding(profile.id, {
+      ...body,
+      consent_ip: forwardedFor || '',
+      consent_user_agent: userAgent || '',
+    });
+    return { success: true, data: result, error: null };
   }
 }

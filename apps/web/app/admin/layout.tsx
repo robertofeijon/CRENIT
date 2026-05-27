@@ -11,8 +11,10 @@ const navItems = [
   { label: 'Escrow & Disputes', href: '/admin/disputes', icon: '⚖️' },
   { label: 'Credit Scores', href: '/admin/credit-scores', icon: '📈' },
   { label: 'Data Intelligence', href: '/admin/data-intelligence', icon: '🗺️' },
-  { label: 'Compliance', href: '/admin/audit', icon: '📋' },
+  { label: 'Partner Approvals', href: '/admin/partner-approvals', icon: '🤝' },
+  { label: 'Compliance', href: '/admin/compliance', icon: '📋' },
   { label: 'System Health', href: '/admin/system-health', icon: '🖥️' },
+  { label: 'KYC Compliance', href: '/admin/kyc/compliance', icon: '🛡️' },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

@@ -85,4 +85,23 @@ export class ReportsController {
       throw new UnauthorizedException(error?.message || 'Unable to generate report.');
     }
   }
+
+  @Get('verify/:reference')
+  async verifyReference(@Param('reference') reference: string) {
+    const verification = await this.reportsService.verifyReportReference(reference);
+    if (!verification) {
+      return { success: true, data: { authentic: false, message: 'Report not found' }, error: null };
+    }
+    return {
+      success: true,
+      data: {
+        authentic: true,
+        message: 'This RentCredit Score Report is authentic.',
+        score: verification.score,
+        tier: verification.tier,
+        generated_at: verification.generated_at,
+      },
+      error: null,
+    };
+  }
 }

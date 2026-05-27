@@ -16,6 +16,7 @@ export default function LandlordSettingsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [setupCode, setSetupCode] = useState<string | null>(null);
   const [confirmCode, setConfirmCode] = useState('');
+  const [notificationPrefs, setNotificationPrefs] = useState<any>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/auth');
@@ -29,6 +30,7 @@ export default function LandlordSettingsPage() {
       const [settingsRes, tfaRes] = await Promise.all([api.get('/settings/landlord'), api.get('/auth/2fa/status')]);
       setProfile(settingsRes.data.data.profile);
       setPayout(settingsRes.data.data.payout);
+      setNotificationPrefs(settingsRes.data.data.notification_preferences || null);
       setTwoFactor(tfaRes.data.data);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to load settings.');
@@ -87,6 +89,20 @@ export default function LandlordSettingsPage() {
       await loadSettings();
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to disable 2FA.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveNotifications = async () => {
+    if (!notificationPrefs) return;
+    setIsLoading(true);
+    try {
+      await api.patch('/settings/notifications', notificationPrefs);
+      setMessage('Notification preferences saved.');
+      await loadSettings();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to save notification preferences.');
     } finally {
       setIsLoading(false);
     }
@@ -151,6 +167,36 @@ export default function LandlordSettingsPage() {
             )}
           </div>
         </section>
+
+        {notificationPrefs ? (
+          <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+            <h2 className="text-xl font-semibold text-slate-900">Notifications</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {[
+                ['email_enabled', 'Email notifications'],
+                ['sms_enabled', 'SMS notifications'],
+                ['rent_reminders', 'Rent reminders'],
+                ['payment_confirmations', 'Payment confirmations'],
+                ['kyc_updates', 'KYC updates'],
+                ['lease_events', 'Lease events'],
+                ['deposit_events', 'Deposit events'],
+              ].map(([key, label]) => (
+                <label key={key} className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(notificationPrefs[key])}
+                    onChange={(e) => setNotificationPrefs({ ...notificationPrefs, [key]: e.target.checked })}
+                    disabled={key === 'sms_enabled' && process.env.NEXT_PUBLIC_SMS_ENABLED !== 'true'}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <button onClick={handleSaveNotifications} disabled={isLoading} className="mt-4 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
+              Save notification preferences
+            </button>
+          </section>
+        ) : null}
       </div>
     </main>
   );

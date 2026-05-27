@@ -86,7 +86,7 @@ export default function TenantReportsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <h1 className="text-3xl font-bold text-slate-900">Reports</h1>
         <p className="mt-3 text-sm text-slate-600">
@@ -108,7 +108,7 @@ export default function TenantReportsPage() {
               disabled={downloadLoading}
               className="mt-6 rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white hover:bg-[#992d24] disabled:opacity-60"
             >
-              {downloadLoading ? 'Generating…' : 'Download payment report'}
+              {downloadLoading ? 'Generating report...' : 'Download payment report'}
             </button>
           </div>
 
@@ -123,7 +123,7 @@ export default function TenantReportsPage() {
               disabled={creditLoading}
               className="mt-6 rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-100 disabled:opacity-60"
             >
-              {creditLoading ? 'Generating…' : 'Download score report'}
+              {creditLoading ? 'Generating report...' : 'Download score report'}
             </button>
           </div>
         </div>

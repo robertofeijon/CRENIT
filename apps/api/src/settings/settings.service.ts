@@ -11,9 +11,14 @@ export class SettingsService {
 
   async getTenantSettings(userId: string) {
     const client = this.getClient();
-    const [{ data: profile, error: profileError }, { data: methods, error: methodsError }] = await Promise.all([
+    const [
+      { data: profile, error: profileError },
+      { data: methods, error: methodsError },
+      { data: notificationPreferences },
+    ] = await Promise.all([
       client.from('profiles').select('*').eq('id', userId).single(),
       client.from('payment_methods').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+      this.ensureNotificationPreferences(userId),
     ]);
 
     if (profileError || !profile) throw profileError || new NotFoundException('Profile not found');
@@ -39,6 +44,7 @@ export class SettingsService {
         is_default: m.is_default,
         created_at: m.created_at,
       })),
+      notification_preferences: notificationPreferences,
     };
   }
 
@@ -111,6 +117,8 @@ export class SettingsService {
     const { data: landlord, error: landlordError } = await client.from('landlord_profiles').select('*').eq('user_id', userId).single();
     if (landlordError || !landlord) throw new NotFoundException('Landlord profile not found');
 
+    const notificationPreferences = await this.ensureNotificationPreferences(userId);
+
     return {
       profile: {
         full_name: profile.full_name,
@@ -126,6 +134,7 @@ export class SettingsService {
         payout_email: landlord.payout_email,
         partner_status: landlord.partner_status,
       },
+      notification_preferences: notificationPreferences,
     };
   }
 
@@ -151,5 +160,61 @@ export class SettingsService {
     }
 
     return this.getLandlordSettings(userId);
+  }
+
+  async ensureNotificationPreferences(userId: string) {
+    const client = this.getClient();
+    const { data: existing, error } = await client
+      .from('notification_preferences')
+      .select('*')
+      .eq('profile_id', userId)
+      .maybeSingle();
+    if (error) throw error;
+    if (existing) return existing;
+    const { data: inserted, error: insertError } = await client
+      .from('notification_preferences')
+      .insert([{ profile_id: userId }])
+      .select('*')
+      .single();
+    if (insertError) throw insertError;
+    return inserted;
+  }
+
+  async updateNotificationPreferences(
+    userId: string,
+    body: {
+      email_enabled?: boolean;
+      sms_enabled?: boolean;
+      rent_reminders?: boolean;
+      payment_confirmations?: boolean;
+      kyc_updates?: boolean;
+      lease_events?: boolean;
+      deposit_events?: boolean;
+    },
+  ) {
+    const client = this.getClient();
+    await this.ensureNotificationPreferences(userId);
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    for (const key of [
+      'email_enabled',
+      'sms_enabled',
+      'rent_reminders',
+      'payment_confirmations',
+      'kyc_updates',
+      'lease_events',
+      'deposit_events',
+    ]) {
+      if (body[key as keyof typeof body] !== undefined) {
+        patch[key] = body[key as keyof typeof body] as unknown;
+      }
+    }
+    const { data, error } = await client
+      .from('notification_preferences')
+      .update(patch)
+      .eq('profile_id', userId)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data;
   }
 }

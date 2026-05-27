@@ -128,7 +128,7 @@ export default function TenantKycPage() {
       await loadStatus();
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
-      setError(apiErr?.response?.data?.message || apiErr?.message || 'Upload failed.');
+      setError(apiErr?.response?.data?.message || apiErr?.message || 'Unable to upload document.');
     } finally {
       setUploadingType(null);
     }
@@ -167,7 +167,7 @@ export default function TenantKycPage() {
       await loadStatus();
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
-      setError(apiErr?.response?.data?.message || apiErr?.message || 'Submission failed.');
+      setError(apiErr?.response?.data?.message || apiErr?.message || 'Unable to submit documents.');
     } finally {
       setSubmitting(false);
     }
@@ -177,7 +177,7 @@ export default function TenantKycPage() {
   const allUploaded = REQUIRED_DOCS.every((doc) => uploadedTypes.has(doc.type));
 
   if (loading || !user) {
-    return <div className="min-h-screen bg-slate-50 p-8">Loading account...</div>;
+    return <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-8">Loading data...</div>;
   }
 
   return (
@@ -253,7 +253,7 @@ export default function TenantKycPage() {
                         disabled={!pendingFile || uploadingType === doc.type}
                         className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                       >
-                        {uploadingType === doc.type ? 'Uploading…' : pendingFile ? 'Upload' : 'Select file first'}
+                        {uploadingType === doc.type ? 'Uploading file...' : pendingFile ? 'Upload file' : 'Select file first'}
                       </button>
                     ) : null}
                   </div>
@@ -277,7 +277,7 @@ export default function TenantKycPage() {
                 disabled={submitting}
                 className="mt-4 rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
               >
-                {submitting ? 'Submitting…' : 'Upload remaining documents'}
+                {submitting ? 'Submitting documents...' : 'Submit remaining documents'}
               </button>
             ) : null}
           </div>

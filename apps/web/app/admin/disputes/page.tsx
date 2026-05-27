@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import ErrorStateCard from '../../components/ui/ErrorStateCard';
+import EmptyStateCard from '../../components/ui/EmptyStateCard';
 
 export default function AdminDisputesPage() {
   const { user, role, loading } = useAuth();
@@ -63,10 +66,12 @@ export default function AdminDisputesPage() {
     <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
       <h1 className="text-3xl font-bold text-slate-900">Escrow disputes</h1>
       <p className="mt-3 text-sm text-slate-600">Review open disputes and record arbitration decisions.</p>
-      {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
+      {error ? <div className="mt-4"><ErrorStateCard message={error} onRetry={loadDisputes} /></div> : null}
       {message ? <p className="mt-4 text-sm text-emerald-700">{message}</p> : null}
       {isLoading && !disputes.length ? (
-        <p className="mt-6 text-sm text-slate-500">Loading...</p>
+        <div className="mt-6">
+          <SkeletonBlocks rows={3} />
+        </div>
       ) : disputes.length ? (
         <div className="mt-6 space-y-4">
           {disputes.map((dispute) => (
@@ -85,7 +90,9 @@ export default function AdminDisputesPage() {
           ))}
         </div>
       ) : (
-        <p className="mt-6 text-sm text-slate-500">No open disputes.</p>
+        <div className="mt-6">
+          <EmptyStateCard title="No open disputes" description="All disputes are currently resolved or closed." />
+        </div>
       )}
       {selectedId ? (
         <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-6">
@@ -100,7 +107,7 @@ export default function AdminDisputesPage() {
             <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason" rows={3} className="rounded-2xl border border-slate-300 px-4 py-3 text-sm sm:col-span-2" />
           </div>
           <button onClick={handleArbitrate} disabled={isLoading} className="mt-4 rounded-2xl bg-brand-red px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
-            Submit decision
+            Save decision
           </button>
         </div>
       ) : null}

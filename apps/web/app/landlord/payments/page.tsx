@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
 
+export const dynamic = 'force-dynamic';
+
 export default function LandlordPaymentsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -13,9 +15,11 @@ export default function LandlordPaymentsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [confirmPopover, setConfirmPopover] = useState<{ id: string; received_date: string; amount: string } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -28,6 +32,14 @@ export default function LandlordPaymentsPage() {
     }
   }, [loading, user, router]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const method = params.get('payment_method');
+    const status = params.get('status');
+    if (method) setPaymentMethodFilter(method.toUpperCase());
+    if (status) setStatusFilter(status.toUpperCase());
+  }, []);
+
   const loadPayments = async () => {
     setIsLoading(true);
     setError(null);
@@ -36,6 +48,7 @@ export default function LandlordPaymentsPage() {
       const response = await api.get('/landlords/payments', {
         params: {
           status: statusFilter || undefined,
+          payment_method: paymentMethodFilter || undefined,
           month: monthFilter || undefined,
           limit: 50,
         },
@@ -49,13 +62,16 @@ export default function LandlordPaymentsPage() {
     }
   };
 
-  const handleConfirmPayment = async (paymentId: string) => {
+  const handleConfirmPayment = async (paymentId: string, receivedDate?: string, amount?: string) => {
     setConfirmingId(paymentId);
     setActionMessage(null);
     setError(null);
 
     try {
-      await api.post(`/landlords/payments/${paymentId}/confirm`);
+      await api.post(`/landlords/payments/${paymentId}/confirm`, {
+        received_date: receivedDate,
+        amount: amount ? Number(amount) : undefined,
+      });
       setActionMessage('Payment marked as received.');
       await loadPayments();
     } catch (err: any) {
@@ -66,7 +82,7 @@ export default function LandlordPaymentsPage() {
   };
 
   if (loading || !user) {
-    return <div className="min-h-screen bg-slate-50 p-8">Preparing landlord payments...</div>;
+    return <div className="min-h-screen bg-slate-50 p-8">Loading data...</div>;
   }
 
   return (
@@ -99,7 +115,18 @@ export default function LandlordPaymentsPage() {
               Refresh
             </button>
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-4">
+            <select
+              value={paymentMethodFilter}
+              onChange={(event) => setPaymentMethodFilter(event.target.value)}
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+            >
+              <option value="">All methods</option>
+              <option value="DIRECT">Direct</option>
+              <option value="EFT">EFT</option>
+              <option value="CARD">Card</option>
+              <option value="MOBILE_MONEY">Mobile money</option>
+            </select>
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
@@ -158,34 +185,114 @@ export default function LandlordPaymentsPage() {
           <p className="mt-2 text-sm text-slate-500">Latest landlord-side payment entries pulled from backend records.</p>
           <div className="mt-5 space-y-4">
             {isLoading ? (
-              <p className="text-sm text-slate-500">Loading payments...</p>
+              <p className="text-sm text-slate-500">Loading data...</p>
             ) : payments.length ? (
-              payments.map((payment: any) => (
-                <div key={payment.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm text-slate-500">{payment.property || 'Unknown unit'}</p>
-                      <p className="mt-1 text-lg font-semibold text-slate-900">N${Number(payment.amount || 0).toLocaleString()}</p>
-                      <p className="mt-2 text-sm text-slate-600">Month: {payment.month || '—'}</p>
-                    </div>
-                    <div className="flex flex-col items-start gap-2 sm:items-end">
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-700">
-                        {payment.status}
-                      </span>
-                      <p className="text-sm text-slate-600">Commission: N${Number(payment.commission || 0).toLocaleString()}</p>
-                      {payment.status === 'PENDING' || payment.status === 'PROCESSING' || payment.status === 'OVERDUE' ? (
-                        <button
-                          onClick={() => handleConfirmPayment(payment.id)}
-                          disabled={confirmingId === payment.id}
-                          className="rounded-2xl bg-brand-red px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                <table className="w-full min-w-[860px] text-left text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3">Unit</th>
+                      <th className="px-4 py-3">Method</th>
+                      <th className="px-4 py-3">Amount</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Due</th>
+                      <th className="px-4 py-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payments.map((payment: any) => {
+                      const requiresDirectConfirm = payment.payment_method === 'DIRECT' && payment.status === 'PENDING';
+                      return (
+                        <tr
+                          key={payment.id}
+                          className={`border-t border-slate-100 ${requiresDirectConfirm ? 'bg-amber-50' : ''}`}
                         >
-                          {confirmingId === payment.id ? 'Confirming...' : 'Mark as received'}
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              ))
+                          <td className="px-4 py-3">{payment.property || 'Unknown unit'}</td>
+                          <td className="px-4 py-3">{payment.payment_method || 'N/A'}</td>
+                          <td className="px-4 py-3 font-semibold">N${Number(payment.amount_gross || payment.amount || 0).toLocaleString()}</td>
+                          <td className="px-4 py-3">
+                            <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-700">
+                              {payment.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">{payment.due_date ? new Date(payment.due_date).toLocaleDateString() : '—'}</td>
+                          <td className="relative px-4 py-3">
+                            {requiresDirectConfirm ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setConfirmPopover({
+                                      id: payment.id,
+                                      received_date: new Date().toISOString().slice(0, 10),
+                                      amount: String(payment.amount_gross || payment.amount || ''),
+                                    })
+                                  }
+                                  className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white"
+                                >
+                                  Mark as Received
+                                </button>
+                                {confirmPopover?.id === payment.id ? (
+                                  <div className="absolute right-0 top-10 z-20 w-64 rounded-xl border border-amber-200 bg-white p-3 shadow-lg">
+                                    <label className="text-xs text-slate-600">Date received</label>
+                                    <input
+                                      type="date"
+                                      value={confirmPopover?.received_date ?? ''}
+                                      onChange={(event) =>
+                                        setConfirmPopover((prev) =>
+                                          prev ? { ...prev, received_date: event.target.value } : prev,
+                                        )
+                                      }
+                                      className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-xs"
+                                    />
+                                    <label className="mt-2 block text-xs text-slate-600">Amount</label>
+                                    <input
+                                      type="number"
+                                      value={confirmPopover?.amount ?? ''}
+                                      onChange={(event) =>
+                                        setConfirmPopover((prev) =>
+                                          prev ? { ...prev, amount: event.target.value } : prev,
+                                        )
+                                      }
+                                      className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-xs"
+                                    />
+                                    <div className="mt-3 flex justify-end gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => setConfirmPopover(null)}
+                                        className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          await handleConfirmPayment(
+                                            payment.id,
+                                            confirmPopover?.received_date,
+                                            confirmPopover?.amount,
+                                          );
+                                          setConfirmPopover(null);
+                                        }}
+                                        disabled={confirmingId === payment.id}
+                                        className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white"
+                                      >
+                                        Confirm
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </>
+                            ) : (
+                              <span className="text-xs text-slate-400">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               <p className="text-sm text-slate-500">No payment transactions found for the selected filters.</p>
             )}

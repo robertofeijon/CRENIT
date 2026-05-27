@@ -19,6 +19,13 @@ export default function LandlordTenantsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'APPROVED' | 'PENDING' | 'REJECTED' | 'NOT_SUBMITTED'>('ALL');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteName, setInviteName] = useState('');
+  const [inviteUnitId, setInviteUnitId] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState<string | null>(null);
+  const [invites, setInvites] = useState<any[]>([]);
+  const [invitesLoading, setInvitesLoading] = useState(false);
 
   const role = useMemo(() => {
     if (!user) return null;
@@ -40,6 +47,7 @@ export default function LandlordTenantsPage() {
   useEffect(() => {
     if (!user || role !== 'LANDLORD') return;
     loadTenants();
+    loadInvites();
   }, [user, role]);
 
   const loadTenants = async () => {
@@ -68,6 +76,18 @@ export default function LandlordTenantsPage() {
       setError(err?.response?.data?.message || err?.message || 'Unable to load tenant details.');
     } finally {
       setLoadingTenant(false);
+    }
+  };
+
+  const loadInvites = async () => {
+    setInvitesLoading(true);
+    try {
+      const res = await api.get('/landlords/invites');
+      setInvites(res.data?.data || []);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to load invites.');
+    } finally {
+      setInvitesLoading(false);
     }
   };
 
@@ -108,6 +128,57 @@ export default function LandlordTenantsPage() {
     }
   };
 
+  const sendInvite = async () => {
+    if (!inviteEmail.trim() || !inviteName.trim()) {
+      setError('Invite email and full name are required.');
+      return;
+    }
+    setInviteLoading(true);
+    setInviteMessage(null);
+    setError(null);
+    try {
+      const res = await api.post('/landlords/invite', {
+        email: inviteEmail.trim(),
+        full_name: inviteName.trim(),
+        unit_id: inviteUnitId.trim() || undefined,
+      });
+      const invite = res.data?.data?.invite;
+      const inviteUrl = invite?.invite_url ?? '';
+      setInviteMessage(inviteUrl ? `Invite sent: ${window.location.origin}${inviteUrl}` : 'Invite sent successfully.');
+      setInviteEmail('');
+      setInviteName('');
+      setInviteUnitId('');
+      await loadInvites();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to send invite.');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const resendInvite = async (inviteId: string) => {
+    setError(null);
+    try {
+      const res = await api.post(`/landlords/invites/${inviteId}/resend`);
+      const inviteUrl = res.data?.data?.invite_url;
+      setInviteMessage(inviteUrl ? `Invite resent: ${window.location.origin}${inviteUrl}` : 'Invite resent.');
+      await loadInvites();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to resend invite.');
+    }
+  };
+
+  const cancelInvite = async (inviteId: string) => {
+    setError(null);
+    try {
+      await api.post(`/landlords/invites/${inviteId}/cancel`);
+      setInviteMessage('Invite cancelled.');
+      await loadInvites();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to cancel invite.');
+    }
+  };
+
   if (loading || !user) {
     return <div className="min-h-screen bg-slate-50 p-8">Loading landlord workspace...</div>;
   }
@@ -123,6 +194,89 @@ export default function LandlordTenantsPage() {
               <p className="mt-2 max-w-2xl text-sm text-slate-600">
                 Review tenant documents, approve or reject KYC status, and monitor the current tenant queue.
               </p>
+            </div>
+          </div>
+          <div className="mt-6 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-4">
+            <input
+              type="email"
+              value={inviteEmail}
+              onChange={(event) => setInviteEmail(event.target.value)}
+              placeholder="tenant@email.com"
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900"
+            />
+            <input
+              type="text"
+              value={inviteName}
+              onChange={(event) => setInviteName(event.target.value)}
+              placeholder="Tenant full name"
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900"
+            />
+            <input
+              type="text"
+              value={inviteUnitId}
+              onChange={(event) => setInviteUnitId(event.target.value)}
+              placeholder="Unit ID (optional)"
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900"
+            />
+            <button
+              type="button"
+              onClick={sendInvite}
+              disabled={inviteLoading}
+              className="rounded-2xl bg-brand-red px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {inviteLoading ? 'Sending...' : 'Send invite'}
+            </button>
+          </div>
+          {inviteMessage ? <p className="mt-3 text-sm text-emerald-700">{inviteMessage}</p> : null}
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold text-slate-800">Recent invites</p>
+              <button
+                type="button"
+                onClick={loadInvites}
+                disabled={invitesLoading}
+                className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-700"
+              >
+                {invitesLoading ? 'Loading...' : 'Refresh'}
+              </button>
+            </div>
+            <div className="space-y-2">
+              {invites.length ? (
+                invites.slice(0, 6).map((invite) => (
+                  <div key={invite.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{invite.invited_email}</p>
+                        <p className="text-xs text-slate-600">
+                          {invite.unit_label || 'No unit'} • {invite.status} • Expires {new Date(invite.expires_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {invite.status !== 'ACCEPTED' ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => resendInvite(invite.id)}
+                              className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700"
+                            >
+                              Resend
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => cancelInvite(invite.id)}
+                              className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-500">No invites created yet.</p>
+              )}
             </div>
           </div>
         </div>
@@ -214,6 +368,22 @@ export default function LandlordTenantsPage() {
                   <p className="mt-2 text-sm text-slate-600">Current KYC status: {selectedTenant.profile.kyc_status}</p>
                 </div>
 
+                {selectedTenant.score ? (
+                  <div className="rounded-3xl bg-slate-50 p-5">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Credit profile</h3>
+                    <p className="mt-3 text-lg font-semibold text-slate-900">
+                      Score {selectedTenant.score.score} ({selectedTenant.score.tier})
+                    </p>
+                    <div className="mt-3 grid gap-2 text-xs text-slate-700 sm:grid-cols-2">
+                      <p>Payment history (35%): {selectedTenant.score.payment_history_score}</p>
+                      <p>Payment streak (20%): {selectedTenant.score.streak_score}</p>
+                      <p>Tenancy history (20%): {selectedTenant.score.history_length_score}</p>
+                      <p>Income-to-rent ratio (15%): {selectedTenant.score.income_rent_ratio_score}</p>
+                      <p>Deposit management (10%): {selectedTenant.score.deposit_management_score}</p>
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="rounded-3xl bg-slate-50 p-5">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Lease summary</h3>
                   {selectedTenant.leases.map((lease: any) => (
@@ -283,6 +453,24 @@ export default function LandlordTenantsPage() {
                     </div>
                   </div>
                 </div>
+
+                {selectedTenant.kycAudit?.length ? (
+                  <div className="rounded-3xl bg-slate-50 p-5">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">KYC audit history</h3>
+                    <div className="mt-3 space-y-2">
+                      {selectedTenant.kycAudit.map((entry: any) => (
+                        <div key={entry.id} className="rounded-2xl border border-slate-200 bg-white p-3">
+                          <p className="text-sm font-semibold text-slate-900">{entry.action}</p>
+                          <p className="mt-1 text-xs text-slate-600">
+                            {entry.previous_status || 'N/A'} → {entry.next_status || 'N/A'}
+                          </p>
+                          {entry.reason ? <p className="mt-1 text-xs text-slate-600">Reason: {entry.reason}</p> : null}
+                          <p className="mt-1 text-xs text-slate-500">{new Date(entry.created_at).toLocaleString()}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
 
                 {selectedTenant.profile.kyc_rejection_reason ? (
                   <div className="rounded-3xl bg-slate-50 p-5">

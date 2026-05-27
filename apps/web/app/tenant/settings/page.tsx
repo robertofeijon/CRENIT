@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import ErrorStateCard from '../../components/ui/ErrorStateCard';
+import EmptyStateCard from '../../components/ui/EmptyStateCard';
 
 export default function TenantSettingsPage() {
   const { user, loading } = useAuth();
@@ -20,6 +23,8 @@ export default function TenantSettingsPage() {
   const [methodType, setMethodType] = useState<'CARD' | 'MOBILE_MONEY' | 'EFT'>('EFT');
   const [cardNumber, setCardNumber] = useState('');
   const [mobilePhone, setMobilePhone] = useState('');
+  const [notificationPrefs, setNotificationPrefs] = useState<any>(null);
+  const [loadingSettings, setLoadingSettings] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/auth');
@@ -28,16 +33,19 @@ export default function TenantSettingsPage() {
 
   const loadSettings = async () => {
     setIsLoading(true);
+    setLoadingSettings(true);
     setError(null);
     try {
       const [settingsRes, tfaRes] = await Promise.all([api.get('/settings/tenant'), api.get('/auth/2fa/status')]);
       setProfile(settingsRes.data.data.profile);
       setPaymentMethods(settingsRes.data.data.payment_methods || []);
+      setNotificationPrefs(settingsRes.data.data.notification_preferences || null);
       setTwoFactor(tfaRes.data.data);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to load settings.');
     } finally {
       setIsLoading(false);
+      setLoadingSettings(false);
     }
   };
 
@@ -147,8 +155,22 @@ export default function TenantSettingsPage() {
     }
   };
 
+  const handleSaveNotifications = async () => {
+    if (!notificationPrefs) return;
+    setIsLoading(true);
+    try {
+      await api.patch('/settings/notifications', notificationPrefs);
+      setMessage('Notification preferences saved.');
+      await loadSettings();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to save notification preferences.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (loading || !user) {
-    return <div className="min-h-screen bg-slate-50 p-8">Loading...</div>;
+    return <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-8">Loading data...</div>;
   }
 
   return (
@@ -162,8 +184,9 @@ export default function TenantSettingsPage() {
           </Link>
         </div>
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? <ErrorStateCard message={error} onRetry={loadSettings} /> : null}
         {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
+        {loadingSettings ? <SkeletonBlocks rows={3} /> : null}
 
         {profile ? (
           <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
@@ -178,7 +201,7 @@ export default function TenantSettingsPage() {
               <input value={profile.address_city || ''} onChange={(e) => setProfile({ ...profile, address_city: e.target.value })} placeholder="City" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
             </div>
             <button onClick={handleSaveProfile} disabled={isLoading} className="mt-6 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
-              Save profile
+              Save profile changes
             </button>
           </section>
         ) : null}
@@ -197,6 +220,9 @@ export default function TenantSettingsPage() {
                 </button>
               </div>
             ))}
+            {!paymentMethods.length ? (
+              <EmptyStateCard title="No payment methods" description="Add a bank account, card, or mobile money method to continue setup." />
+            ) : null}
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <select value={methodType} onChange={(e) => setMethodType(e.target.value as any)} className="rounded-2xl border border-slate-300 px-4 py-3 text-sm">
@@ -213,7 +239,7 @@ export default function TenantSettingsPage() {
             )}
           </div>
           <button onClick={handleAddPaymentMethod} disabled={isLoading} className="mt-4 rounded-2xl bg-brand-red px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
-            Add payment method
+              Save payment method
           </button>
         </section>
 
@@ -241,6 +267,36 @@ export default function TenantSettingsPage() {
             )}
           </div>
         </section>
+
+        {notificationPrefs ? (
+          <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+            <h2 className="text-xl font-semibold text-slate-900">Notifications</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {[
+                ['email_enabled', 'Email notifications'],
+                ['sms_enabled', 'SMS notifications'],
+                ['rent_reminders', 'Rent reminders'],
+                ['payment_confirmations', 'Payment confirmations'],
+                ['kyc_updates', 'KYC updates'],
+                ['lease_events', 'Lease events'],
+                ['deposit_events', 'Deposit events'],
+              ].map(([key, label]) => (
+                <label key={key} className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(notificationPrefs[key])}
+                    onChange={(e) => setNotificationPrefs({ ...notificationPrefs, [key]: e.target.checked })}
+                    disabled={key === 'sms_enabled' && process.env.NEXT_PUBLIC_SMS_ENABLED !== 'true'}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <button onClick={handleSaveNotifications} disabled={isLoading} className="mt-4 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
+                  Save notification settings
+            </button>
+          </section>
+        ) : null}
       </div>
     </main>
   );

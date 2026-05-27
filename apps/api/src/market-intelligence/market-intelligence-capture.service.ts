@@ -25,6 +25,17 @@ type PaymentRow = {
 @Injectable()
 export class MarketIntelligenceCaptureService {
   private readonly logger = new Logger(MarketIntelligenceCaptureService.name);
+  private readonly prohibitedMarketFields = [
+    'tenant_id',
+    'landlord_id',
+    'profile_id',
+    'full_name',
+    'email',
+    'phone',
+    'unit_id',
+    'property_id',
+    'street_address',
+  ];
 
   constructor(
     private readonly supabase: SupabaseService,
@@ -89,6 +100,8 @@ export class MarketIntelligenceCaptureService {
         landlord_hash: context.landlord_user_id ? hashUserId(context.landlord_user_id) : null,
       };
 
+      this.assertNoPiiFields(record);
+
       const { error } = await this.mi().from('market_data_records').insert([record]);
       if (error) {
         this.logger.error(`Failed to write market_data_record for payment ${payment.id}: ${error.message}`);
@@ -96,6 +109,25 @@ export class MarketIntelligenceCaptureService {
     } catch (err) {
       this.logger.error(`Market intelligence capture failed for payment ${payment.id}`, err as Error);
     }
+  }
+
+  private assertNoPiiFields(record: Record<string, unknown>) {
+    const illegal = Object.keys(record).filter((key) => this.prohibitedMarketFields.includes(key));
+    if (!illegal.length) return;
+    this.supabase
+      .getClient()
+      .from('admin_audit_log')
+      .insert([
+        {
+          action: 'MARKET_DATA_PII_BLOCKED',
+          details: { fields: illegal },
+        },
+      ])
+      .then(
+        () => undefined,
+        () => undefined,
+      );
+    throw new Error(`PII suppression triggered for market data write. Blocked fields: ${illegal.join(', ')}`);
   }
 
   private async resolveLandlordUserId(landlordProfileId: string): Promise<string | null> {

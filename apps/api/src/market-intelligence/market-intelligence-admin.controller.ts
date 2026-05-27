@@ -112,10 +112,23 @@ export class MarketIntelligenceAdminController {
   async createApiKey(
     @Headers('authorization') authHeader: string,
     @Param('clientId') clientId: string,
-    @Body() body: { label?: string },
+    @Body() body: { label?: string; expires_in_days?: 30 | 90 | 365 },
   ) {
     await this.assertAdmin(authHeader);
-    const data = await this.marketIntelligenceService.createApiKey(clientId, body.label);
+    const expiresInDays = body.expires_in_days && [30, 90, 365].includes(body.expires_in_days) ? body.expires_in_days : 90;
+    const data = await this.marketIntelligenceService.createApiKey(clientId, body.label, expiresInDays);
+    return { success: true, data, error: null };
+  }
+
+  @Post('api-keys/:keyId/rotate')
+  async rotateKey(
+    @Headers('authorization') authHeader: string,
+    @Param('keyId') keyId: string,
+    @Body() body: { client_id: string; label?: string },
+  ) {
+    await this.assertAdmin(authHeader);
+    if (!body.client_id) throw new BadRequestException('client_id is required');
+    const data = await this.marketIntelligenceService.rotateApiKeyWithGrace(keyId, body.client_id, body.label);
     return { success: true, data, error: null };
   }
 

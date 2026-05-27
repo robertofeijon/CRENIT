@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import NumberCounter from '../src/components/NumberCounter';
 import Revealer from '../src/components/Revealer';
 import ForceRevealButton from '../src/components/ForceRevealButton';
+import RentalCreditModelCard from './components/credit/RentalCreditModelCard';
 
 const services = [
   {
@@ -47,10 +48,57 @@ const services = [
 export default function Home() {
   const [activeTab, setActiveTab] = useState('Credit Score');
   const [showDemo, setShowDemo] = useState(false);
+  const [animatedScore, setAnimatedScore] = useState(300);
+
+  useEffect(() => {
+    const start = performance.now();
+    const durationMs = 1400;
+    const from = 300;
+    const to = 780;
+    let rafId = 0;
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - start) / durationMs);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setAnimatedScore(Math.round(from + (to - from) * eased));
+      if (progress < 1) {
+        rafId = requestAnimationFrame(tick);
+      }
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+
+  const needle = useMemo(() => {
+    const ratio = Math.max(0, Math.min(1, (animatedScore - 300) / 600));
+    const angle = Math.PI - ratio * Math.PI;
+    const length = 64;
+    return {
+      x: 120 + Math.cos(angle) * length,
+      y: 100 - Math.sin(angle) * length,
+    };
+  }, [animatedScore]);
 
   return (
     <main className="bg-[#F3F4F6] text-[#111827]">
-      <div className="mx-auto max-w-7xl px-6 py-6 sm:px-8">
+      <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-[#F3F4F6]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-8">
+          <Link href="/" className="text-lg font-semibold tracking-wide text-[#1A1A1A]">RentCredit</Link>
+          <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
+            <a href="#services" className="hover:text-[#1A1A1A]">Services</a>
+            <a href="#market-data" className="hover:text-[#1A1A1A]">Market Data</a>
+            <a href="#get-started" className="hover:text-[#1A1A1A]">Get Started</a>
+          </nav>
+          <Link
+            href="/auth"
+            className="inline-flex items-center justify-center rounded-full bg-[#C0392B] px-5 py-2 text-sm font-semibold text-white shadow-md shadow-[#C0392B]/25 transition hover:bg-[#992d24]"
+          >
+            Login
+          </Link>
+        </div>
+      </header>
+      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-8 sm:py-6">
         <section id="about" className="rounded-[2rem] bg-white px-6 py-10 shadow-[0_24px_80px_rgba(0,0,0,0.08)] sm:px-12 sm:py-14">
           <div className="mx-auto max-w-5xl">
             <div className="mb-10 inline-flex rounded-full border border-[#C0392B]/20 bg-[#FDEDEC] px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-[#C0392B]">
@@ -109,6 +157,19 @@ export default function Home() {
                         <p>{item}</p>
                       </div>
                     ))}
+                  </div>
+                  <div className="mt-8 rounded-3xl border border-white/10 bg-[#111111] p-5">
+                    <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Live score</p>
+                    <div className="mt-3 flex items-end justify-between">
+                      <p className="text-3xl font-semibold">{animatedScore}</p>
+                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs">Good</span>
+                    </div>
+                    <svg viewBox="0 0 240 120" className="mt-3 h-[120px] w-full">
+                      <path d="M20 100 A100 100 0 0 1 220 100" fill="none" stroke="#2a2a2a" strokeWidth="16" />
+                      <path d="M30 100 A90 90 0 0 1 210 100" fill="none" stroke="#C0392B" strokeWidth="12" strokeLinecap="round" />
+                      <circle cx="120" cy="100" r="7" fill="#FFFFFF" />
+                      <line x1="120" y1="100" x2={needle.x} y2={needle.y} stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" />
+                    </svg>
                   </div>
                 </div>
               </div>
@@ -188,13 +249,15 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div className="rounded-[2rem] border border-slate-200 bg-[#F8F8F8] p-10 shadow-sm">
+            <div className="rounded-[2rem] border border-slate-200 bg-[#F8F8F8] p-6 shadow-sm sm:p-10">
               {activeTab === 'Credit Score' ? (
-                <div className="relative overflow-hidden rounded-[1.75rem] bg-white p-10 shadow-lg">
+                <div className="space-y-4">
+                  <RentalCreditModelCard />
+                  <div className="relative overflow-hidden rounded-[1.75rem] bg-white p-8 shadow-lg">
                   <div className="absolute inset-x-0 top-0 h-1 bg-[#C0392B]/20" />
                   <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Score Gauge</p>
                   <div className="mt-8 flex items-end justify-between gap-6">
-                    <div className="text-5xl font-semibold text-[#1A1A1A]">780</div>
+                    <div className="text-5xl font-semibold text-[#1A1A1A]">{animatedScore}</div>
                     <div className="rounded-3xl bg-[#F5F5F5] px-4 py-2 text-sm font-semibold text-[#1A1A1A]">Good</div>
                   </div>
                   <div className="mt-8 flex items-center justify-center">
@@ -202,7 +265,7 @@ export default function Home() {
                       <path d="M20 100 A100 100 0 0 1 220 100" fill="none" stroke="#E5E7EB" strokeWidth="18" />
                       <path d="M30 100 A90 90 0 0 1 210 100" fill="none" stroke="#C0392B" strokeWidth="14" strokeLinecap="round" />
                       <circle cx="120" cy="100" r="8" fill="#1A1A1A" />
-                      <line x1="120" y1="100" x2="180" y2="44" stroke="#1A1A1A" strokeWidth="6" strokeLinecap="round" />
+                      <line x1="120" y1="100" x2={needle.x} y2={needle.y} stroke="#1A1A1A" strokeWidth="6" strokeLinecap="round" />
                     </svg>
                   </div>
                   <div className="mt-6 grid grid-cols-3 gap-4 text-center text-sm text-slate-600">
@@ -211,13 +274,14 @@ export default function Home() {
                       <p>Min</p>
                     </div>
                     <div>
-                      <p className="font-semibold text-[#1A1A1A]">780</p>
+                      <p className="font-semibold text-[#1A1A1A]">{animatedScore}</p>
                       <p>Current</p>
                     </div>
                     <div>
                       <p className="font-semibold text-[#1A1A1A]">900</p>
                       <p>Max</p>
                     </div>
+                  </div>
                   </div>
                 </div>
               ) : (

@@ -15,6 +15,8 @@ export default function LandlordDashboard() {
   const [dashboard, setDashboard] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [switchRequests, setSwitchRequests] = useState<any[]>([]);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/auth');
@@ -23,6 +25,8 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     if (user && (role === 'LANDLORD' || role === 'ADMIN')) loadOverview();
+    if (user && (role === 'LANDLORD' || role === 'ADMIN')) loadNotifications();
+    if (user && (role === 'LANDLORD' || role === 'ADMIN')) loadSwitchRequests();
   }, [user, role]);
 
   const loadOverview = async () => {
@@ -38,11 +42,40 @@ export default function LandlordDashboard() {
     }
   };
 
+  const loadNotifications = async () => {
+    try {
+      const res = await api.get('/notifications/unread');
+      setNotifications(res.data?.data || []);
+    } catch {
+      setNotifications([]);
+    }
+  };
+
+  const loadSwitchRequests = async () => {
+    try {
+      const res = await api.get('/landlords/lease/payment-method-switch/requests');
+      setSwitchRequests(res.data?.data || []);
+    } catch {
+      setSwitchRequests([]);
+    }
+  };
+
+  const markNotificationRead = async (id: string) => {
+    try {
+      await api.post(`/notifications/${id}/read`);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    } catch {
+      // Keep non-blocking in dashboard.
+    }
+  };
+
   if (loading || !user) {
     return <p className="text-sm text-gray-500">Loading…</p>;
   }
 
   const stats = dashboard?.stats ?? {};
+  const hasDirectLease = (dashboard?.tenants ?? []).some((tenant: any) => tenant.payment_method === 'DIRECT');
+  const pendingApproval = (dashboard?.landlord?.partnerStatus || '').toUpperCase() === 'PENDING_APPROVAL';
   const formatMoney = (v: unknown) => `N$${Number(v || 0).toLocaleString()}`;
 
   return (
@@ -58,6 +91,11 @@ export default function LandlordDashboard() {
       />
 
       {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
+      {pendingApproval ? (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Your landlord account is under review. You&apos;ll be notified once approved.
+        </div>
+      ) : null}
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard label="Properties" value={stats.totalProperties ?? '—'} icon="🏠" />
@@ -67,6 +105,60 @@ export default function LandlordDashboard() {
         <StatCard label="Outstanding balance" value={formatMoney(stats.outstanding)} icon="⏳" />
         <StatCard label="Commission earned" value={formatMoney(stats.commissionEarnedThisMonth)} icon="💰" />
       </div>
+
+      {(stats.awaitingDirectConfirmations || 0) > 0 ? (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-semibold text-amber-900">
+              Awaiting Confirmation — {stats.awaitingDirectConfirmations} direct payments need your confirmation.
+            </p>
+            <Link
+              href="/landlord/payments?payment_method=DIRECT&status=PENDING"
+              className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white"
+            >
+              Review now
+            </Link>
+          </div>
+        </div>
+      ) : null}
+
+      {hasDirectLease ? (
+        <div className="mb-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+          <p className="text-sm text-indigo-900">
+            Direct leases require manual confirmation. Switch to platform payments for instant score updates.
+          </p>
+          <Link href="/landlord/leases" className="mt-2 inline-flex rounded-lg bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white">
+            Request Switch
+          </Link>
+        </div>
+      ) : null}
+
+      {switchRequests.length ? (
+        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-sm font-semibold text-emerald-900">Payment method switch requests</p>
+          <div className="mt-2 space-y-2">
+            {switchRequests.map((req: any) => (
+              <div key={req.id} className="rounded-lg bg-white px-3 py-2 text-xs text-slate-700">
+                Lease {req.lease_id}: switch to {req.requested_method}.{' '}
+                {!req.landlord_confirmed ? (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await api.post('/landlords/lease/payment-method-switch/confirm', { request_id: req.id });
+                      await loadSwitchRequests();
+                    }}
+                    className="rounded bg-emerald-700 px-2 py-1 font-semibold text-white"
+                  >
+                    Confirm switch
+                  </button>
+                ) : (
+                  <span>Awaiting tenant confirmation.</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="rc-card lg:col-span-3">
@@ -82,13 +174,13 @@ export default function LandlordDashboard() {
             {dashboard?.depositSummary?.disputed ?? 0} disputed · {dashboard?.depositSummary?.refunded ?? 0} refunded
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
-            <Link href="/landlord/tenants" className="rc-btn-navy">
+            <Link href={pendingApproval ? '/landlord/onboarding' : '/landlord/tenants'} className="rc-btn-navy">
               Go to tenant review
             </Link>
-            <Link href="/landlord/payments" className="rc-btn-outline">
+            <Link href={pendingApproval ? '/landlord/onboarding' : '/landlord/payments'} className="rc-btn-outline">
               View payments
             </Link>
-            <Link href="/landlord/deposits" className="rc-btn-outline">
+            <Link href={pendingApproval ? '/landlord/onboarding' : '/landlord/deposits'} className="rc-btn-outline">
               Manage deposits
             </Link>
           </div>
@@ -104,7 +196,7 @@ export default function LandlordDashboard() {
               { label: 'View payment history', href: '/landlord/payments' },
             ].map((item) => (
               <li key={item.href}>
-                <Link href={item.href} className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3 font-medium text-gray-800 hover:bg-gray-100">
+                <Link href={pendingApproval ? '/landlord/onboarding' : item.href} className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3 font-medium text-gray-800 hover:bg-gray-100">
                   {item.label}
                   <span>→</span>
                 </Link>
@@ -145,6 +237,31 @@ export default function LandlordDashboard() {
           </table>
           {!dashboard?.recentPayments?.length ? <p className="py-4 text-sm text-gray-500">No payments yet.</p> : null}
         </div>
+      </div>
+
+      <div className="mt-6 rc-card">
+        <h2 className="text-lg font-semibold text-gray-900">Unread notifications</h2>
+        <ul className="mt-4 space-y-3">
+          {notifications.slice(0, 6).map((note: any) => (
+            <li key={note.id} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{note.title}</p>
+                  <p className="mt-1 text-sm text-gray-600">{note.message}</p>
+                  <p className="mt-1 text-xs text-gray-400">{new Date(note.created_at).toLocaleString()}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => markNotificationRead(note.id)}
+                  className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </li>
+          ))}
+          {!notifications.length ? <li className="text-sm text-gray-500">No unread notifications.</li> : null}
+        </ul>
       </div>
     </div>
   );

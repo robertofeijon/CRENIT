@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
+import QRCode from 'qrcode';
+import { randomUUID } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
@@ -7,6 +9,21 @@ export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
 
   constructor(private readonly supabaseService: SupabaseService) {}
+
+  private buildReportReference() {
+    return `RC-${randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()}`;
+  }
+
+  async verifyReportReference(reference: string) {
+    const client = this.supabaseService.getClient();
+    const { data, error } = await client
+      .from('report_verifications')
+      .select('report_reference, score, tier, generated_at')
+      .eq('report_reference', reference)
+      .maybeSingle();
+    if (error) throw error;
+    return data || null;
+  }
 
   getReportStatus(): string {
     return 'Reports module is available.';
@@ -45,6 +62,36 @@ export class ReportsService {
     const userEmailRes = await client.from('auth.users').select('email').eq('id', tenantId).maybeSingle();
     const userEmail = userEmailRes.error ? 'N/A' : userEmailRes.data?.email ?? 'N/A';
 
+    const verifiedPaymentRecords = payments.filter((row: any) => row.status === 'PAID').length;
+    const earliestLeaseDate = leases.length
+      ? leases
+          .map((lease: any) => lease.start_date)
+          .filter(Boolean)
+          .sort()[0]
+      : null;
+    const tenancyMonths = earliestLeaseDate
+      ? Math.max(1, Math.floor((Date.now() - new Date(earliestLeaseDate).getTime()) / (1000 * 60 * 60 * 24 * 30)))
+      : 0;
+    const generatedAt = new Date().toISOString();
+    const reportReference = this.buildReportReference();
+    const verifyUrl = `https://rentcredit.co/verify/${reportReference}`;
+
+    await client.from('report_verifications').insert([
+      {
+        report_reference: reportReference,
+        tenant_id: tenantId,
+        score: Number(score?.score || 0),
+        tier: score?.tier || 'BUILDING',
+        generated_at: generatedAt,
+        score_calculation_date: score?.calculation_date || null,
+        verified_payment_records: verifiedPaymentRecords,
+        tenancy_months: tenancyMonths,
+      },
+    ]);
+
+    const qrDataUrl = await QRCode.toDataURL(verifyUrl, { width: 150, margin: 1 });
+    const qrImageBuffer = Buffer.from(qrDataUrl.split(',')[1], 'base64');
+
     const bufferChunks: Buffer[] = [];
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
 
@@ -57,6 +104,7 @@ export class ReportsService {
     doc.fontSize(18).font('Helvetica-Bold').text('RentCredit Tenant Report', { align: 'center' });
     doc.moveDown(0.5);
     doc.fontSize(10).font('Helvetica').fillColor('#666').text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
+    doc.text(`Report Reference: ${reportReference}`, { align: 'center' });
     doc.moveDown();
 
     doc.fillColor('#000').fontSize(12).font('Helvetica-Bold').text('Tenant Details');
@@ -74,6 +122,8 @@ export class ReportsService {
     if (score?.calculation_date) {
       doc.text(`Calculated: ${new Date(score.calculation_date).toLocaleDateString()}`);
     }
+    doc.text(`Verified payment records: ${verifiedPaymentRecords}`);
+    doc.text(`Tenancy history months used: ${tenancyMonths}`);
     doc.moveDown();
 
     if (factors.length) {
@@ -123,6 +173,13 @@ export class ReportsService {
     } else {
       doc.font('Helvetica').fontSize(10).text('No deposit records found.');
     }
+
+    doc.moveDown();
+    doc.font('Helvetica-Bold').fontSize(12).text('Report Verification');
+    doc.moveDown(0.25);
+    doc.font('Helvetica').fontSize(10).text(`Verified by RentCredit · rentcredit.co · ${reportReference}`);
+    doc.text(`Verify online: ${verifyUrl}`);
+    doc.image(qrImageBuffer, { width: 110 });
 
     doc.end();
 

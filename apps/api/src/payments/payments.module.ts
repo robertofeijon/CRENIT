@@ -6,9 +6,10 @@ import { PaymentsSchedulerService } from './payments-scheduler.service';
 import { PaymentsService } from './payments.service';
 import { CreditScoreModule } from '../credit-score/credit-score.module';
 import { MarketIntelligenceModule } from '../market-intelligence/market-intelligence.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [CreditScoreModule, MarketIntelligenceModule],
+  imports: [CreditScoreModule, MarketIntelligenceModule, NotificationsModule],
   controllers: [PaymentsController, LandlordPaymentsController],
   providers: [PaymentsService, PaymentSimulatorService, PaymentsSchedulerService],
   exports: [PaymentsService],

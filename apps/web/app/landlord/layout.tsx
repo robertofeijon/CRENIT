@@ -12,6 +12,7 @@ const navItems = [
   { label: 'Properties', href: '/landlord/properties', icon: '🏠' },
   { label: 'Reports', href: '/landlord/reports', icon: '📄' },
   { label: 'Market Data', href: '/landlord/market-data', icon: '📊' },
+  { label: 'Onboarding', href: '/landlord/onboarding', icon: '🧾' },
   { label: 'Settings', href: '/landlord/settings', icon: '⚙️' },
 ];
 

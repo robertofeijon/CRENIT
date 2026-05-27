@@ -2,6 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import api from '../../../src/lib/api';
+import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import ErrorStateCard from '../../components/ui/ErrorStateCard';
+import EmptyStateCard from '../../components/ui/EmptyStateCard';
 
 interface PendingRequest {
   id: string;
@@ -29,6 +32,7 @@ export default function AdminServiceRequestsPage() {
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
   const [selectedAttachment, setSelectedAttachment] = useState<PendingAttachment | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -45,8 +49,10 @@ export default function AdminServiceRequestsPage() {
     try {
       const res = await api.get(`/admin/service-requests`);
       setRequests(res.data?.data || []);
+      setError('');
     } catch (err) {
-      console.error('Failed to load requests', err);
+      console.error('Unable to load requests', err);
+      setError('Unable to load service requests.');
     }
   };
 
@@ -54,8 +60,10 @@ export default function AdminServiceRequestsPage() {
     try {
       const res = await api.get(`/admin/attachments?status=PENDING`);
       setPendingAttachments(res.data?.data || []);
+      setError('');
     } catch (err) {
-      console.error('Failed to load attachments', err);
+      console.error('Unable to load attachments', err);
+      setError('Unable to load pending attachments.');
     }
   };
 
@@ -64,11 +72,11 @@ export default function AdminServiceRequestsPage() {
     try {
       const res = await api.post(`/admin/service-requests/${requestId}/assign`);
       if (res.data?.success) {
-        setMessage('Request assigned');
+        setMessage('Request assigned.');
         loadRequests();
       }
     } catch (err: any) {
-      setMessage(err.response?.data?.message || 'Assignment failed');
+      setMessage(err.response?.data?.message || 'Unable to assign request.');
     } finally {
       setLoading(false);
     }
@@ -79,11 +87,11 @@ export default function AdminServiceRequestsPage() {
     try {
       const res = await api.post(`/admin/service-requests/${requestId}/complete`);
       if (res.data?.success) {
-        setMessage('Request completed');
+        setMessage('Request completed.');
         loadRequests();
       }
     } catch (err: any) {
-      setMessage(err.response?.data?.message || 'Completion failed');
+      setMessage(err.response?.data?.message || 'Unable to complete request.');
     } finally {
       setLoading(false);
     }
@@ -94,12 +102,12 @@ export default function AdminServiceRequestsPage() {
     try {
       const res = await api.post(`/admin/attachments/${attachmentId}/verify`);
       if (res.data?.success) {
-        setMessage('Attachment verified');
+        setMessage('Attachment verified.');
         loadPendingAttachments();
         setSelectedAttachment(null);
       }
     } catch (err: any) {
-      setMessage(err.response?.data?.message || 'Verification failed');
+      setMessage(err.response?.data?.message || 'Unable to verify attachment.');
     } finally {
       setLoading(false);
     }
@@ -107,7 +115,7 @@ export default function AdminServiceRequestsPage() {
 
   const handleRejectAttachment = async (attachmentId: string) => {
     if (!rejectionReason.trim()) {
-      setMessage('Please provide a rejection reason');
+      setMessage('Please provide a rejection reason.');
       return;
     }
 
@@ -117,13 +125,13 @@ export default function AdminServiceRequestsPage() {
         rejection_reason: rejectionReason,
       });
       if (res.data?.success) {
-        setMessage('Attachment rejected');
+        setMessage('Attachment rejected.');
         loadPendingAttachments();
         setSelectedAttachment(null);
         setRejectionReason('');
       }
     } catch (err: any) {
-      setMessage(err.response?.data?.message || 'Rejection failed');
+      setMessage(err.response?.data?.message || 'Unable to reject attachment.');
     } finally {
       setLoading(false);
     }
@@ -144,6 +152,15 @@ export default function AdminServiceRequestsPage() {
   return (
     <div className="p-6">
       <h1 className="text-3xl font-semibold mb-6">Service Requests & Attachment Review</h1>
+
+      {error ? (
+        <div className="mb-4">
+          <ErrorStateCard
+            message={error}
+            onRetry={activeTab === 'requests' ? loadRequests : loadPendingAttachments}
+          />
+        </div>
+      ) : null}
 
       {message && (
         <div className="mb-4 p-4 rounded bg-green-50 text-green-800 border border-green-200">
@@ -168,8 +185,9 @@ export default function AdminServiceRequestsPage() {
 
       {activeTab === 'requests' && (
         <div className="space-y-4">
+          {loading && !requests.length ? <SkeletonBlocks rows={3} /> : null}
           {requests.length === 0 ? (
-            <p className="text-gray-500">No service requests.</p>
+            <EmptyStateCard title="No service requests" description="There are no active service requests right now." />
           ) : (
             requests.map((req) => (
               <div key={req.id} className="border rounded-lg p-4 bg-white shadow">
@@ -216,8 +234,9 @@ export default function AdminServiceRequestsPage() {
       {activeTab === 'attachments' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">
+            {loading && !pendingAttachments.length ? <SkeletonBlocks rows={3} /> : null}
             {pendingAttachments.length === 0 ? (
-              <p className="text-gray-500">No pending attachments for review.</p>
+              <EmptyStateCard title="No pending attachments" description="All submitted attachments have been processed." />
             ) : (
               pendingAttachments.map((att) => (
                 <div

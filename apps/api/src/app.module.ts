@@ -18,6 +18,7 @@ import { ReportsModule } from './reports/reports.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { SettingsModule } from './settings/settings.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { SettingsModule } from './settings/settings.module';
     MarketIntelligenceModule,
     AdminModule,
     SettingsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

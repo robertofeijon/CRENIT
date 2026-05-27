@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import ErrorStateCard from '../../components/ui/ErrorStateCard';
+import EmptyStateCard from '../../components/ui/EmptyStateCard';
 
 export default function AdminAuditPage() {
   const { user, role, loading } = useAuth();
@@ -32,9 +35,11 @@ export default function AdminAuditPage() {
     <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
       <h1 className="text-3xl font-bold text-slate-900">Audit log</h1>
       <p className="mt-3 text-sm text-slate-600">Admin actions recorded for compliance review.</p>
-      {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
+      {error ? <div className="mt-4"><ErrorStateCard message={error} onRetry={() => router.refresh()} /></div> : null}
       {isLoading ? (
-        <p className="mt-6 text-sm text-slate-500">Loading...</p>
+        <div className="mt-6">
+          <SkeletonBlocks rows={4} />
+        </div>
       ) : logs.length ? (
         <div className="mt-6 space-y-3">
           {logs.map((log) => (
@@ -46,7 +51,9 @@ export default function AdminAuditPage() {
           ))}
         </div>
       ) : (
-        <p className="mt-6 text-sm text-slate-500">No audit entries yet.</p>
+        <div className="mt-6">
+          <EmptyStateCard title="No audit entries yet" description="Admin actions will appear here once recorded." />
+        </div>
       )}
     </div>
   );

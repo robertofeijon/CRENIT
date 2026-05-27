@@ -15,6 +15,9 @@ import {
 } from 'recharts';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import ErrorStateCard from '../../components/ui/ErrorStateCard';
+import EmptyStateCard from '../../components/ui/EmptyStateCard';
 
 type PlatformHealth = {
   total_verified_records: number;
@@ -81,6 +84,7 @@ export default function DataIntelligencePage() {
   const [previewData, setPreviewData] = useState<unknown>(null);
   const [newKeyReveal, setNewKeyReveal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loadingData, setLoadingData] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/auth');
@@ -88,6 +92,7 @@ export default function DataIntelligencePage() {
   }, [loading, user, role, router]);
 
   const loadAll = useCallback(async () => {
+    setLoadingData(true);
     setError(null);
     try {
       const [healthRes, suburbsRes, productsRes, clientsRes, apiRes] = await Promise.all([
@@ -105,6 +110,8 @@ export default function DataIntelligencePage() {
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
       setError(apiErr?.response?.data?.message || apiErr?.message || 'Failed to load data intelligence.');
+    } finally {
+      setLoadingData(false);
     }
   }, []);
 
@@ -188,7 +195,7 @@ export default function DataIntelligencePage() {
   };
 
   if (loading || !user || role !== 'ADMIN') {
-    return <div className="rounded-3xl border border-slate-200 bg-white p-8">Loading…</div>;
+    return <div className="rounded-3xl border border-slate-200 bg-white p-8">Loading data...</div>;
   }
 
   return (
@@ -209,7 +216,8 @@ export default function DataIntelligencePage() {
         ) : null}
       </div>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <ErrorStateCard message={error} onRetry={loadAll} /> : null}
+      {loadingData ? <SkeletonBlocks rows={5} /> : null}
       {newKeyReveal ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
           <p className="font-semibold">New API key (copy now — shown once)</p>
@@ -231,7 +239,7 @@ export default function DataIntelligencePage() {
             <StatCard label="Anonymised tenancy records" value={health.anonymised_tenancy_records} />
           </div>
         ) : (
-          <p className="mt-4 text-sm text-slate-500">Loading…</p>
+          <p className="mt-4 text-sm text-slate-500">Loading data...</p>
         )}
       </section>
 
@@ -273,7 +281,14 @@ export default function DataIntelligencePage() {
               ))}
             </tbody>
           </table>
-          {!suburbs.length ? <p className="mt-4 text-sm text-slate-500">No suburbs meet the minimum sample threshold yet.</p> : null}
+          {!suburbs.length ? (
+            <div className="mt-4">
+              <EmptyStateCard
+                title="No suburbs meet sample threshold"
+                description="Market data is available but no suburb currently meets the minimum sample requirement."
+              />
+            </div>
+          ) : null}
         </div>
 
         {suburbDetail ? (
@@ -398,14 +413,18 @@ export default function DataIntelligencePage() {
             onClick={handleGeneratePdf}
             className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
           >
-            Generate PDF
+            Download PDF report
           </button>
         </div>
         {previewData ? (
           <pre className="mt-4 max-h-48 overflow-auto rounded-2xl bg-slate-900 p-4 text-xs text-slate-100">
             {JSON.stringify(previewData, null, 2)}
           </pre>
-        ) : null}
+        ) : (
+          <div className="mt-4">
+            <EmptyStateCard title="No preview yet" description="Select a report and click preview to inspect report payload data." />
+          </div>
+        )}
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -447,7 +466,7 @@ export default function DataIntelligencePage() {
                         onClick={() => handleGenerateKey(c.id)}
                         className="text-xs font-semibold text-slate-700 underline"
                       >
-                        + Generate key
+                        Generate API key
                       </button>
                     </div>
                   </td>
@@ -455,6 +474,11 @@ export default function DataIntelligencePage() {
               ))}
             </tbody>
           </table>
+          {!clients.length ? (
+            <div className="mt-4">
+              <EmptyStateCard title="No B2B clients" description="Create or onboard B2B clients to manage API keys here." />
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -487,6 +511,11 @@ export default function DataIntelligencePage() {
               ))}
             </ul>
           </>
+        ) : null}
+        {!apiConfig ? (
+          <div className="mt-4">
+            <EmptyStateCard title="API config unavailable" description="API endpoint configuration could not be loaded yet." />
+          </div>
         ) : null}
       </section>
     </div>

@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import ErrorStateCard from '../../components/ui/ErrorStateCard';
+import EmptyStateCard from '../../components/ui/EmptyStateCard';
 
 export default function AdminUsersPage() {
   const { user, role, loading } = useAuth();
@@ -71,15 +74,17 @@ export default function AdminUsersPage() {
           <option value="ADMIN">Admin</option>
         </select>
         <button onClick={loadUsers} className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white">
-          Search
+          Search users
         </button>
       </div>
 
-      {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
+      {error ? <div className="mt-4"><ErrorStateCard message={error} onRetry={loadUsers} /></div> : null}
       {message ? <p className="mt-4 text-sm text-emerald-700">{message}</p> : null}
 
       {isLoading ? (
-        <p className="mt-6 text-sm text-slate-600">Loading users...</p>
+        <div className="mt-6">
+          <SkeletonBlocks rows={4} />
+        </div>
       ) : users.length ? (
         <div className="mt-6 space-y-4">
           {users.map((person) => (
@@ -115,7 +120,9 @@ export default function AdminUsersPage() {
           ))}
         </div>
       ) : (
-        <p className="mt-6 text-sm text-slate-500">No users found.</p>
+        <div className="mt-6">
+          <EmptyStateCard title="No users found" description="Try changing your filters or search query." />
+        </div>
       )}
     </div>
   );

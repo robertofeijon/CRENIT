@@ -269,6 +269,26 @@ export class CreditScoreService {
     };
   }
 
+  async calculateScoresForRecentPaymentUpdates(hoursBack = 24) {
+    const client = this.supabase.getClient();
+    const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000).toISOString();
+    const { data, error } = await client
+      .from('payments')
+      .select('tenant_id')
+      .not('tenant_id', 'is', null)
+      .gte('updated_at', since);
+    if (error) throw error;
+    const tenantIds = Array.from(new Set((data || []).map((row: any) => row.tenant_id).filter(Boolean)));
+    for (const tenantId of tenantIds) {
+      try {
+        await this.calculateScore(tenantId);
+      } catch (err) {
+        this.logger.error(`Failed to recalculate score for tenant ${tenantId}`, err as any);
+      }
+    }
+    return { tenant_count: tenantIds.length, recalculated_at: new Date().toISOString() };
+  }
+
   async getScoreHistory(tenantId: string, limit = 12) {
     const client = this.supabase.getClient();
     const { data, error } = await client

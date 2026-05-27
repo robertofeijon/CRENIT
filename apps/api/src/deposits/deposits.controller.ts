@@ -1,7 +1,7 @@
 import { BadRequestException, Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
 import { DepositsService } from './deposits.service';
 import { SupabaseService } from '../supabase/supabase.service';
-import { getUserProfileFromAuthHeader, assertKycApproved, assertRole } from '../supabase/supabase.utils';
+import { getUserProfileFromAuthHeader, assertKycApproved, assertRole, assertPartnerApproved } from '../supabase/supabase.utils';
 
 @Controller('deposits')
 export class DepositsController {
@@ -27,6 +27,7 @@ export class DepositsController {
   async landlordDeposits(@Headers('authorization') authHeader: string) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'LANDLORD');
+    assertPartnerApproved(profile, 'Your landlord account is under review. Deposit collection is locked until approval.');
     const deposits = await this.depositsService.listLandlordDeposits(profile.id);
     return { success: true, data: deposits, error: null };
   }
@@ -49,6 +50,7 @@ export class DepositsController {
   ) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'LANDLORD');
+    assertPartnerApproved(profile, 'Your landlord account is under review. Deposit actions are locked until approval.');
     if (!body?.lease_id || !body?.amount) {
       throw new BadRequestException('lease_id and amount are required');
     }
@@ -60,6 +62,7 @@ export class DepositsController {
   async refundRequest(@Headers('authorization') authHeader: string, @Param('depositId') depositId: string) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'LANDLORD');
+    assertPartnerApproved(profile, 'Your landlord account is under review. Deposit actions are locked until approval.');
     const deposit = await this.depositsService.requestRefund(profile.id, depositId);
     return { success: true, data: deposit, error: null };
   }

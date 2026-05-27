@@ -1,9 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class DepositsService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    private readonly supabaseService: SupabaseService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   getEscrowStatus(): string {
     return 'Deposits module is configured.';
@@ -54,6 +58,18 @@ export class DepositsService {
       await client.from('dispute_evidence').insert(evidenceRecords);
     }
 
+    if (deposit.landlord_id) {
+      const { data: landlordProfile } = await client.from('landlord_profiles').select('user_id').eq('id', deposit.landlord_id).maybeSingle();
+      if (landlordProfile?.user_id) {
+        await this.notificationsService.createNotification({
+          user_id: landlordProfile.user_id,
+          type: 'DISPUTE_FILED',
+          title: 'A dispute has been filed',
+          message: 'A tenant has filed a deposit dispute that requires your review.',
+          metadata: { dispute_id: dispute.id, deposit_id: depositId },
+        });
+      }
+    }
     return dispute;
   }
 
@@ -285,6 +301,13 @@ export class DepositsService {
       .single();
 
     if (error) throw error;
+    await this.notificationsService.createNotification({
+      user_id: data.tenant_id,
+      type: 'DEPOSIT_RELEASED',
+      title: 'Deposit released',
+      message: 'Your deposit refund has been released.',
+      metadata: { deposit_id: data.id, amount: data.amount },
+    });
     return { ...data, timeline: this.buildDepositTimeline(data) };
   }
 
@@ -394,6 +417,26 @@ export class DepositsService {
 
     if (amountToTenant > 0 && status !== 'RESOLVED_LANDLORD') {
       await client.from('deposits').update({ status: 'REFUND_PENDING' }).eq('id', deposit.id);
+    }
+
+    const { data: landlordProfile } = await client.from('landlord_profiles').select('user_id').eq('id', deposit.landlord_id).maybeSingle();
+    if (deposit.tenant_id) {
+      await this.notificationsService.createNotification({
+        user_id: deposit.tenant_id,
+        type: 'DISPUTE_RESOLVED',
+        title: 'Dispute resolved',
+        message: 'Your deposit dispute has been resolved.',
+        metadata: { dispute_id: disputeId, decision, amount_to_tenant: amountToTenant },
+      });
+    }
+    if (landlordProfile?.user_id) {
+      await this.notificationsService.createNotification({
+        user_id: landlordProfile.user_id,
+        type: 'DISPUTE_RESOLVED',
+        title: 'Dispute resolved',
+        message: 'A deposit dispute has been resolved.',
+        metadata: { dispute_id: disputeId, decision, amount_to_tenant: amountToTenant },
+      });
     }
 
     return { dispute_id: disputeId, status, decision, amount_to_tenant: amountToTenant };
