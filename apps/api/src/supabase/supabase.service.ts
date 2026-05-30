@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import WebSocket from 'ws';
 
 /**
  * Service-role client for all database/admin work (bypasses RLS).
@@ -20,7 +21,11 @@ export class SupabaseService {
       throw new Error('SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_ANON_KEY are required.');
     }
 
-    const clientOptions = { auth: { persistSession: false, autoRefreshToken: false } };
+    // Node < 22 has no native WebSocket; Supabase Realtime requires `ws` on the server (Render uses Node 20).
+    const clientOptions = {
+      auth: { persistSession: false, autoRefreshToken: false },
+      realtime: { transport: WebSocket as unknown as typeof globalThis.WebSocket },
+    };
 
     this.serviceClient = createClient(url, serviceKey, clientOptions);
     this.authClient = createClient(url, anonKey, clientOptions);
