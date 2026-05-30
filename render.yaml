@@ -5,8 +5,8 @@ services:
     runtime: node
     plan: free
     rootDir: .
-    buildCommand: npm ci && npm run build --workspace=crenit-api
-    startCommand: node apps/api/dist/main.js
+    buildCommand: npm ci && npm run build:api
+    startCommand: npm run start:prod --workspace=crenit-api
     healthCheckPath: /
     envVars:
       - key: NODE_ENV

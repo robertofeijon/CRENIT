@@ -28,9 +28,14 @@ Use the included `render.yaml` blueprint or create a **Web Service** manually:
 | Setting | Value |
 |---------|--------|
 | Root directory | `.` (repo root) |
-| Build command | `npm ci && npm run build --workspace=crenit-api` |
-| Start command | `node apps/api/dist/main.js` |
+| Build command | `npm ci && npm run build:api` |
+| Start command | `npm run start:prod --workspace=crenit-api` |
+| Node version | `20` (set in Render or use repo `.nvmrc`) |
 | Health check path | `/` |
+
+If you previously set **Root directory** to `apps/api`, change it to **`.`** (repo root) so workspace installs resolve correctly.
+
+**Do not** use `node dist/main.js` unless root directory is `apps/api` and a clean `nest build` runs there.
 
 Render sets `PORT` automatically. The API binds to `0.0.0.0`.
 
