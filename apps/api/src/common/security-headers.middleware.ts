@@ -9,7 +9,7 @@ export class SecurityHeadersMiddleware implements NestMiddleware {
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('X-DNS-Prefetch-Control', 'off');
-    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+    // Do not set Cross-Origin-Resource-Policy on API — it breaks cross-origin XHR from Vercel.
     if (process.env.NODE_ENV === 'production') {
       res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     }

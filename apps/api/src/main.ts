@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import * as bodyParser from 'body-parser';
 import { RateLimitMiddleware } from './common/rate-limit.middleware';
 import { SecurityHeadersMiddleware } from './common/security-headers.middleware';
+import { createCorsOriginValidator, getCorsOrigins } from './common/cors.config';
 import { validateRequiredEnv } from './common/env.validation';
 import { GlobalHttpExceptionFilter } from './common/http-exception.filter';
 
@@ -12,6 +13,16 @@ async function bootstrap() {
   validateRequiredEnv();
   const app = await NestFactory.create(AppModule, {
     logger: process.env.NODE_ENV === 'production' ? ['error', 'warn', 'log'] : undefined,
+  });
+
+  const corsOrigins = getCorsOrigins();
+  app.enableCors({
+    origin: createCorsOriginValidator(corsOrigins),
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    credentials: true,
+    optionsSuccessStatus: 204,
+    preflightContinue: false,
   });
 
   const expressApp = app.getHttpAdapter().getInstance();
@@ -41,22 +52,12 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
 
-  const defaultOrigins = ['http://localhost:3000', 'http://localhost:3002'];
-  const corsOrigin = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
-    : defaultOrigins;
-
-  app.enableCors({
-    origin: corsOrigin,
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    credentials: true,
-  });
-
   const port = process.env.PORT ? Number(process.env.PORT) : 3001;
   await app.listen(port, '0.0.0.0');
   // eslint-disable-next-line no-console
   console.log(`CRENIT API listening on 0.0.0.0:${port}`);
+  // eslint-disable-next-line no-console
+  console.log(`CORS allowed origins: ${corsOrigins.join(', ')}`);
 }
 
 bootstrap();

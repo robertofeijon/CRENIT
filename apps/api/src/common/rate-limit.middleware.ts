@@ -10,6 +10,10 @@ export class RateLimitMiddleware implements NestMiddleware {
   private readonly maxRequests = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 120);
 
   use(req: Request, res: Response, next: NextFunction) {
+    if (req.method === 'OPTIONS') {
+      return next();
+    }
+
     const path = req.path || '';
     if (path === '/' || path.endsWith('/health')) {
       return next();

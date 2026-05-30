@@ -48,7 +48,7 @@ Render sets `PORT` automatically. The API binds to `0.0.0.0`.
 | `SUPABASE_ANON_KEY` | |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Server only** — never expose to web |
 | `JWT_SECRET` | Min 32 characters |
-| `CORS_ORIGIN` | Your Vercel URL(s), comma-separated |
+| `CORS_ORIGIN` | Your Vercel **web** URL, e.g. `https://crenit-web.vercel.app` (comma-separated for previews) |
 | `WEB_URL` | Same as primary Vercel URL (emails, report links) |
 | `ADMIN_EMAILS` | Comma-separated admin login emails |
 | `RATE_LIMIT_WINDOW_MS` | `60000` |
