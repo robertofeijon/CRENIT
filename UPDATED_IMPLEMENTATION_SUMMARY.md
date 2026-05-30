@@ -1,4 +1,4 @@
-# RentCredit Implementation and Release Closeout
+# CRENIT Implementation and Release Closeout
 
 ## Current state
 

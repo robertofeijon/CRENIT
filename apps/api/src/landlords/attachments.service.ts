@@ -30,6 +30,15 @@ export interface AttachmentRequest {
 export class AttachmentsService {
   constructor(private supabaseService: SupabaseService) {}
 
+  private async getLandlordProfileIdByUserId(userId: string) {
+    const client = this.supabaseService.getClient();
+    const { data, error } = await client.from('landlord_profiles').select('id').eq('user_id', userId).maybeSingle();
+    if (error || !data?.id) {
+      throw new NotFoundException('Landlord profile not found');
+    }
+    return data.id;
+  }
+
   async uploadAttachment(
     landlordProfile: any,
     propertyId: string | null,
@@ -44,13 +53,15 @@ export class AttachmentsService {
       throw new BadRequestException('Invalid attachment type');
     }
 
+    const landlordProfileId = await this.getLandlordProfileIdByUserId(landlordProfile.id);
+
     // Verify property access
     if (propertyId) {
       const { data: property, error: propError } = await client
         .from('properties')
         .select('id')
         .eq('id', propertyId)
-        .eq('landlord_id', landlordProfile.id)
+        .eq('landlord_id', landlordProfileId)
         .single();
 
       if (propError || !property) {
@@ -80,11 +91,82 @@ export class AttachmentsService {
         mime_type: file.mimetype,
         storage_path: fileName,
         description,
+        uploaded_by: landlordProfile.id,
+        uploaded_for_landlord_id: landlordProfile.id,
+        source_role: 'LANDLORD',
         status: 'PENDING',
       })
       .select()
       .single();
 
+    if (error) throw new BadRequestException(`Failed to create attachment record: ${error.message}`);
+    return data;
+  }
+
+  async adminUploadAttachmentForLandlord(
+    adminUserId: string,
+    landlordUserId: string,
+    propertyId: string | null,
+    file: any,
+    attachmentType: string,
+    description?: string,
+    leaseId?: string | null,
+    unitId?: string | null,
+  ) {
+    const client = this.supabaseService.getClient();
+    if (!file) throw new BadRequestException('No file provided');
+    if (!['PROPERTY_PROOF', 'LEASE_AGREEMENT', 'OWNERSHIP_DOCUMENT', 'OTHER'].includes(attachmentType)) {
+      throw new BadRequestException('Invalid attachment type');
+    }
+
+    const landlordProfileId = await this.getLandlordProfileIdByUserId(landlordUserId);
+    const { data: landlordProfile, error: landlordError } = await client
+      .from('profiles')
+      .select('id, role')
+      .eq('id', landlordUserId)
+      .single();
+    if (landlordError || !landlordProfile || !['LANDLORD', 'BOTH'].includes(String(landlordProfile.role))) {
+      throw new BadRequestException('Target user is not a landlord');
+    }
+
+    if (propertyId) {
+      const { data: property, error: propError } = await client
+        .from('properties')
+        .select('id')
+        .eq('id', propertyId)
+        .eq('landlord_id', landlordProfileId)
+        .single();
+      if (propError || !property) {
+        throw new ForbiddenException('Property not found for landlord');
+      }
+    }
+
+    const fileName = `${landlordUserId}/admin-${Date.now()}-${file.originalname}`;
+    const { error: uploadError } = await client.storage.from('landlord-attachments').upload(fileName, file.buffer, {
+      contentType: file.mimetype,
+    });
+    if (uploadError) throw new BadRequestException(`Upload failed: ${uploadError.message}`);
+
+    const { data, error } = await client
+      .from('attachments')
+      .insert({
+        landlord_id: landlordUserId,
+        property_id: propertyId,
+        lease_id: leaseId || null,
+        unit_id: unitId || null,
+        attachment_type: attachmentType,
+        file_name: file.originalname,
+        file_size: file.size,
+        mime_type: file.mimetype,
+        storage_path: fileName,
+        description: description || 'Uploaded by admin on behalf of landlord',
+        uploaded_by: adminUserId,
+        uploaded_for_landlord_id: landlordUserId,
+        source_role: 'ADMIN',
+        status: 'PENDING',
+      })
+      .select()
+      .single();
     if (error) throw new BadRequestException(`Failed to create attachment record: ${error.message}`);
     return data;
   }
@@ -226,8 +308,8 @@ export class AttachmentsService {
 
     const { data, error } = await client
       .from('attachment_requests')
-      .select('*, profiles:landlord_id(full_name, email)')
-      .eq('status', 'PENDING')
+      .select('*, profiles:landlord_id(full_name)')
+      .in('status', ['PENDING', 'ACCEPTED', 'IN_PROGRESS'])
       .order('created_at', { ascending: true });
 
     if (error) throw new BadRequestException(`Failed to fetch pending requests: ${error.message}`);

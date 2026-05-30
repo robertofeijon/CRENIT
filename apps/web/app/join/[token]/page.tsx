@@ -77,7 +77,7 @@ export default function InviteJoinPage() {
       } else {
         await login(invite?.invited_email || "", password);
         setMessage("Invite accepted successfully.");
-        router.push("/tenant");
+        router.push("/tenant/home");
       }
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || "Unable to accept invite.");

@@ -24,7 +24,24 @@ export class TenantsService {
     const client = this.supabase.getClient();
     const { data, error } = await client
       .from('leases')
-      .select('*, units(*)')
+      .select(
+        `
+        *,
+        units (
+          id,
+          unit_identifier,
+          monthly_rent,
+          property_id,
+          properties (
+            property_name,
+            address_street,
+            address_suburb,
+            address_city,
+            address_postcode
+          )
+        )
+      `,
+      )
       .eq('tenant_id', userId)
       .eq('status', 'ACTIVE')
       .limit(1)
@@ -33,7 +50,45 @@ export class TenantsService {
     if (error || !data) {
       return null;
     }
-    return data;
+
+    let landlordProfile: { business_name?: string; user_id?: string } | null = null;
+    if (data.landlord_id) {
+      const { data: landlord } = await client
+        .from('landlord_profiles')
+        .select('business_name, user_id')
+        .eq('id', data.landlord_id)
+        .maybeSingle();
+      landlordProfile = landlord;
+    }
+
+    return { ...data, landlord_profiles: landlordProfile };
+  }
+
+  private formatLeaseSummary(activeLease: any, deposit: any) {
+    if (!activeLease) return null;
+    const unit = activeLease.units;
+    const property = unit?.properties;
+    const addressParts = [
+      property?.address_street,
+      property?.address_suburb,
+      property?.address_city,
+      property?.address_postcode,
+    ].filter(Boolean);
+
+    return {
+      lease_id: activeLease.id,
+      status: activeLease.status,
+      monthly_rent: activeLease.monthly_rent,
+      start_date: activeLease.start_date,
+      end_date: activeLease.end_date,
+      payment_method: activeLease.payment_method,
+      unit_identifier: unit?.unit_identifier,
+      property_name: property?.property_name,
+      address: addressParts.join(', '),
+      landlord_name: activeLease.landlord_profiles?.business_name || 'Your landlord',
+      deposit_amount: deposit?.amount ?? null,
+      deposit_status: deposit?.status ?? null,
+    };
   }
 
   async getCurrentScore(userId: string) {
@@ -185,7 +240,7 @@ export class TenantsService {
       },
       {
         key: 'score_active',
-        label: 'Your RentCredit Score is now active',
+        label: 'Your CRENIT Score is now active',
         completed: scoreActive,
         blocked: !hasFirstPaidPayment,
         action: null,
@@ -196,6 +251,7 @@ export class TenantsService {
     return {
       profile,
       activeLease,
+      leaseSummary: this.formatLeaseSummary(activeLease, deposit),
       score: formattedScore,
       latestReport,
       recentPayments,

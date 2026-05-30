@@ -43,6 +43,17 @@ export class DepositsController {
     return { success: true, data: deposit, error: null };
   }
 
+  @Get(':depositId/escrow')
+  async getEscrowLedger(@Headers('authorization') authHeader: string, @Param('depositId') depositId: string) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    const role = profile.role?.toString().toUpperCase();
+    if (!['TENANT', 'LANDLORD', 'ADMIN'].includes(role)) {
+      throw new BadRequestException('Invalid role for escrow access');
+    }
+    const ledger = await this.depositsService.getEscrowLedger(profile.id, depositId, role);
+    return { success: true, data: ledger, error: null };
+  }
+
   @Post('collect')
   async collect(
     @Headers('authorization') authHeader: string,

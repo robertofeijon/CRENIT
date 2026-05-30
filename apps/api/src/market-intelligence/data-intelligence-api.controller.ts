@@ -16,14 +16,14 @@ export class DataIntelligenceApiController {
 
   private async resolveClient(apiKey: string | undefined) {
     if (!apiKey?.trim()) {
-      throw new UnauthorizedException('X-RentCredit-Key header is required');
+      throw new UnauthorizedException('X-CRENIT-Key header is required');
     }
     const keyRecord = await this.marketIntelligenceService.validateApiKey(apiKey.trim());
     if (!keyRecord) {
       throw new UnauthorizedException('Invalid or revoked API key');
     }
     if ((keyRecord as any).expired) {
-      throw new UnauthorizedException('API key expired — contact RentCredit to renew');
+      throw new UnauthorizedException('API key expired — contact CRENIT to renew');
     }
     const client = keyRecord.b2b_clients as { id: string; subscription_status: string; rate_limit_per_hour: number };
     if (client.subscription_status !== 'active') {
@@ -38,11 +38,12 @@ export class DataIntelligenceApiController {
 
   @Get('suburb/:name')
   async getSuburb(
-    @Headers('x-rentcredit-key') apiKey: string,
+    @Headers('x-crenit-key') crenitApiKey: string,
+    @Headers('x-rentcredit-key') legacyApiKey: string,
     @Param('name') suburb: string,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { client, keyRecord } = await this.resolveClient(apiKey);
+    const { client, keyRecord } = await this.resolveClient(crenitApiKey || legacyApiKey);
     try {
       const data = await this.marketIntelligenceService.getSuburbDetail(suburb);
       await this.marketIntelligenceService.logApiUsage(client.id, `/api/v1/suburb/${suburb}`, 200, (keyRecord as any)?.id);
@@ -54,16 +55,20 @@ export class DataIntelligenceApiController {
   }
 
   @Get('city-overview')
-  async getCityOverview(@Headers('x-rentcredit-key') apiKey: string) {
-    const { client, keyRecord } = await this.resolveClient(apiKey);
+  async getCityOverview(@Headers('x-crenit-key') crenitApiKey: string, @Headers('x-rentcredit-key') legacyApiKey: string) {
+    const { client, keyRecord } = await this.resolveClient(crenitApiKey || legacyApiKey);
     const data = await this.marketIntelligenceService.getCityOverview();
     await this.marketIntelligenceService.logApiUsage(client.id, '/api/v1/city-overview', 200, (keyRecord as any)?.id);
     return { success: true, data, error: null };
   }
 
   @Get('lender-risk/:suburb')
-  async getLenderRisk(@Headers('x-rentcredit-key') apiKey: string, @Param('suburb') suburb: string) {
-    const { client, keyRecord } = await this.resolveClient(apiKey);
+  async getLenderRisk(
+    @Headers('x-crenit-key') crenitApiKey: string,
+    @Headers('x-rentcredit-key') legacyApiKey: string,
+    @Param('suburb') suburb: string,
+  ) {
+    const { client, keyRecord } = await this.resolveClient(crenitApiKey || legacyApiKey);
     const data = await this.marketIntelligenceService.getLenderRisk(suburb);
     await this.marketIntelligenceService.logApiUsage(client.id, `/api/v1/lender-risk/${suburb}`, 200, (keyRecord as any)?.id);
     return { success: true, data, error: null };

@@ -3,11 +3,24 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  Building2,
+  FileCheck,
+  LineChart,
+  Receipt,
+  RefreshCw,
+  Users,
+  Wallet,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
-import PageHeader from '../../components/ui/PageHeader';
-import StatCard from '../../components/ui/StatCard';
+import LandlordPageHeader from '../../components/ui/LandlordPageHeader';
+import LandlordStatCard from '../../components/ui/LandlordStatCard';
 import Badge from '../../components/ui/Badge';
+import { landlordNavItems } from '../../components/landlord/landlordNav';
+
+const WORKSPACE_LINKS = landlordNavItems.filter((item) => item.href !== '/landlord/overview');
 
 export default function LandlordDashboard() {
   const { user, loading, role } = useAuth();
@@ -77,64 +90,65 @@ export default function LandlordDashboard() {
   const hasDirectLease = (dashboard?.tenants ?? []).some((tenant: any) => tenant.payment_method === 'DIRECT');
   const pendingApproval = (dashboard?.landlord?.partnerStatus || '').toUpperCase() === 'PENDING_APPROVAL';
   const formatMoney = (v: unknown) => `N$${Number(v || 0).toLocaleString()}`;
+  const hrefWhenApproved = (href: string) => (pendingApproval ? '/landlord/onboarding' : href);
 
   return (
-    <div>
-      <PageHeader
-        title="Portfolio overview"
-        subtitle="Live metrics from your properties, tenants, and payments."
+    <div className="space-y-8">
+      <LandlordPageHeader
+        badge="Portfolio"
+        title="Overview"
+        subtitle="Live metrics from your properties, tenants, and payments — your partner command centre."
         actions={
-          <button type="button" onClick={loadOverview} disabled={isLoading} className="rc-btn-outline">
-            {isLoading ? 'Refreshing…' : 'Refresh'}
+          <button type="button" onClick={loadOverview} disabled={isLoading} className="landlord-btn-secondary">
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden />
+            Refresh
           </button>
         }
       />
 
-      {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
-      {pendingApproval ? (
-        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Your landlord account is under review. You&apos;ll be notified once approved.
-        </div>
-      ) : null}
+      {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard label="Properties" value={stats.totalProperties ?? '—'} icon="🏠" />
-        <StatCard label="Active tenants" value={stats.activeTenants ?? '—'} icon="👥" />
-        <StatCard label="Monthly rent expected" value={formatMoney(stats.monthlyRentExpected)} icon="📅" />
-        <StatCard label="Collected this month" value={formatMoney(stats.collectedThisMonth)} icon="✅" />
-        <StatCard label="Outstanding balance" value={formatMoney(stats.outstanding)} icon="⏳" />
-        <StatCard label="Commission earned" value={formatMoney(stats.commissionEarnedThisMonth)} icon="💰" />
-      </div>
-
-      {(stats.awaitingDirectConfirmations || 0) > 0 ? (
-        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm font-semibold text-amber-900">
-              Awaiting Confirmation — {stats.awaitingDirectConfirmations} direct payments need your confirmation.
-            </p>
-            <Link
-              href="/landlord/payments?payment_method=DIRECT&status=PENDING"
-              className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white"
-            >
-              Review now
-            </Link>
-          </div>
-        </div>
-      ) : null}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <LandlordStatCard label="Properties" value={stats.totalProperties ?? '—'} icon={Building2} />
+        <LandlordStatCard label="Active tenants" value={stats.activeTenants ?? '—'} icon={Users} />
+        <LandlordStatCard
+          label="Monthly rent expected"
+          value={formatMoney(stats.monthlyRentExpected)}
+          icon={Receipt}
+        />
+        <LandlordStatCard
+          label="Collected this month"
+          value={formatMoney(stats.collectedThisMonth)}
+          icon={Receipt}
+          accent="success"
+        />
+        <LandlordStatCard
+          label="Outstanding balance"
+          value={formatMoney(stats.outstanding)}
+          icon={Wallet}
+          accent={Number(stats.outstanding) > 0 ? 'warning' : 'default'}
+        />
+        <LandlordStatCard
+          label="Data recording (monthly)"
+          value={formatMoney(stats.commissionEarnedThisMonth)}
+          icon={Wallet}
+          accent="dark"
+        />
+      </section>
 
       {hasDirectLease ? (
-        <div className="mb-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+        <div className="landlord-panel border-indigo-200 bg-indigo-50/80">
           <p className="text-sm text-indigo-900">
             Direct leases require manual confirmation. Switch to platform payments for instant score updates.
           </p>
-          <Link href="/landlord/leases" className="mt-2 inline-flex rounded-lg bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white">
-            Request Switch
+          <Link href={hrefWhenApproved('/landlord/leases')} className="mt-3 inline-flex landlord-btn-primary text-xs">
+            Request switch
           </Link>
         </div>
       ) : null}
 
       {switchRequests.length ? (
-        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+        <div className="landlord-panel border-emerald-200 bg-emerald-50/80">
           <p className="text-sm font-semibold text-emerald-900">Payment method switch requests</p>
           <div className="mt-2 space-y-2">
             {switchRequests.map((req: any) => (
@@ -160,8 +174,27 @@ export default function LandlordDashboard() {
         </div>
       ) : null}
 
+      <section>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Workspaces</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {WORKSPACE_LINKS.map((card) => {
+            const Icon = card.icon as LucideIcon;
+            return (
+              <Link
+                key={card.href}
+                href={hrefWhenApproved(card.href)}
+                className="group rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:border-[#C0392B]/40 hover:shadow-md"
+              >
+                <Icon className="h-5 w-5 text-[#C0392B]" aria-hidden />
+                <p className="mt-3 font-semibold text-[#1A1A1A] group-hover:text-[#C0392B]">{card.label}</p>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
       <div className="grid gap-6 lg:grid-cols-5">
-        <div className="rc-card lg:col-span-3">
+        <div className="landlord-panel lg:col-span-3">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Partner status</h2>
@@ -174,39 +207,48 @@ export default function LandlordDashboard() {
             {dashboard?.depositSummary?.disputed ?? 0} disputed · {dashboard?.depositSummary?.refunded ?? 0} refunded
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
-            <Link href={pendingApproval ? '/landlord/onboarding' : '/landlord/tenants'} className="rc-btn-navy">
-              Go to tenant review
+            <Link href={hrefWhenApproved('/landlord/tenants')} className="landlord-btn-primary">
+              Tenants
             </Link>
-            <Link href={pendingApproval ? '/landlord/onboarding' : '/landlord/payments'} className="rc-btn-outline">
-              View payments
+            <Link href={hrefWhenApproved('/landlord/payments')} className="landlord-btn-secondary">
+              Payments
             </Link>
-            <Link href={pendingApproval ? '/landlord/onboarding' : '/landlord/deposits'} className="rc-btn-outline">
-              Manage deposits
+            <Link href={hrefWhenApproved('/landlord/deposits')} className="landlord-btn-secondary">
+              Deposits
             </Link>
           </div>
         </div>
 
-        <div className="rc-card lg:col-span-2">
-          <h2 className="text-lg font-semibold text-gray-900">Quick actions</h2>
+        <div className="landlord-panel lg:col-span-2">
+          <h2 className="text-lg font-semibold text-[#1A1A1A]">Quick actions</h2>
           <ul className="mt-4 space-y-2 text-sm">
             {[
-              { label: 'Invite tenant', href: '/landlord/tenants' },
-              { label: 'Record deposit', href: '/landlord/deposits' },
-              { label: 'Generate report', href: '/landlord/reports' },
-              { label: 'View payment history', href: '/landlord/payments' },
-            ].map((item) => (
-              <li key={item.href}>
-                <Link href={pendingApproval ? '/landlord/onboarding' : item.href} className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3 font-medium text-gray-800 hover:bg-gray-100">
-                  {item.label}
-                  <span>→</span>
-                </Link>
-              </li>
-            ))}
+              { label: 'Invite tenant', href: '/landlord/tenants', icon: Users },
+              { label: 'Record deposit', href: '/landlord/deposits', icon: Wallet },
+              { label: 'Generate report', href: '/landlord/reports', icon: FileCheck },
+              { label: 'Market insights', href: '/landlord/market-data', icon: LineChart },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={hrefWhenApproved(item.href)}
+                    className="flex items-center justify-between gap-2 rounded-xl bg-[#F3F4F6] px-4 py-3 font-medium text-[#1A1A1A] hover:bg-[#FDEDEC]"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Icon className="h-4 w-4 text-[#C0392B]" aria-hidden />
+                      {item.label}
+                    </span>
+                    <span className="text-[#C0392B]">→</span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </div>
 
-      <div className="mt-6 rc-card">
+      <div className="landlord-panel">
         <h2 className="text-lg font-semibold text-gray-900">Recent payments</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[560px] text-left text-sm">
@@ -239,8 +281,8 @@ export default function LandlordDashboard() {
         </div>
       </div>
 
-      <div className="mt-6 rc-card">
-        <h2 className="text-lg font-semibold text-gray-900">Unread notifications</h2>
+      <div className="landlord-panel">
+        <h2 className="text-lg font-semibold text-[#1A1A1A]">Unread notifications</h2>
         <ul className="mt-4 space-y-3">
           {notifications.slice(0, 6).map((note: any) => (
             <li key={note.id} className="rounded-lg border border-gray-100 bg-gray-50 p-4">

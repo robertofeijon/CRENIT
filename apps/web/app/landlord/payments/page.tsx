@@ -1,15 +1,21 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { CheckCircle2, Percent, RefreshCw, Receipt, Wallet } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
-
-export const dynamic = 'force-dynamic';
+import LandlordPageHeader from '../../components/ui/LandlordPageHeader';
+import LandlordStatCard from '../../components/ui/LandlordStatCard';
+import ErrorStateCard from '../../components/ui/ErrorStateCard';
+import EmptyStateCard from '../../components/ui/EmptyStateCard';
+import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import { formatN$, landlordInputClass, landlordSelectClass, statusPillClass } from '../../components/landlord/landlordUi';
 
 export default function LandlordPaymentsPage() {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [payments, setPayments] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,28 +28,20 @@ export default function LandlordPaymentsPage() {
   const [confirmPopover, setConfirmPopover] = useState<{ id: string; received_date: string; amount: string } | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/auth');
-      return;
-    }
-
-    if (!loading && user) {
-      loadPayments();
-    }
-  }, [loading, user, router]);
+    if (!loading && !user) router.replace('/auth');
+    if (!loading && user && role && role !== 'LANDLORD' && role !== 'ADMIN') router.replace('/tenant/home');
+  }, [loading, user, role, router]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const method = params.get('payment_method');
-    const status = params.get('status');
+    const method = searchParams.get('payment_method');
+    const status = searchParams.get('status');
     if (method) setPaymentMethodFilter(method.toUpperCase());
     if (status) setStatusFilter(status.toUpperCase());
-  }, []);
+  }, [searchParams]);
 
-  const loadPayments = async () => {
+  const loadPayments = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
     try {
       const response = await api.get('/landlords/payments', {
         params: {
@@ -56,17 +54,20 @@ export default function LandlordPaymentsPage() {
       setPayments(response.data.data?.payments || []);
       setSummary(response.data.data?.summary || null);
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Unable to load landlord payments.');
+      setError(err?.response?.data?.message || err?.message || 'Unable to load payments.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [statusFilter, paymentMethodFilter, monthFilter]);
+
+  useEffect(() => {
+    if (user && (role === 'LANDLORD' || role === 'ADMIN')) void loadPayments();
+  }, [user, role, loadPayments]);
 
   const handleConfirmPayment = async (paymentId: string, receivedDate?: string, amount?: string) => {
     setConfirmingId(paymentId);
     setActionMessage(null);
     setError(null);
-
     try {
       await api.post(`/landlords/payments/${paymentId}/confirm`, {
         received_date: receivedDate,
@@ -82,223 +83,213 @@ export default function LandlordPaymentsPage() {
   };
 
   if (loading || !user) {
-    return <div className="min-h-screen bg-slate-50 p-8">Loading data...</div>;
+    return <p className="text-sm text-slate-500">Loading partner workspace…</p>;
   }
 
+  const pendingDirect = payments.filter((p) => p.payment_method === 'DIRECT' && p.status === 'PENDING').length;
+
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
-      <div className="mx-auto max-w-6xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Landlord Payments</h1>
-            <p className="mt-3 text-sm text-slate-600">Review tenant rent collections, outstanding balances, and payment status.</p>
-          </div>
-          <button
-            onClick={() => router.push('/landlord')}
-            className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
+    <div className="space-y-6">
+      <LandlordPageHeader
+        badge="Finance"
+        title="Payments"
+        subtitle="Rent collections, direct-payment confirmations, and outstanding balances across your portfolio."
+        actions={
+          <button type="button" onClick={() => void loadPayments()} disabled={isLoading} className="landlord-btn-secondary">
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden />
+            Refresh
+          </button>
+        }
+      />
+
+      {error ? <ErrorStateCard message={error} onRetry={loadPayments} /> : null}
+      {actionMessage ? (
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+          {actionMessage}
+        </p>
+      ) : null}
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <LandlordStatCard label="Expected" value={formatN$(summary?.total_expected)} icon={Receipt} />
+        <LandlordStatCard label="Collected" value={formatN$(summary?.total_collected)} icon={CheckCircle2} accent="success" />
+        <LandlordStatCard
+          label="Outstanding"
+          value={formatN$(summary?.outstanding)}
+          icon={Wallet}
+          accent={Number(summary?.outstanding) > 0 ? 'warning' : 'default'}
+        />
+        <LandlordStatCard
+          label="Collection rate"
+          value={`${summary?.collection_rate ?? 0}%`}
+          icon={Percent}
+          accent="dark"
+        />
+      </section>
+
+      {pendingDirect > 0 ? (
+        <div className="landlord-panel border-amber-200 bg-amber-50/80">
+          <p className="text-sm font-semibold text-amber-950">
+            {pendingDirect} direct payment{pendingDirect === 1 ? '' : 's'} awaiting your confirmation
+          </p>
+          <p className="mt-1 text-xs text-amber-900/90">Confirm receipt so tenant credit scores update correctly.</p>
+        </div>
+      ) : null}
+
+      <section className="landlord-panel">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Filters</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <select
+            value={paymentMethodFilter}
+            onChange={(e) => setPaymentMethodFilter(e.target.value)}
+            className={landlordSelectClass}
+            aria-label="Payment method"
           >
-            Back to dashboard
+            <option value="">All methods</option>
+            <option value="DIRECT">Direct</option>
+            <option value="EFT">EFT</option>
+            <option value="CARD">Card</option>
+            <option value="MOBILE_MONEY">Mobile money</option>
+          </select>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={landlordSelectClass} aria-label="Status">
+            <option value="">All statuses</option>
+            <option value="PAID">Paid</option>
+            <option value="PENDING">Pending</option>
+            <option value="OVERDUE">Overdue</option>
+            <option value="FAILED">Failed</option>
+            <option value="PROCESSING">Processing</option>
+          </select>
+          <input
+            value={monthFilter}
+            onChange={(e) => setMonthFilter(e.target.value)}
+            className={landlordInputClass}
+            placeholder="YYYY-MM"
+            aria-label="Month"
+          />
+          <button type="button" onClick={() => void loadPayments()} disabled={isLoading} className="landlord-btn-primary">
+            Apply filters
           </button>
         </div>
+      </section>
 
-        <section className="mt-8 rounded-3xl bg-slate-50 p-6 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900">Payment filters</h2>
-              <p className="mt-2 text-sm text-slate-500">Filter the payment ledger by status and month.</p>
-            </div>
-            <button
-              onClick={loadPayments}
-              disabled={isLoading}
-              className="rounded-2xl bg-brand-red px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Refresh
-            </button>
+      <section className="landlord-panel">
+        <h2 className="text-lg font-semibold text-[#1A1A1A]">Payment ledger</h2>
+        {isLoading ? (
+          <div className="mt-4">
+            <SkeletonBlocks rows={4} />
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-4">
-            <select
-              value={paymentMethodFilter}
-              onChange={(event) => setPaymentMethodFilter(event.target.value)}
-              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
-            >
-              <option value="">All methods</option>
-              <option value="DIRECT">Direct</option>
-              <option value="EFT">EFT</option>
-              <option value="CARD">Card</option>
-              <option value="MOBILE_MONEY">Mobile money</option>
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
-            >
-              <option value="">All statuses</option>
-              <option value="PAID">Paid</option>
-              <option value="PENDING">Pending</option>
-              <option value="OVERDUE">Overdue</option>
-              <option value="FAILED">Failed</option>
-              <option value="PROCESSING">Processing</option>
-            </select>
-            <input
-              value={monthFilter}
-              onChange={(event) => setMonthFilter(event.target.value)}
-              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
-              placeholder="YYYY-MM"
-            />
-            <button
-              onClick={loadPayments}
-              disabled={isLoading}
-              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Apply filters
-            </button>
-          </div>
-        </section>
-
-        <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">Payment summary</h2>
-          <p className="mt-2 text-sm text-slate-500">A quick overview of collection performance for your portfolio.</p>
-          {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
-          {actionMessage ? <p className="mt-4 text-sm text-emerald-700">{actionMessage}</p> : null}
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-3xl bg-slate-50 p-5">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Total expected</p>
-              <p className="mt-3 text-2xl font-semibold text-slate-900">N${Number(summary?.total_expected || 0).toLocaleString()}</p>
-            </div>
-            <div className="rounded-3xl bg-slate-50 p-5">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Collected</p>
-              <p className="mt-3 text-2xl font-semibold text-slate-900">N${Number(summary?.total_collected || 0).toLocaleString()}</p>
-            </div>
-            <div className="rounded-3xl bg-slate-50 p-5">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Outstanding</p>
-              <p className="mt-3 text-2xl font-semibold text-slate-900">N${Number(summary?.outstanding || 0).toLocaleString()}</p>
-            </div>
-            <div className="rounded-3xl bg-slate-50 p-5">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Collection rate</p>
-              <p className="mt-3 text-2xl font-semibold text-slate-900">{summary?.collection_rate ?? 0}%</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">Recent payments</h2>
-          <p className="mt-2 text-sm text-slate-500">Latest landlord-side payment entries pulled from backend records.</p>
-          <div className="mt-5 space-y-4">
-            {isLoading ? (
-              <p className="text-sm text-slate-500">Loading data...</p>
-            ) : payments.length ? (
-              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-                <table className="w-full min-w-[860px] text-left text-sm">
-                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3">Unit</th>
-                      <th className="px-4 py-3">Method</th>
-                      <th className="px-4 py-3">Amount</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Due</th>
-                      <th className="px-4 py-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {payments.map((payment: any) => {
-                      const requiresDirectConfirm = payment.payment_method === 'DIRECT' && payment.status === 'PENDING';
-                      return (
-                        <tr
-                          key={payment.id}
-                          className={`border-t border-slate-100 ${requiresDirectConfirm ? 'bg-amber-50' : ''}`}
-                        >
-                          <td className="px-4 py-3">{payment.property || 'Unknown unit'}</td>
-                          <td className="px-4 py-3">{payment.payment_method || 'N/A'}</td>
-                          <td className="px-4 py-3 font-semibold">N${Number(payment.amount_gross || payment.amount || 0).toLocaleString()}</td>
-                          <td className="px-4 py-3">
-                            <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-700">
-                              {payment.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">{payment.due_date ? new Date(payment.due_date).toLocaleDateString() : '—'}</td>
-                          <td className="relative px-4 py-3">
-                            {requiresDirectConfirm ? (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setConfirmPopover({
-                                      id: payment.id,
-                                      received_date: new Date().toISOString().slice(0, 10),
-                                      amount: String(payment.amount_gross || payment.amount || ''),
-                                    })
+        ) : payments.length ? (
+          <div className="mt-4 overflow-x-auto rounded-xl border border-slate-100">
+            <table className="w-full min-w-[720px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-[#F3F4F6] text-xs uppercase tracking-wider text-slate-500">
+                  <th className="px-4 py-3 font-semibold">Unit</th>
+                  <th className="px-4 py-3 font-semibold">Method</th>
+                  <th className="px-4 py-3 font-semibold">Amount</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 font-semibold">Due</th>
+                  <th className="px-4 py-3 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((payment: any) => {
+                  const needsConfirm = payment.payment_method === 'DIRECT' && payment.status === 'PENDING';
+                  return (
+                    <tr
+                      key={payment.id}
+                      className={`border-b border-slate-50 ${needsConfirm ? 'bg-amber-50/60' : 'hover:bg-slate-50'}`}
+                    >
+                      <td className="px-4 py-3 font-medium text-[#1A1A1A]">{payment.property || '—'}</td>
+                      <td className="px-4 py-3 text-slate-600">{payment.payment_method || '—'}</td>
+                      <td className="px-4 py-3 tabular-nums font-semibold">
+                        {formatN$(payment.amount_gross || payment.amount)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusPillClass(payment.status)}`}>
+                          {payment.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {payment.due_date ? new Date(payment.due_date).toLocaleDateString() : '—'}
+                      </td>
+                      <td className="relative px-4 py-3">
+                        {needsConfirm ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setConfirmPopover({
+                                  id: payment.id,
+                                  received_date: new Date().toISOString().slice(0, 10),
+                                  amount: String(payment.amount_gross || payment.amount || ''),
+                                })
+                              }
+                              className="landlord-btn-primary py-2 text-xs"
+                            >
+                              Mark received
+                            </button>
+                            {confirmPopover?.id === payment.id ? (
+                              <div className="absolute right-0 top-10 z-20 w-64 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+                                {(() => {
+                                  const pop = confirmPopover;
+                                  if (!pop) return null;
+                                  return (
+                                    <>
+                                <label className="text-xs font-medium text-slate-600">Date received</label>
+                                <input
+                                  type="date"
+                                  value={pop.received_date}
+                                  onChange={(e) =>
+                                    setConfirmPopover((prev) => (prev ? { ...prev, received_date: e.target.value } : prev))
                                   }
-                                  className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white"
-                                >
-                                  Mark as Received
-                                </button>
-                                {confirmPopover?.id === payment.id ? (
-                                  <div className="absolute right-0 top-10 z-20 w-64 rounded-xl border border-amber-200 bg-white p-3 shadow-lg">
-                                    <label className="text-xs text-slate-600">Date received</label>
-                                    <input
-                                      type="date"
-                                      value={confirmPopover?.received_date ?? ''}
-                                      onChange={(event) =>
-                                        setConfirmPopover((prev) =>
-                                          prev ? { ...prev, received_date: event.target.value } : prev,
-                                        )
-                                      }
-                                      className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-xs"
-                                    />
-                                    <label className="mt-2 block text-xs text-slate-600">Amount</label>
-                                    <input
-                                      type="number"
-                                      value={confirmPopover?.amount ?? ''}
-                                      onChange={(event) =>
-                                        setConfirmPopover((prev) =>
-                                          prev ? { ...prev, amount: event.target.value } : prev,
-                                        )
-                                      }
-                                      className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-xs"
-                                    />
-                                    <div className="mt-3 flex justify-end gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => setConfirmPopover(null)}
-                                        className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                                      >
-                                        Cancel
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={async () => {
-                                          await handleConfirmPayment(
-                                            payment.id,
-                                            confirmPopover?.received_date,
-                                            confirmPopover?.amount,
-                                          );
-                                          setConfirmPopover(null);
-                                        }}
-                                        disabled={confirmingId === payment.id}
-                                        className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white"
-                                      >
-                                        Confirm
-                                      </button>
-                                    </div>
-                                  </div>
-                                ) : null}
-                              </>
-                            ) : (
-                              <span className="text-xs text-slate-400">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500">No payment transactions found for the selected filters.</p>
-            )}
+                                  className={`${landlordInputClass} mt-1 py-2 text-xs`}
+                                />
+                                <label className="mt-2 block text-xs font-medium text-slate-600">Amount</label>
+                                <input
+                                  type="number"
+                                  value={pop.amount}
+                                  onChange={(e) =>
+                                    setConfirmPopover((prev) => (prev ? { ...prev, amount: e.target.value } : prev))
+                                  }
+                                  className={`${landlordInputClass} mt-1 py-2 text-xs`}
+                                />
+                                <div className="mt-3 flex justify-end gap-2">
+                                  <button type="button" onClick={() => setConfirmPopover(null)} className="landlord-btn-secondary py-1.5 text-xs">
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={confirmingId === payment.id}
+                                    onClick={async () => {
+                                      await handleConfirmPayment(payment.id, pop.received_date, pop.amount);
+                                      setConfirmPopover(null);
+                                    }}
+                                    className="landlord-btn-primary py-1.5 text-xs"
+                                  >
+                                    Confirm
+                                  </button>
+                                </div>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            ) : null}
+                          </>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </section>
-      </div>
-    </main>
+        ) : (
+          <div className="mt-4">
+            <EmptyStateCard title="No payments" description="Try adjusting filters or record rent through active leases." />
+          </div>
+        )}
+      </section>
+    </div>
   );
 }

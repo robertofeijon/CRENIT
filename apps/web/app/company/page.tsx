@@ -3,7 +3,7 @@ import Link from 'next/link';
 const companyHighlights = [
   {
     title: 'About Us',
-    description: 'RentCredit is a Namibia-first fintech platform turning rent payments into verified credit identity.',
+    description: 'CRENIT records rent payments to build verified rental credit and market intelligence.',
   },
   {
     title: 'How It Works',
@@ -15,7 +15,7 @@ const companyHighlights = [
   },
   {
     title: 'Contact',
-    description: 'Reach out for demos, partnerships, or support from the RentCredit team.',
+    description: 'Reach out for partnerships or support from the CRENIT team.',
   },
 ];
 
@@ -26,10 +26,10 @@ export default function CompanyPage() {
         <section className="rounded-[2rem] bg-white px-8 py-12 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
           <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Company</p>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight text-[#1A1A1A] sm:text-5xl">
-            Building a better rental finance experience in Namibia.
+            Building a better rental finance experience with verified payment data.
           </h1>
           <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">
-            RentCredit helps landlords and tenants unlock financial identity through verified rent payments while supporting lenders with trusted rental signals.
+            CRENIT helps landlords and tenants unlock financial identity through verified rent payments while supporting lenders with trusted rental signals.
           </p>
           <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
             {companyHighlights.map((item) => (
@@ -70,7 +70,7 @@ export default function CompanyPage() {
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Start a conversation</p>
-              <h2 className="mt-3 text-3xl font-semibold text-[#1A1A1A]">Talk to the RentCredit team today.</h2>
+              <h2 className="mt-3 text-3xl font-semibold text-[#1A1A1A]">Talk to the CRENIT team today.</h2>
             </div>
             <Link
               href="/auth"

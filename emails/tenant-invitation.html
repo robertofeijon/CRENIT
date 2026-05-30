@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>You're invited to RentCredit</title>
+  <title>You're invited to CRENIT</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -27,6 +27,7 @@
       color: #ffffff;
       margin: 0;
       font-size: 24px;
+      letter-spacing: 0.08em;
     }
     .content {
       padding: 32px 24px;
@@ -60,6 +61,8 @@
     }
     .detail-value {
       color: #1A1A1A;
+      text-align: right;
+      max-width: 60%;
     }
     .button {
       display: inline-block;
@@ -71,9 +74,6 @@
       font-weight: 600;
       margin: 24px 0;
       text-align: center;
-    }
-    .button:hover {
-      background-color: #a93226;
     }
     .steps {
       margin: 24px 0;
@@ -103,52 +103,55 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>🏠 RentCredit</h1>
+      <h1>CRENIT</h1>
     </div>
     <div class="content">
       <div class="greeting">
         Hello {{tenant_name}},
       </div>
       <p>
-        <strong>{{landlord_name}}</strong> has invited you to join RentCredit — a platform that turns your rent payments into a verified credit score.
+        <strong>{{landlord_name}}</strong> has invited you to join CRENIT — a platform that records your rent payments and builds a verified rental credit profile you can use for loans and future tenancies.
       </p>
 
       <div class="property-details">
         <div class="detail-row">
-          <span class="detail-label">Property Address:</span>
-          <span class="detail-value">{{property_address}}</span>
+          <span class="detail-label">Erf</span>
+          <span class="detail-value">{{property_erf}}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Monthly Rent:</span>
+          <span class="detail-label">Street</span>
+          <span class="detail-value">{{property_street}}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Suburb</span>
+          <span class="detail-value">{{property_suburb}}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">City</span>
+          <span class="detail-value">{{property_city}}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Monthly rent</span>
           <span class="detail-value">N$ {{rent_amount}}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Due Date:</span>
-          <span class="detail-value">{{due_date}}th of each month</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Lease Period:</span>
-          <span class="detail-value">{{lease_start}} to {{lease_end}}</span>
         </div>
       </div>
 
       <a href="{{accept_invitation_url}}" class="button" style="color: white;">
-        Accept Invitation →
+        Accept invitation →
       </a>
 
       <div class="steps">
         <p><strong>What happens next:</strong></p>
         <ol>
-          <li>Create your RentCredit account</li>
-          <li><strong>Complete KYC verification</strong> — required before you can access the platform</li>
-          <li>Pay rent through RentCredit each month</li>
-          <li>Build your credit score with every on-time payment</li>
-          <li>Use your score to apply for loans, mortgages, or new tenancies</li>
+          <li>Create your CRENIT account</li>
+          <li>Complete identity verification (ID, selfie, income, signed lease)</li>
+          <li>Pay rent through CRENIT — each payment is recorded for your credit profile</li>
+          <li>Build your CRENIT score from payment history, defaults, and rental tenure</li>
         </ol>
       </div>
 
       <div class="warning">
-        ⚠️ <strong>Important:</strong> You must complete KYC verification immediately after signing up. Until verified, you cannot access your dashboard, pay rent, or view your credit score.
+        <strong>Important:</strong> Complete KYC right after signing up. Until verified, dashboard access, payments, and reports are locked.
       </div>
 
       <p style="font-size: 14px; color: #4a5568; margin-top: 24px;">
@@ -156,9 +159,8 @@
       </p>
     </div>
     <div class="footer">
-      <p>RentCredit — Turning rent payments into financial identity</p>
-      <p>Windhoek, Namibia | <a href="https://rentcredit.co" style="color: #C0392B;">rentcredit.co</a></p>
-      <p>© 2026 RentCredit. All rights reserved.</p>
+      <p>CRENIT — Rental payment data for credit-ready tenants</p>
+      <p>© 2026 CRENIT. All rights reserved.</p>
     </div>
   </div>
 </body>

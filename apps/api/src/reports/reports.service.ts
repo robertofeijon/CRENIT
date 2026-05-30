@@ -74,7 +74,7 @@ export class ReportsService {
       : 0;
     const generatedAt = new Date().toISOString();
     const reportReference = this.buildReportReference();
-    const verifyUrl = `https://rentcredit.co/verify/${reportReference}`;
+    const verifyUrl = `${process.env.APP_BASE_URL || process.env.WEB_URL || 'https://crenit.co'}/verify/${reportReference}`;
 
     await client.from('report_verifications').insert([
       {
@@ -101,7 +101,7 @@ export class ReportsService {
       doc.on('error', (err: Error) => reject(err));
     });
 
-    doc.fontSize(18).font('Helvetica-Bold').text('RentCredit Tenant Report', { align: 'center' });
+    doc.fontSize(18).font('Helvetica-Bold').text('CRENIT Tenant Report', { align: 'center' });
     doc.moveDown(0.5);
     doc.fontSize(10).font('Helvetica').fillColor('#666').text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
     doc.text(`Report Reference: ${reportReference}`, { align: 'center' });
@@ -177,7 +177,7 @@ export class ReportsService {
     doc.moveDown();
     doc.font('Helvetica-Bold').fontSize(12).text('Report Verification');
     doc.moveDown(0.25);
-    doc.font('Helvetica').fontSize(10).text(`Verified by RentCredit · rentcredit.co · ${reportReference}`);
+    doc.font('Helvetica').fontSize(10).text(`Verified by CRENIT · crenit.co · ${reportReference}`);
     doc.text(`Verify online: ${verifyUrl}`);
     doc.image(qrImageBuffer, { width: 110 });
 
@@ -211,7 +211,7 @@ export class ReportsService {
       doc.on('error', (err: Error) => reject(err));
     });
 
-    doc.fontSize(18).font('Helvetica-Bold').text('RentCredit Landlord Portfolio Report', { align: 'center' });
+    doc.fontSize(18).font('Helvetica-Bold').text('CRENIT Landlord Portfolio Report', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('Helvetica').fillColor('#666').text(`Generated: ${now.toLocaleString()}`, { align: 'center' });
     doc.moveDown();
@@ -264,7 +264,7 @@ export class ReportsService {
       doc.on('error', (err: Error) => reject(err));
     });
 
-    doc.fontSize(18).font('Helvetica-Bold').text('RentCredit Tenant Payment Report', { align: 'center' });
+    doc.fontSize(18).font('Helvetica-Bold').text('CRENIT Tenant Payment Report', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('Helvetica').fillColor('#666').text(`Generated: ${now.toLocaleString()}`, { align: 'center' });
     doc.moveDown();

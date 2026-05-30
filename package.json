@@ -1,21 +1,27 @@
 {
-  "name": "rentcredit",
+  "name": "crenit",
   "private": true,
   "workspaces": [
     "apps/*"
   ],
   "scripts": {
-    "dev:api": "npm run start:dev -w rentcredit-api",
-    "dev:web": "npm run dev -w rentcredit-web",
+    "dev:api": "npm run start:dev -w crenit-api",
+    "dev:web": "npm run dev -w crenit-web",
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
     "build": "npm --workspace apps/api run build && npm --workspace apps/web run build",
+    "build:api": "npm run build --workspace=crenit-api",
+    "start:prod": "npm run start:prod --workspace=crenit-api",
     "lint": "npm --workspace apps/api run lint && npm --workspace apps/web run lint",
-    "seed:demo": "node scripts/seed-demo-users.mjs"
+    "seed:demo": "node scripts/seed-demo-users.mjs",
+    "smoke:local": "node scripts/smoke-local.mjs",
+    "smoke:presentation": "node scripts/smoke-presentation.mjs",
+    "email:test": "node scripts/send-test-email.mjs"
   },
   "devDependencies": {
     "concurrently": "^8.0.0"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.106.2"
+    "@supabase/supabase-js": "^2.106.2",
+    "nodemailer": "^7.0.13"
   }
 }

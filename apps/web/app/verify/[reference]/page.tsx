@@ -1,53 +1,54 @@
-"use client";
+export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+type VerifyResult = {
+  authentic?: boolean;
+  message?: string;
+  score?: number;
+  tier?: string;
+  generated_at?: string;
+};
 
-export default function VerifyReportPage() {
-  const params = useParams<{ reference: string }>();
-  const reference = params?.reference;
-  const [loading, setLoading] = useState(true);
-  const [result, setResult] = useState<any>(null);
+async function fetchVerification(reference: string): Promise<VerifyResult | null> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+  try {
+    const res = await fetch(`${apiUrl}/reports/verify/${encodeURIComponent(reference)}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.data ?? null;
+  } catch {
+    return null;
+  }
+}
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/reports/verify/${reference}`);
-        const json = await res.json();
-        if (active) setResult(json?.data || null);
-      } catch {
-        if (active) setResult({ authentic: false, message: 'Report not found' });
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    if (reference) load();
-    return () => {
-      active = false;
-    };
-  }, [reference]);
+export default async function VerifyReportPage({ params }: { params: { reference: string } }) {
+  const reference = params?.reference ?? '';
+  const result = reference ? await fetchVerification(reference) : null;
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8">
-      <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-900">RentCredit Report Verification</h1>
+    <main className="min-h-screen bg-[#F3F4F6] px-4 py-8">
+      <div className="mx-auto max-w-2xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
+        <p className="text-xs uppercase tracking-[0.35em] text-[#C0392B]/90">CRENIT Verification</p>
+        <h1 className="mt-3 text-2xl font-semibold text-[#1A1A1A]">Report verification</h1>
         <p className="mt-2 text-sm text-slate-600">Reference: {reference}</p>
-        {loading ? <p className="mt-6 text-sm text-slate-500">Loading data...</p> : null}
-        {!loading && result?.authentic ? (
+
+        {result?.authentic ? (
           <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-            <p className="font-semibold text-emerald-800">This report is authentic.</p>
+            <p className="font-semibold text-emerald-800">{result.message ?? 'This report is authentic.'}</p>
             <p className="mt-2 text-sm text-emerald-900">Score: {result.score}</p>
             <p className="text-sm text-emerald-900">Tier: {result.tier}</p>
-            <p className="text-sm text-emerald-900">Generated: {new Date(result.generated_at).toLocaleString()}</p>
+            <p className="text-sm text-emerald-900">
+              Generated: {result.generated_at ? new Date(result.generated_at).toLocaleString() : '—'}
+            </p>
             <p className="mt-2 text-sm text-emerald-900">Tenant verified: Yes</p>
           </div>
-        ) : null}
-        {!loading && !result?.authentic ? (
+        ) : (
           <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-5">
             <p className="font-semibold text-rose-800">Report not found.</p>
+            <p className="mt-2 text-sm text-rose-900">This reference could not be verified. Check the code on the PDF and try again.</p>
           </div>
-        ) : null}
+        )}
       </div>
     </main>
   );

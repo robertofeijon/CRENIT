@@ -318,6 +318,30 @@ async function seedDemoData(client, ids) {
   console.log('  ✓ Demo property, lease, payment, and deposit ready');
 }
 
+async function ensureReportVerification(client, tenantUserId) {
+  const { error } = await client.from('report_verifications').upsert(
+    {
+      report_reference: 'RC-TEST01',
+      tenant_id: tenantUserId,
+      score: 642,
+      tier: 'GOOD',
+      generated_at: new Date().toISOString(),
+      score_calculation_date: new Date().toISOString(),
+      verified_payment_records: 6,
+      tenancy_months: 6,
+    },
+    { onConflict: 'report_reference' },
+  );
+  if (error) {
+    if (error.message?.includes('report_verifications')) {
+      console.warn('  ⚠ Skipped RC-TEST01 — run migration 0019_partner_consents.sql first.');
+      return;
+    }
+    throw error;
+  }
+  console.log('  ✓ Report verification RC-TEST01 → http://localhost:3002/verify/RC-TEST01');
+}
+
 async function main() {
   const envPath = join(rootDir, '.env');
   const env = { ...loadEnvFile(join(rootDir, '.env.example')), ...loadEnvFile(envPath) };
@@ -367,6 +391,7 @@ async function main() {
   if (userIds.landlordUserId && userIds.tenantUserId) {
     console.log('\nSeeding demo portfolio data...');
     await seedDemoData(client, userIds);
+    await ensureReportVerification(client, userIds.tenantUserId);
   }
 
   console.log('\n────────────────────────────────────────');

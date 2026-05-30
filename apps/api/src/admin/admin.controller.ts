@@ -9,7 +9,10 @@ import {
   Put,
   Query,
   UnauthorizedException,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminService } from './admin.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AttachmentsService } from '../landlords/attachments.service';
@@ -35,17 +38,33 @@ export class AdminController {
     @Query('limit') limit = '20',
     @Query('status') status = 'PENDING',
   ) {
-    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
-    assertRole(profile, 'ADMIN');
-    const result = await this.adminService.getPendingKycSubmissions({ page: Number(page), limit: Number(limit), status: status.toUpperCase() });
-    return { success: true, data: result, error: null };
+    try {
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+      assertRole(profile, 'ADMIN');
+      const result = await this.adminService.getPendingKycSubmissions({
+        page: Number(page) || 1,
+        limit: Number(limit) || 20,
+        status: status.toUpperCase(),
+      });
+      return { success: true, data: result, error: null };
+    } catch (error: any) {
+      if (error instanceof UnauthorizedException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(error?.message || 'Unable to load KYC queue.');
+    }
   }
 
   @Post('kyc/review/:userId')
   async reviewKyc(
     @Headers('authorization') authHeader: string,
     @Param('userId') userId: string,
-    @Body() body: { action: 'approve' | 'reject'; reason?: string },
+    @Body()
+    body: {
+      action: 'approve' | 'reject';
+      reason?: string;
+      rejected_doc_types?: Array<'government_id' | 'selfie' | 'income_proof' | 'signed_lease'>;
+    },
   ) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'ADMIN');
@@ -55,7 +74,13 @@ export class AdminController {
     if (body.action === 'reject' && !body.reason?.trim()) {
       throw new BadRequestException('Rejection reason is required');
     }
-    const result = await this.adminService.reviewKycSubmission(profile, userId, body.action, body.reason?.trim() ?? null);
+    const result = await this.adminService.reviewKycSubmission(
+      profile,
+      userId,
+      body.action,
+      body.reason?.trim() ?? null,
+      body.rejected_doc_types,
+    );
     return { success: true, data: result, error: null };
   }
 
@@ -68,6 +93,17 @@ export class AdminController {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'ADMIN');
     const result = await this.adminService.getKycAuditLog(userId, Number(limit));
+    return { success: true, data: result, error: null };
+  }
+
+  @Get('kyc/detail/:userId')
+  async getKycVerificationDetail(
+    @Headers('authorization') authHeader: string,
+    @Param('userId') userId: string,
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.adminService.getKycVerificationDetail(userId);
     return { success: true, data: result, error: null };
   }
 
@@ -102,7 +138,7 @@ export class AdminController {
     @Query('kyc_status') kyc_status?: string,
     @Query('search') search?: string,
     @Query('page') page = '1',
-    @Query('limit') limit = '20',
+    @Query('limit') limit = '100',
   ) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'ADMIN');
@@ -125,6 +161,18 @@ export class AdminController {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'ADMIN');
     const result = await this.adminService.updateUserSuspension(profile, userId, body.suspended, body.reason ?? null);
+    return { success: true, data: result, error: null };
+  }
+
+  @Put('users/:userId/flag')
+  async flagUser(
+    @Headers('authorization') authHeader: string,
+    @Param('userId') userId: string,
+    @Body() body: { flagged: boolean; note?: string | null },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.adminService.updateUserAccountFlag(profile, userId, body.flagged, body.note?.trim() ?? null);
     return { success: true, data: result, error: null };
   }
 
@@ -161,6 +209,17 @@ export class AdminController {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'ADMIN');
     const result = await this.adminService.getOverview();
+    return { success: true, data: result, error: null };
+  }
+
+  @Get('escrow/overview')
+  async escrowOverview(
+    @Headers('authorization') authHeader: string,
+    @Query('limit') limit = '10',
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.adminService.getEscrowOverview(Number(limit) || 10);
     return { success: true, data: result, error: null };
   }
 
@@ -363,6 +422,39 @@ export class AdminController {
       body.rejection_reason,
     );
     return { success: true, data: result, error: null };
+  }
+
+  @Post('attachments/upload-on-behalf')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAttachmentOnBehalf(
+    @Headers('authorization') authHeader: string,
+    @UploadedFile() file: any,
+    @Body()
+    body: {
+      landlord_id: string;
+      property_id?: string;
+      lease_id?: string;
+      unit_id?: string;
+      attachment_type: 'PROPERTY_PROOF' | 'LEASE_AGREEMENT' | 'OWNERSHIP_DOCUMENT' | 'OTHER';
+      description?: string;
+    },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    if (!body?.landlord_id || !body?.attachment_type) {
+      throw new BadRequestException('landlord_id and attachment_type are required');
+    }
+    const data = await this.attachmentsService.adminUploadAttachmentForLandlord(
+      profile.id,
+      body.landlord_id,
+      body.property_id || null,
+      file,
+      body.attachment_type,
+      body.description,
+      body.lease_id || null,
+      body.unit_id || null,
+    );
+    return { success: true, data, error: null };
   }
 
   @Get('partner-approvals')

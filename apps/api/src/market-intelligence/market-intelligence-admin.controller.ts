@@ -14,6 +14,7 @@ import {
 import { Response } from 'express';
 import { SupabaseService } from '../supabase/supabase.service';
 import { getUserProfileFromAuthHeader, assertRole } from '../supabase/supabase.utils';
+import { parseIntelligenceFilters } from './market-intelligence.utils';
 import { MarketIntelligenceService } from './market-intelligence.service';
 
 @Controller('admin/data-intelligence')
@@ -36,24 +37,82 @@ export class MarketIntelligenceAdminController {
     return { success: true, data: { module: 'data-intelligence' }, error: null };
   }
 
-  @Get('platform-health')
-  async platformHealth(@Headers('authorization') authHeader: string) {
+  @Get('commercial-catalog')
+  async commercialCatalog(@Headers('authorization') authHeader: string) {
     await this.assertAdmin(authHeader);
-    const data = await this.marketIntelligenceService.getPlatformHealth();
+    const catalog = this.marketIntelligenceService.getCommercialCatalog();
+    const products = await this.marketIntelligenceService.getReportProducts();
+    return { success: true, data: { ...catalog, products }, error: null };
+  }
+
+  @Get('filter-options')
+  async filterOptions(@Headers('authorization') authHeader: string) {
+    await this.assertAdmin(authHeader);
+    const data = await this.marketIntelligenceService.getFilterOptions();
+    return { success: true, data, error: null };
+  }
+
+  @Get('dashboard')
+  async dashboard(
+    @Headers('authorization') authHeader: string,
+    @Query('timeframe') timeframe?: string,
+    @Query('city') city?: string,
+    @Query('suburb') suburb?: string,
+    @Query('property_type') property_type?: string,
+    @Query('bedrooms') bedrooms?: string,
+    @Query('payment_status') payment_status?: string,
+  ) {
+    await this.assertAdmin(authHeader);
+    const filters = parseIntelligenceFilters({ timeframe, city, suburb, property_type, bedrooms, payment_status });
+    const data = await this.marketIntelligenceService.getDashboardOverview(filters);
+    return { success: true, data, error: null };
+  }
+
+  @Get('platform-health')
+  async platformHealth(
+    @Headers('authorization') authHeader: string,
+    @Query('timeframe') timeframe?: string,
+    @Query('city') city?: string,
+    @Query('suburb') suburb?: string,
+    @Query('property_type') property_type?: string,
+    @Query('bedrooms') bedrooms?: string,
+    @Query('payment_status') payment_status?: string,
+  ) {
+    await this.assertAdmin(authHeader);
+    const filters = parseIntelligenceFilters({ timeframe, city, suburb, property_type, bedrooms, payment_status });
+    const data = await this.marketIntelligenceService.getPlatformHealth(filters);
     return { success: true, data, error: null };
   }
 
   @Get('suburbs')
-  async suburbs(@Headers('authorization') authHeader: string) {
+  async suburbs(
+    @Headers('authorization') authHeader: string,
+    @Query('timeframe') timeframe?: string,
+    @Query('city') city?: string,
+    @Query('suburb') suburb?: string,
+    @Query('property_type') property_type?: string,
+    @Query('bedrooms') bedrooms?: string,
+    @Query('payment_status') payment_status?: string,
+  ) {
     await this.assertAdmin(authHeader);
-    const data = await this.marketIntelligenceService.getSuburbExplorer();
+    const filters = parseIntelligenceFilters({ timeframe, city, suburb, property_type, bedrooms, payment_status });
+    const data = await this.marketIntelligenceService.getSuburbExplorer(filters);
     return { success: true, data, error: null };
   }
 
   @Get('suburbs/:suburb')
-  async suburbDetail(@Headers('authorization') authHeader: string, @Param('suburb') suburb: string) {
+  async suburbDetail(
+    @Headers('authorization') authHeader: string,
+    @Param('suburb') suburb: string,
+    @Query('timeframe') timeframe?: string,
+    @Query('city') city?: string,
+    @Query('property_type') property_type?: string,
+    @Query('bedrooms') bedrooms?: string,
+    @Query('payment_status') payment_status?: string,
+  ) {
     await this.assertAdmin(authHeader);
-    const data = await this.marketIntelligenceService.getSuburbDetail(decodeURIComponent(suburb));
+    const filters = parseIntelligenceFilters({ timeframe, city, suburb, property_type, bedrooms, payment_status });
+    const data = await this.marketIntelligenceService.getSuburbDetail(decodeURIComponent(suburb), filters);
     return { success: true, data, error: null };
   }
 
@@ -97,7 +156,7 @@ export class MarketIntelligenceAdminController {
     if (!body.report_type) throw new BadRequestException('report_type is required');
     const pdf = await this.marketIntelligenceService.generateReportPdf(body.report_type, body.suburb, profile.id);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="rentcredit-${body.report_type}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="crenit-${body.report_type}.pdf"`);
     res.send(pdf);
   }
 

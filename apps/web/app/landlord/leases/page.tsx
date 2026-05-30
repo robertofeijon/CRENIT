@@ -1,9 +1,16 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { FileText, RefreshCw, Repeat, ScrollText } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import LandlordPageHeader from '../../components/ui/LandlordPageHeader';
+import LandlordStatCard from '../../components/ui/LandlordStatCard';
+import ErrorStateCard from '../../components/ui/ErrorStateCard';
+import EmptyStateCard from '../../components/ui/EmptyStateCard';
+import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import { formatN$, landlordInputClass, landlordSelectClass, statusPillClass } from '../../components/landlord/landlordUi';
 
 export default function LandlordLeasesPage() {
   const { user, loading, role } = useAuth();
@@ -25,32 +32,18 @@ export default function LandlordLeasesPage() {
     status: 'ACTIVE',
     payment_method: 'PLATFORM',
   });
-  const [updateForm, setUpdateForm] = useState({
-    monthly_rent: '',
-    end_date: '',
-    status: '',
-  });
+  const [updateForm, setUpdateForm] = useState({ monthly_rent: '', end_date: '', status: '' });
   const [counterByRenewal, setCounterByRenewal] = useState<Record<string, { proposed_rent: string; proposed_end_date: string }>>({});
+  const [leaseAgreements, setLeaseAgreements] = useState<any[]>([]);
+  const [agreementFile, setAgreementFile] = useState<File | null>(null);
+  const [agreementTitle, setAgreementTitle] = useState('');
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/auth');
-      return;
-    }
-    if (!loading && user && role !== 'LANDLORD') {
-      router.replace('/tenant');
-      return;
-    }
+    if (!loading && !user) router.replace('/auth');
+    if (!loading && user && role && role !== 'LANDLORD' && role !== 'ADMIN') router.replace('/tenant/home');
   }, [loading, user, role, router]);
 
-  useEffect(() => {
-    if (!user || role !== 'LANDLORD') return;
-    loadLeases();
-    loadUnits();
-    loadRenewals();
-  }, [user, role]);
-
-  const loadLeases = async () => {
+  const loadLeases = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -61,32 +54,43 @@ export default function LandlordLeasesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const loadUnits = async () => {
+  const loadUnits = useCallback(async () => {
     try {
       const res = await api.get('/landlords/properties');
       const properties = res.data.data || [];
       const allUnits = properties.flatMap((property: any) =>
-        (property.units || []).map((unit: any) => ({
-          ...unit,
-          property_name: property.property_name,
-        })),
+        (property.units || []).map((unit: any) => ({ ...unit, property_name: property.property_name })),
       );
       setUnits(allUnits);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to load units.');
     }
-  };
+  }, []);
 
-  const loadRenewals = async () => {
+  const loadRenewals = useCallback(async () => {
     try {
       const res = await api.get('/landlords/renewals');
       setRenewals(res.data?.data || []);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to load renewal proposals.');
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (user && (role === 'LANDLORD' || role === 'ADMIN')) {
+      void loadLeases();
+      void loadUnits();
+      void loadRenewals();
+    }
+  }, [user, role, loadLeases, loadUnits, loadRenewals]);
+
+  const leaseStats = useMemo(() => {
+    const active = leases.filter((l) => l.status === 'ACTIVE').length;
+    const pendingRenewals = renewals.filter((r) => r.status !== 'APPROVED' && r.status !== 'REJECTED').length;
+    return { total: leases.length, active, pendingRenewals };
+  }, [leases, renewals]);
 
   const respondRenewal = async (renewalId: string, action: 'APPROVE' | 'REJECT') => {
     setIsLoading(true);
@@ -132,11 +136,9 @@ export default function LandlordLeasesPage() {
       setError('Unit, tenant information, and monthly rent are required.');
       return;
     }
-
     setIsLoading(true);
     setError(null);
     setMessage(null);
-
     try {
       const payload: Record<string, unknown> = {
         unit_id: form.unit_id,
@@ -144,19 +146,10 @@ export default function LandlordLeasesPage() {
         status: form.status,
         payment_method: form.payment_method,
       };
-
-      if (form.tenant_id) {
-        payload.tenant_id = form.tenant_id;
-      }
-      if (form.tenant_email) {
-        payload.tenant_email = form.tenant_email;
-      }
-      if (form.start_date) {
-        payload.start_date = form.start_date;
-      }
-      if (form.end_date) {
-        payload.end_date = form.end_date;
-      }
+      if (form.tenant_id) payload.tenant_id = form.tenant_id;
+      if (form.tenant_email) payload.tenant_email = form.tenant_email;
+      if (form.start_date) payload.start_date = form.start_date;
+      if (form.end_date) payload.end_date = form.end_date;
 
       await api.post('/landlords/leases', payload);
       setMessage('Lease created successfully.');
@@ -178,6 +171,43 @@ export default function LandlordLeasesPage() {
     });
     setMessage(null);
     setError(null);
+    void loadLeaseAgreements(lease.id);
+  };
+
+  const loadLeaseAgreements = async (leaseId: string) => {
+    try {
+      const res = await api.get(`/landlords/leases/${leaseId}/agreements`);
+      setLeaseAgreements(res.data?.data || []);
+    } catch {
+      setLeaseAgreements([]);
+    }
+  };
+
+  const handleUploadAgreement = async () => {
+    if (!selectedLease?.id || !agreementFile) {
+      setError('Select a lease and file first.');
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', agreementFile);
+      if (agreementTitle) formData.append('title', agreementTitle);
+      formData.append('document_type', 'LEASE_AGREEMENT');
+      await api.post(`/landlords/leases/${selectedLease.id}/agreements/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setAgreementFile(null);
+      setAgreementTitle('');
+      setMessage('Lease agreement uploaded.');
+      await loadLeaseAgreements(selectedLease.id);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to upload lease agreement.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleUpdateLease = async () => {
@@ -185,27 +215,17 @@ export default function LandlordLeasesPage() {
       setError('Pick a lease to update.');
       return;
     }
-
     const payload: Record<string, unknown> = {};
-    if (updateForm.monthly_rent) {
-      payload.monthly_rent = Number(updateForm.monthly_rent);
-    }
-    if (updateForm.end_date) {
-      payload.end_date = updateForm.end_date;
-    }
-    if (updateForm.status) {
-      payload.status = updateForm.status;
-    }
-
+    if (updateForm.monthly_rent) payload.monthly_rent = Number(updateForm.monthly_rent);
+    if (updateForm.end_date) payload.end_date = updateForm.end_date;
+    if (updateForm.status) payload.status = updateForm.status;
     if (!Object.keys(payload).length) {
       setError('At least one field is required to update lease.');
       return;
     }
-
     setIsLoading(true);
     setError(null);
     setMessage(null);
-
     try {
       await api.patch(`/landlords/leases/${selectedLease.id}`, payload);
       setMessage('Lease updated successfully.');
@@ -221,7 +241,6 @@ export default function LandlordLeasesPage() {
     setIsLoading(true);
     setError(null);
     setMessage(null);
-
     try {
       const today = new Date().toISOString().slice(0, 10);
       await api.patch(`/landlords/leases/${leaseId}`, { status: 'TERMINATED', end_date: today });
@@ -239,14 +258,11 @@ export default function LandlordLeasesPage() {
     setIsLoading(true);
     setError(null);
     setMessage(null);
-
     try {
       await api.delete(`/landlords/leases/${leaseId}`);
       setMessage('Lease deleted successfully.');
       await loadLeases();
-      if (selectedLease?.id === leaseId) {
-        setSelectedLease(null);
-      }
+      if (selectedLease?.id === leaseId) setSelectedLease(null);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to delete lease.');
     } finally {
@@ -254,325 +270,250 @@ export default function LandlordLeasesPage() {
     }
   };
 
+  const refreshAll = () => {
+    void loadLeases();
+    void loadRenewals();
+  };
+
   if (loading || !user) {
-    return <div className="min-h-screen bg-slate-50 p-8">Loading landlord workspace...</div>;
+    return <p className="text-sm text-slate-500">Loading partner workspace…</p>;
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Lease management</p>
-              <h1 className="mt-3 text-3xl font-bold text-slate-900">Leases</h1>
-              <p className="mt-2 text-sm text-slate-600">
-                Create, update, and manage active leases for your portfolio.
-              </p>
-            </div>
-            <button onClick={() => router.push('/landlord')} className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700">
-              Back
-            </button>
+    <div className="space-y-6">
+      <LandlordPageHeader
+        badge="Portfolio"
+        title="Leases"
+        subtitle="Create, update, and manage active leases for your portfolio."
+        actions={
+          <button type="button" onClick={refreshAll} disabled={isLoading} className="landlord-btn-secondary">
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden />
+            Refresh
+          </button>
+        }
+      />
+
+      {error ? <ErrorStateCard message={error} onRetry={loadLeases} /> : null}
+      {message ? (
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{message}</p>
+      ) : null}
+
+      <section className="grid gap-4 sm:grid-cols-3">
+        <LandlordStatCard label="Total leases" value={leaseStats.total} icon={ScrollText} />
+        <LandlordStatCard label="Active" value={leaseStats.active} icon={FileText} accent="success" />
+        <LandlordStatCard label="Pending renewals" value={leaseStats.pendingRenewals} icon={Repeat} accent={leaseStats.pendingRenewals > 0 ? 'warning' : 'default'} />
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className="landlord-panel">
+          <h2 className="text-lg font-semibold text-[#1A1A1A]">Create new lease</h2>
+          <p className="mt-1 text-sm text-slate-500">Link a tenant to an available unit and schedule rent details.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <input placeholder="Tenant ID" value={form.tenant_id} onChange={(e) => setForm((prev) => ({ ...prev, tenant_id: e.target.value }))} className={landlordInputClass} />
+            <select value={form.payment_method} onChange={(e) => setForm((prev) => ({ ...prev, payment_method: e.target.value }))} className={landlordSelectClass}>
+              <option value="PLATFORM">Platform Payments</option>
+              <option value="DIRECT">Direct Payments</option>
+            </select>
+            <input placeholder="Tenant email (optional)" value={form.tenant_email} onChange={(e) => setForm((prev) => ({ ...prev, tenant_email: e.target.value }))} className={landlordInputClass} />
+            <select value={form.unit_id} onChange={(e) => setForm((prev) => ({ ...prev, unit_id: e.target.value }))} className={landlordSelectClass}>
+              <option value="">Select an available unit</option>
+              {units.map((unit) => (
+                <option key={unit.id} value={unit.id}>
+                  {unit.unit_identifier} — {unit.property_name} — {formatN$(unit.monthly_rent)}
+                </option>
+              ))}
+            </select>
+            <input type="number" placeholder="Monthly rent" value={form.monthly_rent} onChange={(e) => setForm((prev) => ({ ...prev, monthly_rent: e.target.value }))} className={landlordInputClass} />
+            <input type="date" value={form.start_date} onChange={(e) => setForm((prev) => ({ ...prev, start_date: e.target.value }))} className={landlordInputClass} aria-label="Start date" />
+            <input type="date" value={form.end_date} onChange={(e) => setForm((prev) => ({ ...prev, end_date: e.target.value }))} className={landlordInputClass} aria-label="End date" />
           </div>
-        </div>
-
-        {(error || message) && (
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            {error ? <p className="text-sm text-rose-600">{error}</p> : null}
-            {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
-          </div>
-        )}
-
-        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="mb-6 flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">Create new lease</h2>
-                <p className="mt-2 text-sm text-slate-500">Link a tenant to an available unit and schedule rent details.</p>
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <input
-                placeholder="Tenant ID"
-                value={form.tenant_id}
-                onChange={(e) => setForm((prev) => ({ ...prev, tenant_id: e.target.value }))}
-                className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900"
-              />
-              <select
-                value={form.payment_method}
-                onChange={(e) => setForm((prev) => ({ ...prev, payment_method: e.target.value }))}
-                className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900"
-              >
-                <option value="PLATFORM">Platform Payments</option>
-                <option value="DIRECT">Direct Payments</option>
-              </select>
-              <input
-                placeholder="Tenant email (optional)"
-                value={form.tenant_email}
-                onChange={(e) => setForm((prev) => ({ ...prev, tenant_email: e.target.value }))}
-                className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900"
-              />
-              <select
-                value={form.unit_id}
-                onChange={(e) => setForm((prev) => ({ ...prev, unit_id: e.target.value }))}
-                className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900"
-              >
-                <option value="">Select an available unit</option>
-                {units.map((unit) => (
-                  <option key={unit.id} value={unit.id}>
-                    {unit.unit_identifier} — {unit.property_name} — N${Number(unit.monthly_rent || 0).toLocaleString()}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                placeholder="Monthly rent"
-                value={form.monthly_rent}
-                onChange={(e) => setForm((prev) => ({ ...prev, monthly_rent: e.target.value }))}
-                className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900"
-              />
-              <input
-                type="date"
-                placeholder="Start date"
-                value={form.start_date}
-                onChange={(e) => setForm((prev) => ({ ...prev, start_date: e.target.value }))}
-                className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900"
-              />
-              <input
-                type="date"
-                placeholder="End date"
-                value={form.end_date}
-                onChange={(e) => setForm((prev) => ({ ...prev, end_date: e.target.value }))}
-                className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900"
-              />
-            </div>
-            <button
-              onClick={handleCreateLease}
-              disabled={isLoading}
-              className="mt-6 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              {isLoading ? 'Saving...' : 'Create lease'}
-            </button>
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-900">Selected lease</h2>
-              <p className="mt-2 text-sm text-slate-500">Update rent, term, or status for an existing lease.</p>
-            </div>
-            {!selectedLease ? (
-              <div className="rounded-3xl bg-slate-50 p-6 text-sm text-slate-600">Select a lease from the list to manage it.</div>
-            ) : (
-              <div className="space-y-4">
-                <div className="rounded-3xl bg-slate-50 p-5">
-                  <p className="text-sm text-slate-600">Lease ID</p>
-                  <p className="mt-1 font-semibold text-slate-900">{selectedLease.id}</p>
-                  <p className="mt-2 text-sm text-slate-600">Tenant: {selectedLease.tenant_name || selectedLease.tenant_id}</p>
-                  <p className="mt-1 text-sm text-slate-600">Unit: {selectedLease.unit_identifier || selectedLease.unit_id}</p>
-                  <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${selectedLease.payment_method === 'PLATFORM' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
-                    {selectedLease.payment_method === 'PLATFORM' ? 'Platform Payments' : 'Direct Payments'}
-                  </span>
-                </div>
-                <div className="grid gap-4">
-                  <input
-                    type="number"
-                    placeholder="Monthly rent"
-                    value={updateForm.monthly_rent}
-                    onChange={(e) => setUpdateForm((prev) => ({ ...prev, monthly_rent: e.target.value }))}
-                    className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
-                  />
-                  <input
-                    type="date"
-                    value={updateForm.end_date}
-                    onChange={(e) => setUpdateForm((prev) => ({ ...prev, end_date: e.target.value }))}
-                    className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
-                  />
-                  <select
-                    value={updateForm.status}
-                    onChange={(e) => setUpdateForm((prev) => ({ ...prev, status: e.target.value }))}
-                    className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
-                  >
-                    <option value="ACTIVE">Active</option>
-                    <option value="ENDED">Ended</option>
-                    <option value="TERMINATED">Terminated</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <button
-                    onClick={handleUpdateLease}
-                    disabled={isLoading}
-                    className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-                  >
-                    {isLoading ? 'Saving...' : 'Update lease'}
-                  </button>
-                  <button
-                    onClick={() => selectedLease && handleEndLease(selectedLease.id)}
-                    disabled={isLoading}
-                    className="rounded-2xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-                  >
-                    Terminate lease
-                  </button>
-                  <button
-                    onClick={() => selectedLease && handleDeleteLease(selectedLease.id)}
-                    disabled={isLoading}
-                    className="rounded-2xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-                  >
-                    Delete lease
-                  </button>
-                </div>
-              </div>
-            )}
-          </section>
-        </div>
-
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900">Lease roster</h2>
-              <p className="mt-2 text-sm text-slate-500">All leases in your portfolio, including active, ended, and terminated contracts.</p>
-            </div>
-            <button
-              type="button"
-              onClick={loadLeases}
-              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
-            >
-              Refresh
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {leases.length ? (
-              leases.map((lease) => (
-                <button
-                  key={lease.id}
-                  type="button"
-                  onClick={() => handleSelectLease(lease)}
-                  className="w-full rounded-3xl border border-slate-200 bg-slate-50 p-5 text-left transition hover:border-slate-300"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-slate-900">{lease.tenant_name || lease.tenant_id}</p>
-                      <p className="mt-1 text-sm text-slate-600">Unit {lease.unit_identifier || lease.unit_id}</p>
-                    </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-slate-700">
-                      {lease.status}
-                    </span>
-                  </div>
-                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                    <p className="text-sm text-slate-600">Rent: N${Number(lease.monthly_rent || 0).toLocaleString()}</p>
-                    <p className="text-sm text-slate-600">Start: {lease.start_date || 'N/A'}</p>
-                    <p className="text-sm text-slate-600">End: {lease.end_date || 'N/A'}</p>
-                  </div>
-                  <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${lease.payment_method === 'PLATFORM' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
-                    {lease.payment_method === 'PLATFORM' ? 'Platform Payments' : 'Direct Payments'}
-                  </span>
-                </button>
-              ))
-            ) : (
-              <p className="text-sm text-slate-500">No leases found. Create one to get started.</p>
-            )}
-          </div>
+          <button type="button" onClick={handleCreateLease} disabled={isLoading} className="landlord-btn-primary mt-4">
+            {isLoading ? 'Saving…' : 'Create lease'}
+          </button>
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900">Lease renewal proposals</h2>
-              <p className="mt-2 text-sm text-slate-500">Review and respond to upcoming lease renewals.</p>
+        <section className="landlord-panel">
+          <h2 className="text-lg font-semibold text-[#1A1A1A]">Selected lease</h2>
+          <p className="mt-1 text-sm text-slate-500">Update rent, term, or status for an existing lease.</p>
+          {!selectedLease ? (
+            <div className="mt-4">
+              <EmptyStateCard title="No lease selected" description="Select a lease from the roster below to manage it." />
             </div>
-            <button
-              type="button"
-              onClick={loadRenewals}
-              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
-            >
-              Refresh
-            </button>
-          </div>
-          <div className="space-y-3">
-            {renewals.length ? (
-              renewals.slice(0, 10).map((renewal) => (
-                <div key={renewal.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-slate-900">Lease {renewal.lease_id}</p>
-                      <p className="mt-1 text-sm text-slate-600">
-                        End {renewal.current_end_date} → Proposed {renewal.proposed_end_date} • N$
-                        {Number(renewal.proposed_rent || 0).toLocaleString()}
+          ) : (
+            <div className="mt-4 space-y-4">
+              <div className="rounded-xl border border-slate-100 bg-[#F3F4F6] p-4">
+                <p className="text-sm text-slate-600">Lease ID</p>
+                <p className="mt-1 font-semibold text-[#1A1A1A]">{selectedLease.id}</p>
+                <p className="mt-2 text-sm text-slate-600">Tenant: {selectedLease.tenant_name || selectedLease.tenant_id}</p>
+                <p className="mt-1 text-sm text-slate-600">Unit: {selectedLease.unit_identifier || selectedLease.unit_id}</p>
+                <span className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusPillClass(selectedLease.payment_method === 'PLATFORM' ? 'ACTIVE' : 'PENDING')}`}>
+                  {selectedLease.payment_method === 'PLATFORM' ? 'Platform Payments' : 'Direct Payments'}
+                </span>
+              </div>
+              <div className="grid gap-3">
+                <input type="number" placeholder="Monthly rent" value={updateForm.monthly_rent} onChange={(e) => setUpdateForm((prev) => ({ ...prev, monthly_rent: e.target.value }))} className={landlordInputClass} />
+                <input type="date" value={updateForm.end_date} onChange={(e) => setUpdateForm((prev) => ({ ...prev, end_date: e.target.value }))} className={landlordInputClass} aria-label="End date" />
+                <select value={updateForm.status} onChange={(e) => setUpdateForm((prev) => ({ ...prev, status: e.target.value }))} className={landlordSelectClass}>
+                  <option value="ACTIVE">Active</option>
+                  <option value="ENDED">Ended</option>
+                  <option value="TERMINATED">Terminated</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <button type="button" onClick={handleUpdateLease} disabled={isLoading} className="landlord-btn-primary bg-emerald-600 hover:bg-emerald-700">
+                  {isLoading ? 'Saving…' : 'Update lease'}
+                </button>
+                <button type="button" onClick={() => selectedLease && handleEndLease(selectedLease.id)} disabled={isLoading} className="rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
+                  Terminate lease
+                </button>
+                <button type="button" onClick={() => selectedLease && handleDeleteLease(selectedLease.id)} disabled={isLoading} className="rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
+                  Delete lease
+                </button>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-[#F3F4F6] p-4">
+                <p className="text-sm font-semibold text-[#1A1A1A]">Lease agreements</p>
+                <p className="mt-1 text-xs text-slate-500">Upload signed leases and addendum documents as separate records.</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                  <input value={agreementTitle} onChange={(e) => setAgreementTitle(e.target.value)} placeholder="Agreement title (optional)" className={landlordInputClass} />
+                  <label className={`${landlordInputClass} flex cursor-pointer items-center gap-2 py-2 text-xs`}>
+                    <span className="truncate text-slate-600">{agreementFile ? agreementFile.name : 'Choose file…'}</span>
+                    <input type="file" className="hidden" onChange={(e) => setAgreementFile(e.target.files?.[0] || null)} />
+                  </label>
+                  <button type="button" onClick={handleUploadAgreement} disabled={isLoading || !agreementFile} className="landlord-btn-primary py-2 text-xs">
+                    Upload
+                  </button>
+                </div>
+                {leaseAgreements.length ? (
+                  <div className="mt-3 space-y-1">
+                    {leaseAgreements.slice(0, 5).map((agreement) => (
+                      <p key={agreement.id} className="text-xs text-slate-600">
+                        v{agreement.version} — {agreement.file_name} ({agreement.signature_status})
                       </p>
-                    </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-slate-700">
-                      {renewal.status}
-                    </span>
+                    ))}
                   </div>
-                  {renewal.status !== 'APPROVED' && renewal.status !== 'REJECTED' ? (
-                    <div className="mt-3 space-y-3">
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <input
-                          type="number"
-                          placeholder="Counter rent (optional)"
-                          value={counterByRenewal[renewal.id]?.proposed_rent ?? ''}
-                          onChange={(event) =>
-                            setCounterByRenewal((prev) => ({
-                              ...prev,
-                              [renewal.id]: {
-                                proposed_rent: event.target.value,
-                                proposed_end_date: prev[renewal.id]?.proposed_end_date ?? '',
-                              },
-                            }))
-                          }
-                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900"
-                        />
-                        <input
-                          type="date"
-                          value={counterByRenewal[renewal.id]?.proposed_end_date ?? ''}
-                          onChange={(event) =>
-                            setCounterByRenewal((prev) => ({
-                              ...prev,
-                              [renewal.id]: {
-                                proposed_rent: prev[renewal.id]?.proposed_rent ?? '',
-                                proposed_end_date: event.target.value,
-                              },
-                            }))
-                          }
-                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => submitCounterRenewal(renewal.id)}
-                          className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
-                        >
-                          Send counter
-                        </button>
-                      </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => respondRenewal(renewal.id, 'APPROVE')}
-                        className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white"
-                      >
+                ) : (
+                  <p className="mt-3 text-xs text-slate-500">No agreement documents for this lease yet.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
+
+      <section className="landlord-panel">
+        <h2 className="text-lg font-semibold text-[#1A1A1A]">Lease roster</h2>
+        <p className="mt-1 text-sm text-slate-500">All leases in your portfolio, including active, ended, and terminated contracts.</p>
+        <div className="mt-4 space-y-3">
+          {isLoading && !leases.length ? (
+            <SkeletonBlocks rows={3} />
+          ) : leases.length ? (
+            leases.map((lease) => (
+              <button
+                key={lease.id}
+                type="button"
+                onClick={() => handleSelectLease(lease)}
+                className={`w-full rounded-xl border p-4 text-left transition hover:border-slate-300 ${
+                  selectedLease?.id === lease.id ? 'border-[#C0392B]/40 bg-[#FDEDEC]/40' : 'border-slate-100 bg-[#F3F4F6]'
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-[#1A1A1A]">{lease.tenant_name || lease.tenant_id}</p>
+                    <p className="mt-1 text-sm text-slate-600">Unit {lease.unit_identifier || lease.unit_id}</p>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusPillClass(lease.status)}`}>{lease.status}</span>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <p className="text-sm text-slate-600">Rent: {formatN$(lease.monthly_rent)}</p>
+                  <p className="text-sm text-slate-600">Start: {lease.start_date || 'N/A'}</p>
+                  <p className="text-sm text-slate-600">End: {lease.end_date || 'N/A'}</p>
+                </div>
+              </button>
+            ))
+          ) : (
+            <EmptyStateCard title="No leases" description="Create one above to get started." />
+          )}
+        </div>
+      </section>
+
+      <section className="landlord-panel">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-[#1A1A1A]">Lease renewal proposals</h2>
+            <p className="mt-1 text-sm text-slate-500">Review and respond to upcoming lease renewals.</p>
+          </div>
+          <button type="button" onClick={() => void loadRenewals()} className="landlord-btn-secondary py-2 text-xs">
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+            Refresh
+          </button>
+        </div>
+        <div className="mt-4 space-y-3">
+          {renewals.length ? (
+            renewals.slice(0, 10).map((renewal) => (
+              <div key={renewal.id} className="rounded-xl border border-slate-100 bg-[#F3F4F6] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-[#1A1A1A]">Lease {renewal.lease_id}</p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      End {renewal.current_end_date} → Proposed {renewal.proposed_end_date} • {formatN$(renewal.proposed_rent)}
+                    </p>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusPillClass(renewal.status)}`}>{renewal.status}</span>
+                </div>
+                {renewal.status !== 'APPROVED' && renewal.status !== 'REJECTED' ? (
+                  <div className="mt-3 space-y-3">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <input
+                        type="number"
+                        placeholder="Counter rent (optional)"
+                        value={counterByRenewal[renewal.id]?.proposed_rent ?? ''}
+                        onChange={(event) =>
+                          setCounterByRenewal((prev) => ({
+                            ...prev,
+                            [renewal.id]: {
+                              proposed_rent: event.target.value,
+                              proposed_end_date: prev[renewal.id]?.proposed_end_date ?? '',
+                            },
+                          }))
+                        }
+                        className={landlordInputClass}
+                      />
+                      <input
+                        type="date"
+                        value={counterByRenewal[renewal.id]?.proposed_end_date ?? ''}
+                        onChange={(event) =>
+                          setCounterByRenewal((prev) => ({
+                            ...prev,
+                            [renewal.id]: {
+                              proposed_rent: prev[renewal.id]?.proposed_rent ?? '',
+                              proposed_end_date: event.target.value,
+                            },
+                          }))
+                        }
+                        className={landlordInputClass}
+                        aria-label="Counter end date"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => submitCounterRenewal(renewal.id)} className="landlord-btn-secondary py-2 text-xs">
+                        Send counter
+                      </button>
+                      <button type="button" onClick={() => respondRenewal(renewal.id, 'APPROVE')} className="landlord-btn-primary bg-emerald-600 py-2 text-xs hover:bg-emerald-700">
                         Approve
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => respondRenewal(renewal.id, 'REJECT')}
-                        className="rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white"
-                      >
+                      <button type="button" onClick={() => respondRenewal(renewal.id, 'REJECT')} className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white">
                         Reject
                       </button>
                     </div>
-                    </div>
-                  ) : null}
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-slate-500">No renewal proposals yet.</p>
-            )}
-          </div>
-        </section>
-      </div>
-    </main>
+                  </div>
+                ) : null}
+              </div>
+            ))
+          ) : (
+            <EmptyStateCard title="No renewal proposals" description="Renewal proposals from tenants will appear here." />
+          )}
+        </div>
+      </section>
+    </div>
   );
 }

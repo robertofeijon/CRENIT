@@ -1,9 +1,15 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Download, FileBarChart, RefreshCw, Users } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import LandlordPageHeader from '../../components/ui/LandlordPageHeader';
+import ErrorStateCard from '../../components/ui/ErrorStateCard';
+import EmptyStateCard from '../../components/ui/EmptyStateCard';
+import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import { landlordInputClass, landlordSelectClass } from '../../components/landlord/landlordUi';
 
 const downloadPdf = (blob: Blob, filename: string) => {
   const url = window.URL.createObjectURL(blob);
@@ -17,7 +23,7 @@ const downloadPdf = (blob: Blob, filename: string) => {
 };
 
 export default function LandlordReportsPage() {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const router = useRouter();
   const [tenants, setTenants] = useState<any[]>([]);
   const [reportMonth, setReportMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -29,44 +35,39 @@ export default function LandlordReportsPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/auth');
-      return;
-    }
+    if (!loading && !user) router.replace('/auth');
+    if (!loading && user && role && role !== 'LANDLORD' && role !== 'ADMIN') router.replace('/tenant/home');
+  }, [loading, user, role, router]);
 
-    if (!loading && user) {
-      loadTenants();
-    }
-  }, [loading, user, router]);
-
-  const loadTenants = async () => {
+  const loadTenants = useCallback(async () => {
     setIsLoadingTenants(true);
     setError(null);
     try {
       const response = await api.get('/landlords/tenants');
       const list = response.data.data || [];
       setTenants(list);
-      if (list.length && !selectedTenantId) {
-        setSelectedTenantId(list[0].tenantId);
-      }
+      if (list.length && !selectedTenantId) setSelectedTenantId(list[0].tenantId);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to load tenants.');
     } finally {
       setIsLoadingTenants(false);
     }
-  };
+  }, [selectedTenantId]);
+
+  useEffect(() => {
+    if (user && (role === 'LANDLORD' || role === 'ADMIN')) void loadTenants();
+  }, [user, role, loadTenants]);
 
   const handleDownloadPortfolio = async () => {
     setPortfolioLoading(true);
     setError(null);
     setMessage(null);
-
     try {
       const response = await api.get('/reports/landlord/portfolio', {
         params: reportMonth ? { month: reportMonth } : undefined,
         responseType: 'blob',
       });
-      downloadPdf(new Blob([response.data], { type: 'application/pdf' }), `rentcredit-portfolio-${reportMonth || 'all'}.pdf`);
+      downloadPdf(new Blob([response.data], { type: 'application/pdf' }), `crenit-portfolio-${reportMonth || 'all'}.pdf`);
       setMessage('Portfolio report downloaded.');
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to download portfolio report.');
@@ -80,16 +81,12 @@ export default function LandlordReportsPage() {
       setError('Select a tenant for the per-tenant report.');
       return;
     }
-
     setTenantReportLoading(true);
     setError(null);
     setMessage(null);
-
     try {
-      const response = await api.get(`/reports/landlord/tenant/${selectedTenantId}`, {
-        responseType: 'blob',
-      });
-      downloadPdf(new Blob([response.data], { type: 'application/pdf' }), `rentcredit-tenant-${selectedTenantId}.pdf`);
+      const response = await api.get(`/reports/landlord/tenant/${selectedTenantId}`, { responseType: 'blob' });
+      downloadPdf(new Blob([response.data], { type: 'application/pdf' }), `crenit-tenant-${selectedTenantId}.pdf`);
       setMessage('Tenant payment report downloaded.');
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to download tenant report.');
@@ -99,86 +96,77 @@ export default function LandlordReportsPage() {
   };
 
   if (loading || !user) {
-    return <div className="min-h-screen bg-slate-50 p-8">Preparing reports...</div>;
+    return <p className="text-sm text-slate-500">Loading partner workspace…</p>;
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Reports</h1>
-              <p className="mt-3 text-sm text-slate-600">Export portfolio and per-tenant payment reports as PDF.</p>
-            </div>
-            <button
-              onClick={() => router.push('/landlord')}
-              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
-            >
-              Back to dashboard
-            </button>
-          </div>
+    <div className="space-y-6">
+      <LandlordPageHeader
+        badge="Finance"
+        title="Reports"
+        subtitle="Export portfolio and per-tenant payment reports as PDF."
+        actions={
+          <button type="button" onClick={() => void loadTenants()} disabled={isLoadingTenants} className="landlord-btn-secondary">
+            <RefreshCw className={`h-4 w-4 ${isLoadingTenants ? 'animate-spin' : ''}`} aria-hidden />
+            Refresh
+          </button>
+        }
+      />
+
+      {error ? <ErrorStateCard message={error} onRetry={loadTenants} /> : null}
+      {message ? (
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{message}</p>
+      ) : null}
+
+      <section className="landlord-panel">
+        <div className="flex items-center gap-2">
+          <FileBarChart className="h-5 w-5 text-[#C0392B]" aria-hidden />
+          <h2 className="text-lg font-semibold text-[#1A1A1A]">Portfolio summary report</h2>
         </div>
-
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
-
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">Portfolio summary report</h2>
-          <p className="mt-2 text-sm text-slate-500">Download a PDF summary of rent collections for a selected month.</p>
-          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-slate-700">Report month</label>
-              <input
-                type="month"
-                value={reportMonth}
-                onChange={(event) => setReportMonth(event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
-              />
-            </div>
-            <button
-              onClick={handleDownloadPortfolio}
-              disabled={portfolioLoading}
-              className="rounded-2xl bg-brand-red px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {portfolioLoading ? 'Generating...' : 'Download portfolio PDF'}
-            </button>
+        <p className="mt-1 text-sm text-slate-500">Download a PDF summary of rent collections for a selected month.</p>
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Report month</label>
+            <input type="month" value={reportMonth} onChange={(e) => setReportMonth(e.target.value)} className={`${landlordInputClass} mt-2`} />
           </div>
-        </section>
+          <button type="button" onClick={handleDownloadPortfolio} disabled={portfolioLoading} className="landlord-btn-primary">
+            <Download className="h-4 w-4" aria-hidden />
+            {portfolioLoading ? 'Generating…' : 'Download portfolio PDF'}
+          </button>
+        </div>
+      </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">Per-tenant payment report</h2>
-          <p className="mt-2 text-sm text-slate-500">Export payment history for a specific tenant in your portfolio.</p>
-          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end">
+      <section className="landlord-panel">
+        <div className="flex items-center gap-2">
+          <Users className="h-5 w-5 text-[#C0392B]" aria-hidden />
+          <h2 className="text-lg font-semibold text-[#1A1A1A]">Per-tenant payment report</h2>
+        </div>
+        <p className="mt-1 text-sm text-slate-500">Export payment history for a specific tenant in your portfolio.</p>
+        {isLoadingTenants ? (
+          <div className="mt-4">
+            <SkeletonBlocks rows={2} />
+          </div>
+        ) : tenants.length ? (
+          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-slate-700">Tenant</label>
-              <select
-                value={selectedTenantId}
-                onChange={(event) => setSelectedTenantId(event.target.value)}
-                disabled={isLoadingTenants || !tenants.length}
-                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-slate-500 focus:outline-none disabled:opacity-60"
-              >
-                {tenants.length ? (
-                  tenants.map((tenant) => (
-                    <option key={tenant.tenantId} value={tenant.tenantId}>
-                      {tenant.tenantName}
-                    </option>
-                  ))
-                ) : (
-                  <option value="">No tenants available</option>
-                )}
+              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Tenant</label>
+              <select value={selectedTenantId} onChange={(e) => setSelectedTenantId(e.target.value)} className={`${landlordSelectClass} mt-2`}>
+                {tenants.map((tenant) => (
+                  <option key={tenant.tenantId} value={tenant.tenantId}>{tenant.tenantName}</option>
+                ))}
               </select>
             </div>
-            <button
-              onClick={handleDownloadTenantReport}
-              disabled={tenantReportLoading || !selectedTenantId}
-              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {tenantReportLoading ? 'Generating...' : 'Download tenant PDF'}
+            <button type="button" onClick={handleDownloadTenantReport} disabled={tenantReportLoading || !selectedTenantId} className="landlord-btn-secondary">
+              <Download className="h-4 w-4" aria-hidden />
+              {tenantReportLoading ? 'Generating…' : 'Download tenant PDF'}
             </button>
           </div>
-        </section>
-      </div>
-    </main>
+        ) : (
+          <div className="mt-4">
+            <EmptyStateCard title="No tenants" description="Add tenants with active leases to generate per-tenant reports." />
+          </div>
+        )}
+      </section>
+    </div>
   );
 }

@@ -215,7 +215,7 @@ export default function TenantDashboard() {
       const url = window.URL.createObjectURL(fileBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'rentcredit-tenant-report.pdf');
+      link.setAttribute('download', 'crenit-tenant-report.pdf');
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -237,7 +237,7 @@ export default function TenantDashboard() {
       const url = window.URL.createObjectURL(fileBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `rentcredit-receipt-${paymentId}.pdf`);
+      link.setAttribute('download', `crenit-receipt-${paymentId}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();

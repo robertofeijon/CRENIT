@@ -1,5 +1,8 @@
-import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Res, UnauthorizedException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import { LandlordsService } from './landlords.service';
+import { LeaseDocumentService, LeaseDocumentInput } from './lease-document.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { getUserFromAuthHeader, getUserProfileFromAuthHeader, assertRole, assertPartnerApproved } from '../supabase/supabase.utils';
 
@@ -7,6 +10,7 @@ import { getUserFromAuthHeader, getUserProfileFromAuthHeader, assertRole, assert
 export class LandlordsController {
   constructor(
     private readonly landlordsService: LandlordsService,
+    private readonly leaseDocumentService: LeaseDocumentService,
     private readonly supabaseService: SupabaseService,
   ) {}
 
@@ -139,6 +143,27 @@ export class LandlordsController {
     return { success: true, data: leases, error: null };
   }
 
+  @Post('leases/document/download')
+  async downloadLeaseDocument(
+    @Headers('authorization') authHeader: string,
+    @Body() body: LeaseDocumentInput,
+    @Res() res: Response,
+  ) {
+    try {
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+      assertRole(profile, 'LANDLORD');
+      const pdfBuffer = await this.leaseDocumentService.generateLeaseAgreementPdf(profile.id, body);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="crenit-lease-agreement.pdf"');
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      if (error instanceof BadRequestException || error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new BadRequestException(error?.message || 'Unable to generate lease document.');
+    }
+  }
+
   @Get('leases/:leaseId')
   async getLease(@Headers('authorization') authHeader: string, @Param('leaseId') leaseId: string) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
@@ -257,6 +282,53 @@ export class LandlordsController {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'LANDLORD');
     const result = await this.landlordsService.getOnboardingStatus(profile.id);
+    return { success: true, data: result, error: null };
+  }
+
+  @Get('leases/:leaseId/agreements')
+  async listLeaseAgreements(
+    @Headers('authorization') authHeader: string,
+    @Param('leaseId') leaseId: string,
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    const result = await this.landlordsService.listLeaseAgreements(profile.id, leaseId);
+    return { success: true, data: result, error: null };
+  }
+
+  @Post('leases/:leaseId/agreements/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadLeaseAgreement(
+    @Headers('authorization') authHeader: string,
+    @Param('leaseId') leaseId: string,
+    @UploadedFile() file: any,
+    @Body() body: { title?: string; document_type?: 'LEASE_AGREEMENT' | 'ADDENDUM' | 'RENEWAL' | 'TERMINATION' | 'OTHER'; notes?: string },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    const result = await this.landlordsService.uploadLeaseAgreement(profile.id, leaseId, file, body);
+    return { success: true, data: result, error: null };
+  }
+
+  @Post('onboarding/upload')
+  async uploadOnboardingDocument(
+    @Headers('authorization') authHeader: string,
+    @Body()
+    body: {
+      doc_type: 'id' | 'ownership';
+      filename: string;
+      fileBase64: string;
+    },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    if (!body.doc_type || !body.filename || !body.fileBase64) {
+      throw new BadRequestException('doc_type, filename and fileBase64 are required');
+    }
+    if (!['id', 'ownership'].includes(body.doc_type)) {
+      throw new BadRequestException('doc_type must be id or ownership');
+    }
+    const result = await this.landlordsService.uploadOnboardingDocument(profile.id, body);
     return { success: true, data: result, error: null };
   }
 

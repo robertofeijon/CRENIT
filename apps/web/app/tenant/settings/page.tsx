@@ -1,16 +1,19 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { RefreshCw, Shield, User } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import TenantPageHeader from '../../components/ui/TenantPageHeader';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
+import { tenantInputClass, tenantSelectClass } from '../../components/tenant/tenantUi';
 
 export default function TenantSettingsPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, roleReady } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
@@ -24,16 +27,14 @@ export default function TenantSettingsPage() {
   const [cardNumber, setCardNumber] = useState('');
   const [mobilePhone, setMobilePhone] = useState('');
   const [notificationPrefs, setNotificationPrefs] = useState<any>(null);
-  const [loadingSettings, setLoadingSettings] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/auth');
-    if (!loading && user) loadSettings();
-  }, [loading, user, router]);
+    if (!loading && roleReady && !user) router.replace('/auth');
+    if (!loading && roleReady && user) void loadSettings();
+  }, [loading, roleReady, user, router]);
 
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     setIsLoading(true);
-    setLoadingSettings(true);
     setError(null);
     try {
       const [settingsRes, tfaRes] = await Promise.all([api.get('/settings/tenant'), api.get('/auth/2fa/status')]);
@@ -45,9 +46,8 @@ export default function TenantSettingsPage() {
       setError(err?.response?.data?.message || err?.message || 'Unable to load settings.');
     } finally {
       setIsLoading(false);
-      setLoadingSettings(false);
     }
-  };
+  }, []);
 
   const handleSaveProfile = async () => {
     if (!profile) return;
@@ -66,7 +66,7 @@ export default function TenantSettingsPage() {
       setMessage('Profile updated.');
       await loadSettings();
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Unable to save profile.');
+      setError(err?.response?.data?.message || 'Unable to save profile.');
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +88,7 @@ export default function TenantSettingsPage() {
       setMobilePhone('');
       await loadSettings();
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Unable to add payment method.');
+      setError(err?.response?.data?.message || 'Unable to add payment method.');
     } finally {
       setIsLoading(false);
     }
@@ -101,7 +101,7 @@ export default function TenantSettingsPage() {
       setMessage('Payment method removed.');
       await loadSettings();
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Unable to remove payment method.');
+      setError(err?.response?.data?.message || 'Unable to remove payment method.');
     } finally {
       setIsLoading(false);
     }
@@ -109,14 +109,13 @@ export default function TenantSettingsPage() {
 
   const handleSetup2fa = async () => {
     setIsLoading(true);
-    setError(null);
     try {
       const res = await api.post('/auth/2fa/setup');
       setSetupCode(res.data.data.verification_code);
       setMessage(res.data.data.message);
       await loadSettings();
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Unable to start 2FA setup.');
+      setError(err?.response?.data?.message || 'Unable to start 2FA setup.');
     } finally {
       setIsLoading(false);
     }
@@ -131,7 +130,7 @@ export default function TenantSettingsPage() {
       setMessage('Two-factor authentication enabled.');
       await loadSettings();
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Invalid verification code.');
+      setError(err?.response?.data?.message || 'Invalid verification code.');
     } finally {
       setIsLoading(false);
     }
@@ -149,7 +148,7 @@ export default function TenantSettingsPage() {
       setMessage('Two-factor authentication disabled.');
       await loadSettings();
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Unable to disable 2FA.');
+      setError(err?.response?.data?.message || 'Unable to disable 2FA.');
     } finally {
       setIsLoading(false);
     }
@@ -163,141 +162,161 @@ export default function TenantSettingsPage() {
       setMessage('Notification preferences saved.');
       await loadSettings();
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Unable to save notification preferences.');
+      setError(err?.response?.data?.message || 'Unable to save notifications.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (loading || !user) {
-    return <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-8">Loading data...</div>;
+  if (loading || !roleReady || !user) {
+    return <p className="text-sm text-slate-500">Loading tenant workspace…</p>;
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
-          <p className="mt-3 text-sm text-slate-600">Profile, linked accounts, and security.</p>
-          <Link href="/tenant/kyc" className="mt-4 inline-flex text-sm font-semibold text-brand-red hover:underline">
-            Manage KYC documents →
-          </Link>
-        </div>
+    <div className="space-y-6">
+      <TenantPageHeader
+        badge="Account"
+        title="Settings"
+        subtitle="Profile, payment methods, security, and notification preferences."
+        actions={
+          <button type="button" onClick={() => void loadSettings()} disabled={isLoading} className="tenant-btn-secondary">
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden />
+            Refresh
+          </button>
+        }
+      />
 
-        {error ? <ErrorStateCard message={error} onRetry={loadSettings} /> : null}
-        {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
-        {loadingSettings ? <SkeletonBlocks rows={3} /> : null}
+      <p className="text-sm text-slate-600">
+        <Link href="/tenant/kyc" className="font-semibold text-[#C0392B] hover:underline">
+          Manage KYC documents →
+        </Link>
+      </p>
 
-        {profile ? (
-          <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-900">Profile</h2>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <input value={profile.full_name || ''} onChange={(e) => setProfile({ ...profile, full_name: e.target.value })} placeholder="Full name" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
-              <input value={profile.phone || ''} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} placeholder="Phone" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
-              <input value={profile.income_monthly || ''} onChange={(e) => setProfile({ ...profile, income_monthly: e.target.value })} placeholder="Monthly income N$" type="number" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
-              <input value={profile.employer_name || ''} onChange={(e) => setProfile({ ...profile, employer_name: e.target.value })} placeholder="Employer" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
-              <input value={profile.address_street || ''} onChange={(e) => setProfile({ ...profile, address_street: e.target.value })} placeholder="Street" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm sm:col-span-2" />
-              <input value={profile.address_suburb || ''} onChange={(e) => setProfile({ ...profile, address_suburb: e.target.value })} placeholder="Suburb" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
-              <input value={profile.address_city || ''} onChange={(e) => setProfile({ ...profile, address_city: e.target.value })} placeholder="City" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
-            </div>
-            <button onClick={handleSaveProfile} disabled={isLoading} className="mt-6 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
-              Save profile changes
-            </button>
-          </section>
-        ) : null}
+      {error ? <ErrorStateCard message={error} onRetry={() => void loadSettings()} /> : null}
+      {message ? (
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{message}</p>
+      ) : null}
+      {isLoading && !profile ? <SkeletonBlocks rows={3} /> : null}
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">Payment methods</h2>
-          <div className="mt-6 space-y-3">
-            {paymentMethods.map((method) => (
-              <div key={method.id} className="flex items-center justify-between rounded-2xl bg-slate-50 p-4">
-                <div>
-                  <p className="font-semibold text-slate-900">{method.type}</p>
-                  <p className="text-sm text-slate-600">{method.last_four ? `•••• ${method.last_four}` : 'Linked account'}</p>
-                </div>
-                <button onClick={() => handleDeleteMethod(method.id)} className="text-sm font-semibold text-red-600">
-                  Remove
-                </button>
-              </div>
-            ))}
-            {!paymentMethods.length ? (
-              <EmptyStateCard title="No payment methods" description="Add a bank account, card, or mobile money method to continue setup." />
-            ) : null}
+      {profile ? (
+        <section className="tenant-panel">
+          <div className="flex items-center gap-2">
+            <User className="h-5 w-5 text-[#C0392B]" aria-hidden />
+            <h2 className="text-lg font-semibold text-[#1A1A1A]">Profile</h2>
           </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <select value={methodType} onChange={(e) => setMethodType(e.target.value as any)} className="rounded-2xl border border-slate-300 px-4 py-3 text-sm">
-              <option value="EFT">EFT</option>
-              <option value="CARD">Card</option>
-              <option value="MOBILE_MONEY">Mobile money</option>
-            </select>
-            {methodType === 'CARD' ? (
-              <input value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} placeholder="Card number" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm sm:col-span-2" />
-            ) : methodType === 'MOBILE_MONEY' ? (
-              <input value={mobilePhone} onChange={(e) => setMobilePhone(e.target.value)} placeholder="Phone" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm sm:col-span-2" />
-            ) : (
-              <div className="sm:col-span-2 text-sm text-slate-500 flex items-center">Bank transfer uses your lease reference at payment time.</div>
-            )}
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <input value={profile.full_name || ''} onChange={(e) => setProfile({ ...profile, full_name: e.target.value })} placeholder="Full name" className={tenantInputClass} />
+            <input value={profile.phone || ''} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} placeholder="Phone" className={tenantInputClass} />
+            <input value={profile.income_monthly || ''} onChange={(e) => setProfile({ ...profile, income_monthly: e.target.value })} placeholder="Monthly income (N$)" type="number" className={tenantInputClass} />
+            <input value={profile.employer_name || ''} onChange={(e) => setProfile({ ...profile, employer_name: e.target.value })} placeholder="Employer" className={tenantInputClass} />
+            <input value={profile.address_street || ''} onChange={(e) => setProfile({ ...profile, address_street: e.target.value })} placeholder="Street" className={`${tenantInputClass} sm:col-span-2`} />
+            <input value={profile.address_suburb || ''} onChange={(e) => setProfile({ ...profile, address_suburb: e.target.value })} placeholder="Suburb" className={tenantInputClass} />
+            <input value={profile.address_city || ''} onChange={(e) => setProfile({ ...profile, address_city: e.target.value })} placeholder="City" className={tenantInputClass} />
           </div>
-          <button onClick={handleAddPaymentMethod} disabled={isLoading} className="mt-4 rounded-2xl bg-brand-red px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
-              Save payment method
+          <button type="button" onClick={() => void handleSaveProfile()} disabled={isLoading} className="tenant-btn-primary mt-6">
+            Save profile
           </button>
         </section>
+      ) : null}
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">Two-factor authentication</h2>
-          <p className="mt-2 text-sm text-slate-500">Status: {twoFactor?.enabled ? 'Enabled' : twoFactor?.pending_setup ? 'Pending confirmation' : 'Disabled'}</p>
-          {setupCode ? (
-            <p className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">Your setup code: <strong>{setupCode}</strong></p>
-          ) : null}
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <input value={confirmCode} onChange={(e) => setConfirmCode(e.target.value)} placeholder="6-digit code" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" maxLength={6} />
-            {!twoFactor?.enabled ? (
-              <>
-                <button onClick={handleSetup2fa} disabled={isLoading} className="rounded-2xl border border-slate-300 px-5 py-3 text-sm font-semibold">
-                  Generate code
-                </button>
-                <button onClick={handleConfirm2fa} disabled={isLoading} className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white">
-                  Confirm enable
-                </button>
-              </>
-            ) : (
-              <button onClick={handleDisable2fa} disabled={isLoading} className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white">
-                Disable 2FA
+      <section className="tenant-panel">
+        <h2 className="text-lg font-semibold text-[#1A1A1A]">Payment methods</h2>
+        <div className="mt-4 space-y-2">
+          {paymentMethods.map((method) => (
+            <div key={method.id} className="flex items-center justify-between rounded-xl bg-[#F3F4F6] p-4">
+              <div>
+                <p className="font-semibold text-[#1A1A1A]">{method.type}</p>
+                <p className="text-sm text-slate-600">{method.last_four ? `•••• ${method.last_four}` : `ID: ${method.id}`}</p>
+              </div>
+              <button type="button" onClick={() => void handleDeleteMethod(method.id)} className="text-sm font-semibold text-red-600 hover:text-red-800">
+                Remove
               </button>
-            )}
-          </div>
-        </section>
-
-        {notificationPrefs ? (
-          <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-900">Notifications</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {[
-                ['email_enabled', 'Email notifications'],
-                ['sms_enabled', 'SMS notifications'],
-                ['rent_reminders', 'Rent reminders'],
-                ['payment_confirmations', 'Payment confirmations'],
-                ['kyc_updates', 'KYC updates'],
-                ['lease_events', 'Lease events'],
-                ['deposit_events', 'Deposit events'],
-              ].map(([key, label]) => (
-                <label key={key} className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(notificationPrefs[key])}
-                    onChange={(e) => setNotificationPrefs({ ...notificationPrefs, [key]: e.target.checked })}
-                    disabled={key === 'sms_enabled' && process.env.NEXT_PUBLIC_SMS_ENABLED !== 'true'}
-                  />
-                  {label}
-                </label>
-              ))}
             </div>
-            <button onClick={handleSaveNotifications} disabled={isLoading} className="mt-4 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
-                  Save notification settings
-            </button>
-          </section>
+          ))}
+          {!paymentMethods.length ? (
+            <EmptyStateCard title="No payment methods" description="Add a method to pay rent and enable auto-pay." />
+          ) : null}
+        </div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <select value={methodType} onChange={(e) => setMethodType(e.target.value as typeof methodType)} className={tenantSelectClass}>
+            <option value="EFT">EFT</option>
+            <option value="CARD">Card</option>
+            <option value="MOBILE_MONEY">Mobile money</option>
+          </select>
+          {methodType === 'CARD' ? (
+            <input value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} placeholder="Card number" className={`${tenantInputClass} sm:col-span-2`} />
+          ) : methodType === 'MOBILE_MONEY' ? (
+            <input value={mobilePhone} onChange={(e) => setMobilePhone(e.target.value)} placeholder="Phone" className={`${tenantInputClass} sm:col-span-2`} />
+          ) : (
+            <p className="flex items-center text-sm text-slate-500 sm:col-span-2">Use your lease reference when paying by bank transfer.</p>
+          )}
+        </div>
+        <button type="button" onClick={() => void handleAddPaymentMethod()} disabled={isLoading} className="tenant-btn-primary mt-4">
+          Add payment method
+        </button>
+      </section>
+
+      <section className="tenant-panel">
+        <div className="flex items-center gap-2">
+          <Shield className="h-5 w-5 text-[#C0392B]" aria-hidden />
+          <h2 className="text-lg font-semibold text-[#1A1A1A]">Two-factor authentication</h2>
+        </div>
+        <p className="mt-2 text-sm text-slate-600">
+          Status: {twoFactor?.enabled ? 'Enabled' : twoFactor?.pending_setup ? 'Pending confirmation' : 'Disabled'}
+        </p>
+        {setupCode ? (
+          <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
+            Setup code: <strong>{setupCode}</strong>
+          </p>
         ) : null}
-      </div>
-    </main>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <input value={confirmCode} onChange={(e) => setConfirmCode(e.target.value)} placeholder="6-digit code" className={tenantInputClass} maxLength={6} />
+          {!twoFactor?.enabled ? (
+            <>
+              <button type="button" onClick={() => void handleSetup2fa()} disabled={isLoading} className="tenant-btn-secondary">
+                Generate code
+              </button>
+              <button type="button" onClick={() => void handleConfirm2fa()} disabled={isLoading} className="tenant-btn-primary">
+                Confirm enable
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => void handleDisable2fa()} disabled={isLoading} className="rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
+              Disable 2FA
+            </button>
+          )}
+        </div>
+      </section>
+
+      {notificationPrefs ? (
+        <section className="tenant-panel">
+          <h2 className="text-lg font-semibold text-[#1A1A1A]">Notifications</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {[
+              ['email_enabled', 'Email notifications'],
+              ['sms_enabled', 'SMS notifications'],
+              ['rent_reminders', 'Rent reminders'],
+              ['payment_confirmations', 'Payment confirmations'],
+              ['kyc_updates', 'KYC updates'],
+              ['lease_events', 'Lease events'],
+              ['deposit_events', 'Deposit events'],
+            ].map(([key, label]) => (
+              <label key={key} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-[#F3F4F6] p-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={Boolean(notificationPrefs[key])}
+                  onChange={(e) => setNotificationPrefs({ ...notificationPrefs, [key]: e.target.checked })}
+                  disabled={key === 'sms_enabled' && process.env.NEXT_PUBLIC_SMS_ENABLED !== 'true'}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          <button type="button" onClick={() => void handleSaveNotifications()} disabled={isLoading} className="tenant-btn-primary mt-4">
+            Save notifications
+          </button>
+        </section>
+      ) : null}
+    </div>
   );
 }

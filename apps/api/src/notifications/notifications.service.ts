@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MarketIntelligenceService } from '../market-intelligence/market-intelligence.service';
+import { EmailDeliveryService } from './email-delivery.service';
 
 @Injectable()
 export class NotificationsService {
@@ -9,6 +12,7 @@ export class NotificationsService {
   constructor(
     private readonly supabase: SupabaseService,
     private readonly marketIntelligenceService: MarketIntelligenceService,
+    private readonly emailDelivery: EmailDeliveryService,
   ) {}
 
   async createNotification(payload: {
@@ -60,17 +64,17 @@ export class NotificationsService {
     const amount = metadata?.amount ? `N$${Number(metadata.amount).toLocaleString()}` : null;
     switch (type) {
       case 'INVITE_SENT':
-        return { subject: 'Your landlord has invited you to RentCredit', body: message };
+        return { subject: 'Your landlord has invited you to CRENIT', body: message };
       case 'INVITE_ACCEPTED':
-        return { subject: 'Invitation accepted on RentCredit', body: message };
+        return { subject: 'Invitation accepted on CRENIT', body: message };
       case 'RENT_DUE_REMINDER':
         return { subject: `Your rent of ${amount || 'N$0'} is due in 3 days`, body: message };
       case 'PAYMENT_CONFIRMED':
-        return { subject: 'Payment confirmed — RentCredit receipt', body: message };
+        return { subject: 'Payment confirmed — CRENIT receipt', body: message };
       case 'PAYMENT_OVERDUE':
         return { subject: 'Your rent payment is overdue', body: message };
       case 'KYC_APPROVED':
-        return { subject: 'Your identity has been verified — your RentCredit Score is now active', body: message };
+        return { subject: 'Your identity has been verified — your CRENIT Score is now active', body: message };
       case 'KYC_REJECTED':
         return { subject: 'Action required: your KYC submission needs attention', body: message };
       case 'LEASE_RENEWAL_PROPOSED':
@@ -101,7 +105,7 @@ export class NotificationsService {
       client.from('notification_preferences').select('*').eq('profile_id', userId).maybeSingle(),
     ]);
 
-    const userName = profile?.full_name || 'RentCredit user';
+    const userName = profile?.full_name || 'CRENIT user';
     const preferenceKey = this.resolvePreferenceKey(type);
     const eventAllowed = preferenceKey ? prefs?.[preferenceKey] !== false : true;
 
@@ -123,66 +127,188 @@ export class NotificationsService {
     return `
       <div style="font-family:Arial,sans-serif;background:#fff;color:#111;padding:24px;">
         <div style="max-width:640px;margin:0 auto;border:1px solid #eee;border-radius:8px;overflow:hidden;">
-          <div style="background:#C0392B;color:#fff;padding:16px 20px;font-size:20px;font-weight:700;">RentCredit</div>
+          <div style="background:#C0392B;color:#fff;padding:16px 20px;font-size:20px;font-weight:700;">CRENIT</div>
           <div style="padding:20px;">
             <p style="margin:0 0 12px;">Hi ${name},</p>
             <h2 style="margin:0 0 12px;font-size:20px;">${title}</h2>
             <p style="margin:0 0 16px;line-height:1.5;">${message}</p>
           </div>
           <div style="padding:14px 20px;background:#fafafa;color:#666;font-size:12px;">
-            rentcredit.co · hello@rentcredit.co · Windhoek, Namibia
+            ${this.emailDelivery.contactEmail()} · Windhoek, Namibia
           </div>
         </div>
       </div>
     `;
   }
 
-  private async sendEmail(to: string, subject: string, message: string, name: string) {
-    const apiKey = process.env.EMAIL_PROVIDER_API_KEY;
-    const provider = (process.env.EMAIL_PROVIDER || 'resend').toLowerCase();
-    if (!apiKey) return;
+  private appBaseUrl() {
+    const origin = process.env.APP_URL || process.env.WEB_URL || process.env.CORS_ORIGIN?.split(',')[0]?.trim();
+    return (origin || 'http://localhost:3002').replace(/\/$/, '');
+  }
 
-    try {
-      const html = this.buildEmailHtml(subject, message, name);
-      if (provider === 'sendgrid') {
-        await fetch('https://api.sendgrid.com/v3/mail/send', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            personalizations: [{ to: [{ email: to }] }],
-            from: { email: 'hello@rentcredit.co', name: 'RentCredit' },
-            subject,
-            content: [{ type: 'text/html', value: html }],
-          }),
-        });
-        return;
-      }
-      if (provider === 'postmark') {
-        await fetch('https://api.postmarkapp.com/email', {
-          method: 'POST',
-          headers: { 'X-Postmark-Server-Token': apiKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            From: 'hello@rentcredit.co',
-            To: to,
-            Subject: subject,
-            HtmlBody: html,
-          }),
-        });
-        return;
-      }
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: 'RentCredit <hello@rentcredit.co>',
-          to: [to],
-          subject,
-          html,
-        }),
-      });
-    } catch (error) {
-      this.logger.warn(`Email send failed (${subject}): ${(error as Error).message}`);
+  private loadEmailTemplate(fileName: string, vars: Record<string, string>) {
+    const templatePath = join(process.cwd(), '..', '..', 'emails', fileName);
+    if (!existsSync(templatePath)) return null;
+    let html = readFileSync(templatePath, 'utf8');
+    for (const [key, value] of Object.entries(vars)) {
+      html = html.split(`{{${key}}}`).join(value);
     }
+    return html;
+  }
+
+  private async resolveUserEmail(userId: string) {
+    const client = this.supabase.getClient();
+    const { data: authUser } = await client.auth.admin.getUserById(userId).catch(() => ({ data: { user: null } as any }));
+    return authUser?.user?.email ?? null;
+  }
+
+  async sendKycApprovedEmail(userId: string, name: string) {
+    const email = await this.resolveUserEmail(userId);
+    if (!email) return { sent: false };
+    const loginUrl = `${this.appBaseUrl()}/auth`;
+    const html =
+      this.loadEmailTemplate('kyc-approved.html', { name, login_url: loginUrl }) ||
+      this.buildEmailHtml(
+        'Your identity is verified',
+        'Your KYC documents have been approved. Log in to access your full tenant dashboard.',
+        name,
+      );
+    await this.sendHtmlEmail(email, 'Your identity has been verified — CRENIT', html);
+    return { sent: true };
+  }
+
+  async sendKycRejectedEmail(
+    userId: string,
+    name: string,
+    reason: string,
+    rejectedDocTypes: string[] = [],
+  ) {
+    const email = await this.resolveUserEmail(userId);
+    if (!email) return { sent: false };
+    const labels: Record<string, string> = {
+      government_id: 'Government ID',
+      selfie: 'Selfie',
+      income_proof: 'Proof of income',
+      signed_lease: 'Signed lease agreement',
+    };
+    const documentsList = rejectedDocTypes.length
+      ? rejectedDocTypes.map((t) => labels[t] || t).join(', ')
+      : 'All submitted documents';
+    const kycUrl = `${this.appBaseUrl()}/tenant/kyc`;
+    const html =
+      this.loadEmailTemplate('kyc-rejected.html', {
+        name,
+        reason,
+        documents_list: documentsList,
+        kyc_url: kycUrl,
+      }) ||
+      this.buildEmailHtml(
+        'KYC requires action',
+        `${reason} Re-upload at ${kycUrl}`,
+        name,
+      );
+    await this.sendHtmlEmail(email, 'Action required: your KYC submission needs attention', html);
+    return { sent: true };
+  }
+
+  async sendPartnerApprovedEmail(userId: string, name: string) {
+    const email = await this.resolveUserEmail(userId);
+    if (!email) return { sent: false };
+    const loginUrl = `${this.appBaseUrl()}/landlord/overview`;
+    const html =
+      this.loadEmailTemplate('partner-approved.html', { name, login_url: loginUrl }) ||
+      this.buildEmailHtml('Partner account approved', 'Your landlord account is approved.', name);
+    await this.sendHtmlEmail(email, 'Your CRENIT partner account is approved', html);
+    return { sent: true };
+  }
+
+  async sendPartnerRejectedEmail(userId: string, name: string, reason: string) {
+    const email = await this.resolveUserEmail(userId);
+    if (!email) return { sent: false };
+    const onboardingUrl = `${this.appBaseUrl()}/landlord/onboarding`;
+    const html =
+      this.loadEmailTemplate('partner-rejected.html', {
+        name,
+        reason,
+        onboarding_url: onboardingUrl,
+      }) ||
+      this.buildEmailHtml('Partner verification needs updates', `${reason} Update at ${onboardingUrl}`, name);
+    await this.sendHtmlEmail(email, 'Action required: partner verification', html);
+    return { sent: true };
+  }
+
+  /** Sends onboarding invite to an email address (works before tenant account exists). */
+  async sendTenantInvitationEmail(payload: {
+    to: string;
+    tenant_name: string;
+    landlord_name: string;
+    accept_path: string;
+    property_address?: string;
+    property_erf?: string;
+    property_street?: string;
+    property_suburb?: string;
+    property_city?: string;
+    rent_amount?: number;
+    expires_at?: string;
+  }) {
+    const acceptUrl = payload.accept_path.startsWith('http')
+      ? payload.accept_path
+      : `${this.appBaseUrl()}${payload.accept_path.startsWith('/') ? '' : '/'}${payload.accept_path}`;
+
+    const expiresAt = payload.expires_at ? new Date(payload.expires_at) : new Date(Date.now() + 7 * 86400000);
+    const expiresInDays = Math.max(1, Math.ceil((expiresAt.getTime() - Date.now()) / 86400000));
+
+    const vars: Record<string, string> = {
+      tenant_name: payload.tenant_name,
+      landlord_name: payload.landlord_name,
+      property_address: payload.property_address || 'See invitation for details',
+      property_erf: payload.property_erf || '—',
+      property_street: payload.property_street || '—',
+      property_suburb: payload.property_suburb || '—',
+      property_city: payload.property_city || '—',
+      rent_amount: payload.rent_amount != null ? Number(payload.rent_amount).toLocaleString() : '—',
+      accept_invitation_url: acceptUrl,
+      expires_in_days: String(expiresInDays),
+      expires_at: expiresAt.toLocaleDateString(),
+    };
+
+    const templatePath = join(process.cwd(), '..', '..', 'emails', 'tenant-invitation.html');
+    let html: string;
+    if (existsSync(templatePath)) {
+      html = readFileSync(templatePath, 'utf8');
+      for (const [key, value] of Object.entries(vars)) {
+        html = html.split(`{{${key}}}`).join(value);
+      }
+    } else {
+      html = this.buildEmailHtml(
+        'You are invited to CRENIT',
+        `${payload.landlord_name} invited you to join CRENIT. Accept here: ${acceptUrl}`,
+        payload.tenant_name,
+      );
+    }
+
+    const subject = `${payload.landlord_name} invited you to CRENIT`;
+    if (!this.emailDelivery.isConfigured()) {
+      this.logger.log(`[email-dev] Tenant invite → ${payload.to} | ${acceptUrl}`);
+      return { sent: false, dev: true, accept_url: acceptUrl };
+    }
+
+    const result = await this.emailDelivery.deliverHtml({ to: payload.to, subject, html });
+    return { sent: result.sent, accept_url: acceptUrl };
+  }
+
+  private async sendHtmlEmail(to: string, subject: string, html: string) {
+    if (!this.emailDelivery.isConfigured()) {
+      this.logger.log(`[email-dev] ${subject} → ${to}`);
+      return;
+    }
+    await this.emailDelivery.deliverHtml({ to, subject, html });
+  }
+
+  private async sendEmail(to: string, subject: string, message: string, name: string) {
+    if (!this.emailDelivery.isConfigured()) return;
+    const html = this.buildEmailHtml(subject, message, name);
+    await this.emailDelivery.deliverHtml({ to, subject, html });
   }
 
   private async sendSms(phone: string, text: string) {
@@ -201,7 +327,7 @@ export class NotificationsService {
           username: 'sandbox',
           to: phone,
           message: text,
-          from: 'RentCredit',
+          from: 'CRENIT',
         }),
       });
     } catch (error) {

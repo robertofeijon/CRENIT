@@ -1,12 +1,17 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Bell, RefreshCw, Shield, User } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import LandlordPageHeader from '../../components/ui/LandlordPageHeader';
+import ErrorStateCard from '../../components/ui/ErrorStateCard';
+import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import { landlordInputClass, statusPillClass } from '../../components/landlord/landlordUi';
 
 export default function LandlordSettingsPage() {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [payout, setPayout] = useState<any>(null);
@@ -20,10 +25,10 @@ export default function LandlordSettingsPage() {
 
   useEffect(() => {
     if (!loading && !user) router.replace('/auth');
-    if (!loading && user) loadSettings();
-  }, [loading, user, router]);
+    if (!loading && user && role && role !== 'LANDLORD' && role !== 'ADMIN') router.replace('/tenant/home');
+  }, [loading, user, role, router]);
 
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -37,7 +42,11 @@ export default function LandlordSettingsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (user && (role === 'LANDLORD' || role === 'ADMIN')) void loadSettings();
+  }, [user, role, loadSettings]);
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -109,95 +118,133 @@ export default function LandlordSettingsPage() {
   };
 
   if (loading || !user) {
-    return <div className="min-h-screen bg-slate-50 p-8">Loading...</div>;
+    return <p className="text-sm text-slate-500">Loading partner workspace…</p>;
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h1 className="text-3xl font-bold text-slate-900">Landlord settings</h1>
-          <p className="mt-3 text-sm text-slate-600">Profile, payout bank details, and security.</p>
-        </div>
+    <div className="space-y-6">
+      <LandlordPageHeader
+        badge="Account"
+        title="Settings"
+        subtitle="Profile, payout bank details, security, and notification preferences."
+        actions={
+          <button type="button" onClick={() => void loadSettings()} disabled={isLoading} className="landlord-btn-secondary">
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden />
+            Refresh
+          </button>
+        }
+      />
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
+      {error ? <ErrorStateCard message={error} onRetry={loadSettings} /> : null}
+      {message ? (
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{message}</p>
+      ) : null}
 
-        {profile && payout ? (
-          <>
-            <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-              <h2 className="text-xl font-semibold text-slate-900">Profile</h2>
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <input value={profile.full_name || ''} onChange={(e) => setProfile({ ...profile, full_name: e.target.value })} placeholder="Full name" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
-                <input value={profile.phone || ''} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} placeholder="Phone" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
-              </div>
-            </section>
-
-            <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-              <h2 className="text-xl font-semibold text-slate-900">Payout account</h2>
-              <p className="mt-2 text-sm text-slate-500">Partner status: {payout.partner_status}</p>
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <input value={payout.business_name || ''} onChange={(e) => setPayout({ ...payout, business_name: e.target.value })} placeholder="Business name" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm sm:col-span-2" />
-                <input value={payout.bank_name || ''} onChange={(e) => setPayout({ ...payout, bank_name: e.target.value })} placeholder="Bank name" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
-                <input value={payout.bank_account_name || ''} onChange={(e) => setPayout({ ...payout, bank_account_name: e.target.value })} placeholder="Account name" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
-                <input value={payout.bank_account_number || ''} onChange={(e) => setPayout({ ...payout, bank_account_number: e.target.value })} placeholder="Account number" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
-                <input value={payout.bank_branch_code || ''} onChange={(e) => setPayout({ ...payout, bank_branch_code: e.target.value })} placeholder="Branch code" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
-                <input value={payout.payout_email || ''} onChange={(e) => setPayout({ ...payout, payout_email: e.target.value })} placeholder="Payout email" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
-              </div>
-              <button onClick={handleSave} disabled={isLoading} className="mt-6 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
-                Save settings
-              </button>
-            </section>
-          </>
-        ) : null}
-
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">Two-factor authentication</h2>
-          <p className="mt-2 text-sm text-slate-500">Status: {twoFactor?.enabled ? 'Enabled' : 'Disabled'}</p>
-          {setupCode ? <p className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm">Setup code: <strong>{setupCode}</strong></p> : null}
-          <div className="mt-4 flex flex-wrap gap-3">
-            <input value={confirmCode} onChange={(e) => setConfirmCode(e.target.value)} placeholder="6-digit code" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm" maxLength={6} />
-            {!twoFactor?.enabled ? (
-              <>
-                <button onClick={handleSetup2fa} className="rounded-2xl border border-slate-300 px-5 py-3 text-sm font-semibold">Generate code</button>
-                <button onClick={handleConfirm2fa} className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white">Enable</button>
-              </>
-            ) : (
-              <button onClick={handleDisable2fa} className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white">Disable</button>
-            )}
-          </div>
-        </section>
-
-        {notificationPrefs ? (
-          <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-900">Notifications</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {[
-                ['email_enabled', 'Email notifications'],
-                ['sms_enabled', 'SMS notifications'],
-                ['rent_reminders', 'Rent reminders'],
-                ['payment_confirmations', 'Payment confirmations'],
-                ['kyc_updates', 'KYC updates'],
-                ['lease_events', 'Lease events'],
-                ['deposit_events', 'Deposit events'],
-              ].map(([key, label]) => (
-                <label key={key} className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(notificationPrefs[key])}
-                    onChange={(e) => setNotificationPrefs({ ...notificationPrefs, [key]: e.target.checked })}
-                    disabled={key === 'sms_enabled' && process.env.NEXT_PUBLIC_SMS_ENABLED !== 'true'}
-                  />
-                  {label}
-                </label>
-              ))}
+      {isLoading && !profile ? (
+        <SkeletonBlocks rows={5} />
+      ) : profile && payout ? (
+        <>
+          <section className="landlord-panel">
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5 text-[#C0392B]" aria-hidden />
+              <h2 className="text-lg font-semibold text-[#1A1A1A]">Profile</h2>
             </div>
-            <button onClick={handleSaveNotifications} disabled={isLoading} className="mt-4 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
-              Save notification preferences
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <input value={profile.full_name || ''} onChange={(e) => setProfile({ ...profile, full_name: e.target.value })} placeholder="Full name" className={landlordInputClass} />
+              <input value={profile.phone || ''} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} placeholder="Phone" className={landlordInputClass} />
+            </div>
+          </section>
+
+          <section className="landlord-panel">
+            <h2 className="text-lg font-semibold text-[#1A1A1A]">Payout account</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Partner status:{' '}
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusPillClass(payout.partner_status)}`}>
+                {payout.partner_status}
+              </span>
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <input value={payout.business_name || ''} onChange={(e) => setPayout({ ...payout, business_name: e.target.value })} placeholder="Business name" className={`${landlordInputClass} sm:col-span-2`} />
+              <input value={payout.bank_name || ''} onChange={(e) => setPayout({ ...payout, bank_name: e.target.value })} placeholder="Bank name" className={landlordInputClass} />
+              <input value={payout.bank_account_name || ''} onChange={(e) => setPayout({ ...payout, bank_account_name: e.target.value })} placeholder="Account name" className={landlordInputClass} />
+              <input value={payout.bank_account_number || ''} onChange={(e) => setPayout({ ...payout, bank_account_number: e.target.value })} placeholder="Account number" className={landlordInputClass} />
+              <input value={payout.bank_branch_code || ''} onChange={(e) => setPayout({ ...payout, bank_branch_code: e.target.value })} placeholder="Branch code" className={landlordInputClass} />
+              <input value={payout.payout_email || ''} onChange={(e) => setPayout({ ...payout, payout_email: e.target.value })} placeholder="Payout email" className={landlordInputClass} />
+            </div>
+            <button type="button" onClick={handleSave} disabled={isLoading} className="landlord-btn-primary mt-4">
+              {isLoading ? 'Saving…' : 'Save settings'}
             </button>
           </section>
+        </>
+      ) : null}
+
+      <section className="landlord-panel">
+        <div className="flex items-center gap-2">
+          <Shield className="h-5 w-5 text-[#C0392B]" aria-hidden />
+          <h2 className="text-lg font-semibold text-[#1A1A1A]">Two-factor authentication</h2>
+        </div>
+        <p className="mt-1 text-sm text-slate-500">
+          Status:{' '}
+          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusPillClass(twoFactor?.enabled ? 'ACTIVE' : 'PENDING')}`}>
+            {twoFactor?.enabled ? 'Enabled' : 'Disabled'}
+          </span>
+        </p>
+        {setupCode ? (
+          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            Setup code: <strong>{setupCode}</strong>
+          </p>
         ) : null}
-      </div>
-    </main>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <input value={confirmCode} onChange={(e) => setConfirmCode(e.target.value)} placeholder="6-digit code" className={`${landlordInputClass} w-40`} maxLength={6} />
+          {!twoFactor?.enabled ? (
+            <>
+              <button type="button" onClick={handleSetup2fa} className="landlord-btn-secondary">
+                Generate code
+              </button>
+              <button type="button" onClick={handleConfirm2fa} className="landlord-btn-primary bg-emerald-600 hover:bg-emerald-700">
+                Enable
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={handleDisable2fa} className="rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white">
+              Disable
+            </button>
+          )}
+        </div>
+      </section>
+
+      {notificationPrefs ? (
+        <section className="landlord-panel">
+          <div className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-[#C0392B]" aria-hidden />
+            <h2 className="text-lg font-semibold text-[#1A1A1A]">Notifications</h2>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {[
+              ['email_enabled', 'Email notifications'],
+              ['sms_enabled', 'SMS notifications'],
+              ['rent_reminders', 'Rent reminders'],
+              ['payment_confirmations', 'Payment confirmations'],
+              ['kyc_updates', 'KYC updates'],
+              ['lease_events', 'Lease events'],
+              ['deposit_events', 'Deposit events'],
+            ].map(([key, label]) => (
+              <label key={key} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-[#F3F4F6] p-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={Boolean(notificationPrefs[key])}
+                  onChange={(e) => setNotificationPrefs({ ...notificationPrefs, [key]: e.target.checked })}
+                  disabled={key === 'sms_enabled' && process.env.NEXT_PUBLIC_SMS_ENABLED !== 'true'}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          <button type="button" onClick={handleSaveNotifications} disabled={isLoading} className="landlord-btn-primary mt-4">
+            Save notification preferences
+          </button>
+        </section>
+      ) : null}
+    </div>
   );
 }

@@ -1,0 +1,19 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: crenit-api
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm ci && npm run build --workspace=crenit-api
+    startCommand: node apps/api/dist/main.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # Set remaining variables in the Render dashboard (see DEPLOYMENT.md):
+      # SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
+      # JWT_SECRET, CORS_ORIGIN, ADMIN_EMAILS, RATE_LIMIT_*,
+      # EMAIL_*, WEB_URL, APP_URL, PAYMENT_WEBHOOK_SECRET

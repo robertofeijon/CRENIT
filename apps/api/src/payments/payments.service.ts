@@ -33,6 +33,37 @@ export class PaymentsService {
     return this.supabase.getClient();
   }
 
+  private async logPaymentHistory(entry: {
+    payment_id: string;
+    lease_id?: string | null;
+    tenant_id?: string | null;
+    landlord_id?: string | null;
+    amount?: number | null;
+    payment_date?: string | null;
+    payment_method?: string | null;
+    payment_status: string;
+    source: 'TENANT' | 'LANDLORD' | 'SYSTEM' | 'ADMIN' | 'WEBHOOK';
+    notes?: string | null;
+    metadata?: Record<string, any>;
+  }) {
+    const client = this.getClient();
+    await client.from('payment_history').insert([
+      {
+        payment_id: entry.payment_id,
+        lease_id: entry.lease_id ?? null,
+        tenant_id: entry.tenant_id ?? null,
+        landlord_id: entry.landlord_id ?? null,
+        amount: Number(entry.amount || 0),
+        payment_date: entry.payment_date ?? null,
+        payment_method: entry.payment_method ?? null,
+        payment_status: entry.payment_status,
+        source: entry.source,
+        notes: entry.notes ?? null,
+        metadata: entry.metadata ?? {},
+      },
+    ]);
+  }
+
   private calculateCommission(amount: number, transactionType: string) {
     let rate = 0.01;
 
@@ -175,6 +206,20 @@ export class PaymentsService {
       throw error;
     }
     const payment = data && data[0] ? data[0] : null;
+    if (payment?.id) {
+      await this.logPaymentHistory({
+        payment_id: payment.id,
+        lease_id: payment.lease_id,
+        tenant_id: payment.tenant_id,
+        landlord_id: payment.landlord_id,
+        amount: payment.amount_gross,
+        payment_date: payment.paid_date,
+        payment_method: payment.payment_method,
+        payment_status: payment.status,
+        source: 'SYSTEM',
+        notes: 'Payment record created',
+      });
+    }
     if (payment?.status === 'PAID') {
       await this.onPaymentConfirmed(payment);
     }
@@ -197,7 +242,7 @@ export class PaymentsService {
       const reference = `RC${Date.now()}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
       const bankDetails = {
         bankName: 'First National Bank Namibia',
-        accountName: 'RentCredit Collections',
+        accountName: 'CRENIT Collections',
         accountNumber: '62234567890',
         branchCode: '280172',
         reference,
@@ -300,8 +345,19 @@ export class PaymentsService {
     const onTimeRate = payments.length ? Math.round((payments.filter((payment: any) => payment.status === 'PAID').length / payments.length) * 100) : 0;
     const streak = payments.slice(0, 12).filter((payment: any) => payment.status === 'PAID').length;
 
+    const paymentIds = payments.map((payment: any) => payment.id).filter(Boolean);
+    const historyRes = paymentIds.length
+      ? await client
+          .from('payment_history')
+          .select('*')
+          .in('payment_id', paymentIds)
+          .order('created_at', { ascending: false })
+      : { data: [], error: null };
+    if ((historyRes as any).error) throw (historyRes as any).error;
+
     return {
       payments,
+      payment_events: (historyRes as any).data || [],
       on_time_rate: onTimeRate,
       streak,
       total_paid_year: totalPaidYear,
@@ -425,6 +481,20 @@ export class PaymentsService {
     if (error) throw error;
 
     const payment = data && data[0] ? data[0] : null;
+    if (payment?.id) {
+      await this.logPaymentHistory({
+        payment_id: payment.id,
+        lease_id: payment.lease_id,
+        tenant_id: payment.tenant_id,
+        landlord_id: payment.landlord_id,
+        amount: payment.amount_gross,
+        payment_date: payment.paid_date,
+        payment_method: payment.payment_method,
+        payment_status: payment.status,
+        source: 'WEBHOOK',
+        notes: 'Payment recorded via webhook/manual record endpoint',
+      });
+    }
     if (payment && payment.tenant_id) {
       try {
         await this.creditScoreService.calculateScore(payment.tenant_id);
@@ -498,9 +568,9 @@ export class PaymentsService {
     const doc = new PDFDocument({ size: 'A4', margin: 40 });
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="rentcredit-receipt-${paymentId}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="crenit-receipt-${paymentId}.pdf"`);
 
-    doc.fontSize(20).text('RentCredit Payment Receipt', { align: 'center' });
+    doc.fontSize(20).text('CRENIT Payment Receipt', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).text(`Receipt #: ${paymentId}`);
     doc.text(`Payment Date: ${payment.paid_date || new Date().toISOString()}`);
@@ -514,7 +584,7 @@ export class PaymentsService {
     doc.moveDown();
 
     doc.fontSize(12).text('Landlord Information', { underline: true });
-    doc.text(`${landlord.business_name || 'RentCredit landlord'}`);
+    doc.text(`${landlord.business_name || 'CRENIT landlord'}`);
     doc.text(`${landlord.bank_name || 'n/a'}`);
     doc.moveDown();
 
@@ -583,6 +653,21 @@ export class PaymentsService {
     }
 
     const confirmed = updated && updated[0] ? updated[0] : null;
+    if (confirmed?.id) {
+      await this.logPaymentHistory({
+        payment_id: confirmed.id,
+        lease_id: confirmed.lease_id,
+        tenant_id: confirmed.tenant_id,
+        landlord_id: confirmed.landlord_id,
+        amount: confirmed.amount_gross,
+        payment_date: confirmed.paid_date,
+        payment_method: confirmed.payment_method,
+        payment_status: confirmed.status,
+        source: 'LANDLORD',
+        notes: 'Direct payment confirmed by landlord',
+        metadata: { received_date: payload?.received_date ?? null },
+      });
+    }
     if (confirmed?.tenant_id) {
       try {
         await this.creditScoreService.calculateScore(confirmed.tenant_id);
@@ -681,6 +766,18 @@ export class PaymentsService {
 
     for (const payment of payments || []) {
       await client.from('payments').update({ status: 'OVERDUE', updated_at: new Date().toISOString() }).eq('id', payment.id);
+      await this.logPaymentHistory({
+        payment_id: payment.id,
+        lease_id: payment.lease_id,
+        tenant_id: payment.tenant_id,
+        landlord_id: payment.landlord_id,
+        amount: payment.amount_gross,
+        payment_date: payment.paid_date,
+        payment_method: payment.payment_method,
+        payment_status: 'OVERDUE',
+        source: 'SYSTEM',
+        notes: 'Marked overdue by scheduler',
+      });
       if (payment.tenant_id) {
         await this.notificationsService.createNotification({
           user_id: payment.tenant_id,

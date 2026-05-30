@@ -2,13 +2,25 @@
 
 import { useEffect, useState } from "react";
 
-type Props = { value: string; play?: boolean; className?: string; style?: React.CSSProperties };
+type Props = {
+  value: string;
+  play?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+};
 
+/** Renders a <span> so it can live inside headings without invalid HTML. */
 export default function NumberCounter({ value, play = true, className = "", style }: Props) {
-  const [count, setCount] = useState<string>(value);
+  const [count, setCount] = useState(value);
   const [forcedPlay, setForcedPlay] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     if (!play && !forcedPlay) return;
     const m = value.match(/\d+/);
     if (!m) return;
@@ -31,17 +43,17 @@ export default function NumberCounter({ value, play = true, className = "", styl
 
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, play]);
+  }, [value, play, mounted, forcedPlay]);
 
   useEffect(() => {
     const handler = () => setForcedPlay(true);
-    window.addEventListener('rc:force-reveal', handler as EventListener);
-    return () => window.removeEventListener('rc:force-reveal', handler as EventListener);
+    window.addEventListener("rc:force-reveal", handler as EventListener);
+    return () => window.removeEventListener("rc:force-reveal", handler as EventListener);
   }, []);
 
   return (
-    <div className={className} style={style}>
-      {count}
-    </div>
+    <span className={className} style={style} suppressHydrationWarning>
+      {mounted && (play || forcedPlay) ? count : value}
+    </span>
   );
 }

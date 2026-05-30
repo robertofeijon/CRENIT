@@ -1,48 +1,58 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import api from '../../src/lib/api';
+import { useAuth } from '../../src/contexts/AuthContext';
 import DashboardShell from '../components/layout/DashboardShell';
+import { tenantNavItems } from '../components/tenant/tenantNav';
 
 const isKycApproved = (status: string) => status === 'APPROVED' || status === 'VERIFIED';
-
-const navItems = [
-  { label: 'Home', href: '/tenant/home', icon: '🏠' },
-  { label: 'Pay Rent', href: '/tenant/payments', icon: '💳' },
-  { label: 'Deposit', href: '/tenant/deposit', icon: '🏦' },
-  { label: 'My Credit Score', href: '/tenant/credit-score', icon: '📊' },
-  { label: 'My Report', href: '/tenant/reports', icon: '📄' },
-  { label: 'Settings', href: '/tenant/settings', icon: '⚙️' },
-];
 
 export default function TenantLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, role, loading, roleReady } = useAuth();
   const [kycStatus, setKycStatus] = useState('NOT_SUBMITTED');
   const [loadingStatus, setLoadingStatus] = useState(true);
 
   useEffect(() => {
-    let active = true;
+    if (!loading && roleReady && !user) router.replace('/auth');
+    if (!loading && roleReady && user && role === 'LANDLORD') router.replace('/landlord/overview');
+  }, [loading, roleReady, user, role, router]);
+
+  useEffect(() => {
+    if (pathname === '/tenant') {
+      router.replace('/tenant/home');
+    }
+  }, [pathname, router]);
+
+  const refreshKycStatus = useCallback(() => {
+    if (!user || role === 'LANDLORD') return;
     api
       .get('/kyc/status')
       .then((res) => {
-        if (active) setKycStatus(res.data?.data?.profile?.kyc_status ?? 'NOT_SUBMITTED');
+        setKycStatus(res.data?.data?.profile?.kyc_status ?? 'NOT_SUBMITTED');
       })
-      .catch(() => {
-        if (active) setKycStatus('NOT_SUBMITTED');
-      })
-      .finally(() => {
-        if (active) setLoadingStatus(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+      .catch(() => setKycStatus('NOT_SUBMITTED'))
+      .finally(() => setLoadingStatus(false));
+  }, [user, role]);
 
   useEffect(() => {
-    if (!loadingStatus && kycStatus === 'NOT_SUBMITTED' && pathname !== '/tenant/kyc') {
+    if (!user || role === 'LANDLORD') return;
+    refreshKycStatus();
+  }, [user, role, refreshKycStatus]);
+
+  useEffect(() => {
+    if (!user || role === 'LANDLORD' || isKycApproved(kycStatus)) return;
+    const interval = setInterval(refreshKycStatus, 12000);
+    return () => clearInterval(interval);
+  }, [user, role, kycStatus, refreshKycStatus]);
+
+  useEffect(() => {
+    if (!loadingStatus && pathname === '/tenant/kyc') return;
+    if (!loadingStatus && (kycStatus === 'NOT_SUBMITTED' || kycStatus === 'REJECTED')) {
       router.replace('/tenant/kyc');
     }
   }, [kycStatus, loadingStatus, pathname, router]);
@@ -51,10 +61,10 @@ export default function TenantLayout({ children }: { children: ReactNode }) {
     !isKycApproved(kycStatus) && pathname !== '/tenant/kyc' ? (
       <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         {kycStatus === 'PENDING'
-          ? 'Your verification is under review. Payment and report actions are disabled until approval.'
+          ? 'Your verification is under review. Payments and downloadable reports stay locked until approval.'
           : kycStatus === 'REJECTED'
-            ? 'Verification was rejected. Please resubmit documents via Settings.'
-            : 'Complete KYC to unlock payments and credit features.'}
+            ? 'Verification was rejected — open KYC to see the reason and re-upload documents.'
+            : 'Complete identity verification to unlock rent payments and credit reports.'}
       </div>
     ) : null;
 
@@ -62,13 +72,29 @@ export default function TenantLayout({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
+  if (loading || !roleReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F3F4F6]">
+        <p className="text-sm text-slate-500">Loading tenant workspace…</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  if (role === 'LANDLORD') {
+    return null;
+  }
+
   return (
     <DashboardShell
       role="tenant"
       roleLabel="Tenant workspace"
-      sectionTitle="RentCredit"
-      sectionDescription="Rent, credit score, deposits, and verified payment history."
-      navItems={navItems}
+      sectionTitle="CRENIT"
+      sectionDescription="Pay rent, build your score, and download verified payment history."
+      navItems={tenantNavItems}
       banner={banner}
     >
       {children}

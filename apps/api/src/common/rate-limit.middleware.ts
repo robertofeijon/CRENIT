@@ -10,8 +10,17 @@ export class RateLimitMiddleware implements NestMiddleware {
   private readonly maxRequests = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 120);
 
   use(req: Request, res: Response, next: NextFunction) {
+    const path = req.path || '';
+    if (path === '/' || path.endsWith('/health')) {
+      return next();
+    }
+
     const now = Date.now();
-    const ip = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
+    const forwarded = req.headers['x-forwarded-for'];
+    const ip =
+      req.ip ||
+      (typeof forwarded === 'string' ? forwarded.split(',')[0]?.trim() : undefined) ||
+      'unknown';
     const key = `${ip}:${req.path}`;
     const record = this.cache.get(key);
 

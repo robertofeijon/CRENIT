@@ -29,7 +29,7 @@ export default function SolutionsPage() {
             Tailored solutions for every rental stakeholder.
           </h1>
           <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">
-            RentCredit enables tenants, landlords, lenders, and developers to use verified rental payments and market data to make smarter, more confident decisions.
+            CRENIT enables tenants, landlords, lenders, and developers to use verified rental payments and market data to make smarter, more confident decisions.
           </p>
           <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
             {solutions.map((solution) => (
@@ -65,7 +65,7 @@ export default function SolutionsPage() {
             <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Solutions in action</p>
             <h2 className="mt-4 text-3xl font-semibold text-[#1A1A1A]">Built for real rental businesses.</h2>
             <p className="mt-6 text-base leading-7 text-slate-600">
-              RentCredit combines operational efficiency with verified financial identity so lenders, owners, and tenants all gain more clarity and confidence.
+              CRENIT combines operational efficiency with verified financial identity so lenders, owners, and tenants all gain more clarity and confidence.
             </p>
             <div className="mt-10 space-y-4">
               <div className="rounded-[1.5rem] border border-slate-200 bg-[#F8F8F8] p-6">
@@ -84,13 +84,13 @@ export default function SolutionsPage() {
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Ready to move forward?</p>
-              <h2 className="mt-3 text-3xl font-semibold text-[#1A1A1A]">Start using RentCredit for your rental business.</h2>
+              <h2 className="mt-3 text-3xl font-semibold text-[#1A1A1A]">Start using CRENIT for your rental business.</h2>
             </div>
             <Link
               href="/auth"
               className="inline-flex items-center justify-center rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white hover:bg-[#992d24]"
             >
-              Request a Demo
+              Get started
             </Link>
           </div>
         </section>

@@ -129,9 +129,18 @@ export class PaymentsController {
     const secret = process.env.PAYMENT_WEBHOOK_SECRET;
     const payloadString = req && req.rawBody ? req.rawBody : JSON.stringify(body);
 
-    if (secret && sigHeader) {
+    if (process.env.NODE_ENV === 'production' && !secret) {
+      throw new UnauthorizedException('PAYMENT_WEBHOOK_SECRET is required in production');
+    }
+
+    if (secret) {
+      if (!sigHeader) {
+        throw new UnauthorizedException('Missing webhook signature');
+      }
       const computed = crypto.createHmac('sha256', secret).update(payloadString).digest('hex');
-      if (!crypto.timingSafeEqual(Buffer.from(computed), Buffer.from(sigHeader))) {
+      const expected = Buffer.from(computed, 'utf8');
+      const received = Buffer.from(sigHeader, 'utf8');
+      if (expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) {
         throw new UnauthorizedException('Invalid webhook signature');
       }
     }

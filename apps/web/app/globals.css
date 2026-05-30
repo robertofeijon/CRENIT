@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
 
 :root {
   color-scheme: light;
@@ -56,6 +56,30 @@ body {
     @apply inline-flex items-center justify-center rounded-lg bg-[#1A1A2E] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#16213E];
   }
 
+  .landlord-panel {
+    @apply rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6;
+  }
+
+  .landlord-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-[#C0392B] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#C0392B]/20 transition hover:bg-[#992d24] disabled:opacity-60;
+  }
+
+  .landlord-btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-[#1A1A1A] transition hover:bg-slate-50 disabled:opacity-60;
+  }
+
+  .tenant-panel {
+    @apply rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6;
+  }
+
+  .tenant-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-[#C0392B] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#C0392B]/20 transition hover:bg-[#992d24] disabled:opacity-60;
+  }
+
+  .tenant-btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-[#1A1A1A] transition hover:bg-slate-50 disabled:opacity-60;
+  }
+
   .stat-grid {
     @apply grid gap-4 sm:grid-cols-2 xl:grid-cols-4;
     min-width: 0;
@@ -85,15 +109,89 @@ body {
     font-variant-numeric: tabular-nums;
   }
 
-  .footer-grid {
-    display: grid;
-    gap: 1.5rem;
-    grid-template-columns: 1.6fr repeat(4, 1fr);
+  .marketing-container {
+    @apply mx-auto w-full max-w-[1200px] px-5 sm:px-8;
   }
 
-  @media (max-width: 768px) {
-    .footer-grid {
-      grid-template-columns: 1fr;
-    }
+  .marketing-section {
+    @apply py-16 sm:py-24;
+  }
+
+  .marketing-section-muted {
+    @apply bg-[#F8F9FB] py-16 sm:py-24;
+  }
+
+  .marketing-eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.28em] text-[#C0392B];
+  }
+
+  .marketing-h1 {
+    font-family: 'Instrument Serif', Georgia, serif;
+    @apply text-4xl font-normal leading-[1.12] tracking-tight text-[#1A1A1A] sm:text-5xl lg:text-[3.5rem];
+  }
+
+  .marketing-h1 em {
+    @apply not-italic text-[#C0392B];
+  }
+
+  .marketing-page {
+    @apply min-h-screen bg-[#F3F4F6] text-[#1A1A1A];
+  }
+
+  .marketing-bento-card {
+    @apply rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md;
+  }
+
+  .marketing-flywheel-step {
+    @apply relative flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-5;
+  }
+
+  .marketing-accent-bar {
+    @apply h-1 w-12 rounded-full bg-[#C0392B];
+  }
+
+  .marketing-h2 {
+    @apply text-3xl font-semibold tracking-tight text-[#1A1A1A] sm:text-4xl;
+  }
+
+  .marketing-lead {
+    @apply text-lg leading-8 text-slate-600 sm:text-xl;
+  }
+
+  .marketing-btn-primary {
+    @apply inline-flex items-center justify-center rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#992d24];
+  }
+
+  .marketing-btn-outline {
+    @apply inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-[#1A1A1A] transition hover:border-slate-400 hover:bg-slate-50;
+  }
+
+  .marketing-btn-ghost {
+    @apply inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold text-[#1A1A1A] transition hover:bg-slate-100;
+  }
+
+  .marketing-service-tab {
+    @apply rounded-full border px-4 py-2 text-sm font-medium transition;
+  }
+
+  .marketing-service-tab-active {
+    @apply border-[#1A1A1A] bg-[#1A1A1A] text-white;
+  }
+
+  .marketing-service-tab-inactive {
+    @apply border-transparent bg-transparent text-slate-600 hover:bg-slate-100 hover:text-[#1A1A1A];
+  }
+
+  .marketing-stat-value {
+    @apply text-4xl font-semibold tracking-tight text-[#1A1A1A] sm:text-5xl;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .marketing-product-frame {
+    @apply overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)];
+  }
+
+  .marketing-logo-pill {
+    @apply flex h-12 min-w-[120px] items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold uppercase tracking-wide text-slate-500;
   }
 }

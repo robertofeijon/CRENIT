@@ -1,12 +1,14 @@
-import { BadRequestException, Body, Controller, Get, Headers, Post, UnauthorizedException } from '@nestjs/common';
-import { KycService } from './kyc.service';
+import { BadRequestException, Body, Controller, Get, Headers, Post, Put, UnauthorizedException } from '@nestjs/common';
+import { KycService, type KycDocumentType } from './kyc.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { getUserFromAuthHeader, getUserProfileFromAuthHeader } from '../supabase/supabase.utils';
 
 type KycDocument = {
-  type: 'government_id' | 'selfie' | 'income_proof' | 'address_proof';
+  type: KycDocumentType;
   data: { filename: string; fileBase64: string };
 };
+
+const REQUIRED_TYPES: KycDocumentType[] = ['government_id', 'selfie', 'income_proof', 'signed_lease'];
 
 @Controller('kyc')
 export class KycController {
@@ -27,6 +29,16 @@ export class KycController {
     return { success: true, data: result, error: null };
   }
 
+  @Put('identity')
+  async updateIdentity(
+    @Headers('authorization') authHeader: string,
+    @Body() body: { national_id_number?: string; first_name?: string; surname?: string },
+  ) {
+    const { user } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    const result = await this.kycService.updateTenantIdentity(user.id, body);
+    return { success: true, data: result, error: null };
+  }
+
   @Post('submit')
   async submit(
     @Headers('authorization') authHeader: string,
@@ -35,16 +47,14 @@ export class KycController {
       government_id: { filename: string; fileBase64: string };
       selfie: { filename: string; fileBase64: string };
       income_proof: { filename: string; fileBase64: string };
-      address_proof: { filename: string; fileBase64: string };
+      signed_lease: { filename: string; fileBase64: string };
     },
   ) {
     const { user } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
-    const documents: KycDocument[] = [
-      { type: 'government_id', data: body.government_id },
-      { type: 'selfie', data: body.selfie },
-      { type: 'income_proof', data: body.income_proof },
-      { type: 'address_proof', data: body.address_proof },
-    ];
+    const documents: KycDocument[] = REQUIRED_TYPES.map((type) => ({
+      type,
+      data: body[type],
+    }));
 
     for (const doc of documents) {
       if (!doc.data?.filename || !doc.data?.fileBase64) {
@@ -64,16 +74,14 @@ export class KycController {
       government_id: { filename: string; fileBase64: string };
       selfie: { filename: string; fileBase64: string };
       income_proof: { filename: string; fileBase64: string };
-      address_proof: { filename: string; fileBase64: string };
+      signed_lease: { filename: string; fileBase64: string };
     },
   ) {
     const { user } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
-    const documents: KycDocument[] = [
-      { type: 'government_id', data: body.government_id },
-      { type: 'selfie', data: body.selfie },
-      { type: 'income_proof', data: body.income_proof },
-      { type: 'address_proof', data: body.address_proof },
-    ];
+    const documents: KycDocument[] = REQUIRED_TYPES.map((type) => ({
+      type,
+      data: body[type],
+    }));
 
     for (const doc of documents) {
       if (!doc.data?.filename || !doc.data?.fileBase64) {
@@ -93,21 +101,25 @@ export class KycController {
       tenantId: string;
       filename: string;
       fileBase64: string;
-      doc_type?: KycDocument['type'];
+      doc_type?: KycDocumentType;
     },
   ) {
     const user = await getUserFromAuthHeader(this.supabaseService.getClient(), authHeader);
-    if (!body.tenantId || !body.filename || !body.fileBase64) {
-      throw new BadRequestException('tenantId, filename and fileBase64 are required');
+    if (!body.tenantId || !body.filename || !body.fileBase64 || !body.doc_type) {
+      throw new BadRequestException('tenantId, doc_type, filename and fileBase64 are required');
     }
     if (body.tenantId !== user.id) {
       throw new UnauthorizedException('Tenant mismatch');
     }
-    const allowed: KycDocument['type'][] = ['government_id', 'selfie', 'income_proof', 'address_proof'];
-    if (body.doc_type && !allowed.includes(body.doc_type)) {
-      throw new BadRequestException(`doc_type must be one of: ${allowed.join(', ')}`);
+    if (!REQUIRED_TYPES.includes(body.doc_type)) {
+      throw new BadRequestException(`doc_type must be one of: ${REQUIRED_TYPES.join(', ')}`);
     }
-    const res = await this.kycService.uploadDocument(body);
+    const res = await this.kycService.uploadDocument({
+      tenantId: body.tenantId,
+      filename: body.filename,
+      fileBase64: body.fileBase64,
+      doc_type: body.doc_type,
+    });
     return { success: true, data: res, error: null };
   }
 }

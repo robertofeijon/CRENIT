@@ -26,7 +26,7 @@ export class ReportsController {
       assertKycApproved(profile);
       const pdfBuffer = await this.reportsService.generateTenantReport(user.id);
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'attachment; filename="rentcredit-tenant-report.pdf"');
+      res.setHeader('Content-Disposition', 'attachment; filename="crenit-tenant-report.pdf"');
       res.send(pdfBuffer);
     } catch (error: any) {
       throw new UnauthorizedException(error?.message || 'Unable to generate report.');
@@ -43,7 +43,7 @@ export class ReportsController {
       assertKycApproved(profile);
       const pdfBuffer = await this.reportsService.generateTenantReport(user.id);
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'attachment; filename="rentcredit-credit-score-report.pdf"');
+      res.setHeader('Content-Disposition', 'attachment; filename="crenit-credit-score-report.pdf"');
       res.send(pdfBuffer);
     } catch (error: any) {
       throw new UnauthorizedException(error?.message || 'Unable to generate report.');
@@ -61,7 +61,7 @@ export class ReportsController {
       assertRole(profile, 'LANDLORD');
       const pdfBuffer = await this.reportsService.generateLandlordPortfolioReport(profile.id, month);
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'attachment; filename="rentcredit-landlord-portfolio-report.pdf"');
+      res.setHeader('Content-Disposition', 'attachment; filename="crenit-landlord-portfolio-report.pdf"');
       res.send(pdfBuffer);
     } catch (error: any) {
       throw new UnauthorizedException(error?.message || 'Unable to generate report.');
@@ -79,7 +79,7 @@ export class ReportsController {
       assertRole(profile, 'LANDLORD');
       const pdfBuffer = await this.reportsService.generateTenantPaymentReport(profile.id, tenantId);
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'attachment; filename="rentcredit-landlord-tenant-report.pdf"');
+      res.setHeader('Content-Disposition', 'attachment; filename="crenit-landlord-tenant-report.pdf"');
       res.send(pdfBuffer);
     } catch (error: any) {
       throw new UnauthorizedException(error?.message || 'Unable to generate report.');
@@ -96,7 +96,7 @@ export class ReportsController {
       success: true,
       data: {
         authentic: true,
-        message: 'This RentCredit Score Report is authentic.',
+        message: 'This CRENIT Score Report is authentic.',
         score: verification.score,
         tier: verification.tier,
         generated_at: verification.generated_at,

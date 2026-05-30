@@ -15,7 +15,7 @@ export class AuthService {
   ) {}
 
   getWelcomeMessage(): string {
-    return 'RentCredit auth service is available.';
+    return 'CRENIT auth service is available.';
   }
 
   private async findExistingUserByEmail(email: string) {
@@ -50,6 +50,12 @@ export class AuthService {
     if (!normalizedEmail) {
       throw new BadRequestException('Email is required');
     }
+    if (!payload.password || payload.password.length < 6) {
+      throw new BadRequestException('Password must be at least 6 characters.');
+    }
+    if (!payload.full_name?.trim()) {
+      throw new BadRequestException('Full name is required.');
+    }
 
     const existingUser = await this.findExistingUserByEmail(normalizedEmail);
     if (existingUser) {
@@ -64,42 +70,63 @@ export class AuthService {
     });
 
     if (res.error) {
-      throw res.error;
+      const msg = res.error.message || 'Registration failed.';
+      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('registered')) {
+        throw new BadRequestException('Email already registered. Please log in instead.');
+      }
+      if (msg.toLowerCase().includes('password')) {
+        throw new BadRequestException('Password must be at least 6 characters.');
+      }
+      throw new BadRequestException(msg);
     }
 
     const user = (res as any).data?.user ?? null;
-    if (!user) throw new Error('Failed to create user via Supabase admin API');
+    if (!user) throw new BadRequestException('Failed to create account. Check API configuration.');
 
-    const role = (payload.role || 'TENANT').toString().toUpperCase();
+    const requestedRole = (payload.role || 'TENANT').toString().toUpperCase();
+    const role = ['TENANT', 'LANDLORD'].includes(requestedRole) ? requestedRole : 'TENANT';
 
-    await client
-      .from('profiles')
-      .upsert(
-        [
-          {
-            id: user.id,
-            full_name: payload.full_name,
-            role,
-            kyc_status: role === 'TENANT' ? 'NOT_SUBMITTED' : 'APPROVED',
-            partner_approval_status: role === 'LANDLORD' ? 'PENDING_APPROVAL' : 'APPROVED',
-          },
-        ],
-        { onConflict: 'id' },
-      );
+    const profilePayload: Record<string, unknown> = {
+      id: user.id,
+      full_name: payload.full_name.trim(),
+      role,
+      kyc_status: role === 'TENANT' ? 'NOT_SUBMITTED' : 'APPROVED',
+    };
+    if (role === 'LANDLORD') {
+      profilePayload.partner_approval_status = 'PENDING_APPROVAL';
+    }
+
+    const profileRes = await client.from('profiles').upsert([profilePayload], { onConflict: 'id' });
+    if (profileRes.error) {
+      const missingPartnerCol =
+        profileRes.error.code === '42703' || profileRes.error.message?.includes('partner_approval_status');
+      if (missingPartnerCol && role === 'LANDLORD') {
+        const { partner_approval_status: _removed, ...withoutPartner } = profilePayload;
+        const retry = await client.from('profiles').upsert([withoutPartner], { onConflict: 'id' });
+        if (retry.error) {
+          this.logger.error(`Profile upsert failed: ${retry.error.message}`);
+          throw new BadRequestException('Account created but profile setup failed. Contact support.');
+        }
+      } else {
+        this.logger.error(`Profile upsert failed: ${profileRes.error.message}`);
+        throw new BadRequestException(profileRes.error.message || 'Account created but profile setup failed.');
+      }
+    }
 
     if (role === 'LANDLORD') {
-      await client
-        .from('landlord_profiles')
-        .upsert(
-          [
-            {
-              user_id: user.id,
-              business_name: payload.full_name,
-              partner_status: 'PENDING_APPROVAL',
-            },
-          ],
-          { onConflict: 'user_id' },
-        );
+      const landlordRes = await client.from('landlord_profiles').upsert(
+        [
+          {
+            user_id: user.id,
+            business_name: payload.full_name.trim(),
+            partner_status: 'PENDING',
+          },
+        ],
+        { onConflict: 'user_id' },
+      );
+      if (landlordRes.error) {
+        this.logger.warn(`Landlord profile upsert: ${landlordRes.error.message}`);
+      }
     }
 
     if (payload.market_data_consent) {
@@ -113,13 +140,12 @@ export class AuthService {
   }
 
   async login(payload: { email: string; password: string }) {
-    const client = this.supabase.getClient();
     const email = payload.email?.toString().trim().toLowerCase();
     const password = payload.password?.toString();
     if (!email || !password) {
       throw new Error('Email and password are required');
     }
-    const res = await client.auth.signInWithPassword({ email, password });
+    const res = await this.supabase.getAuthClient().auth.signInWithPassword({ email, password });
 
     if (res.error) throw res.error;
     return res;
@@ -293,7 +319,7 @@ export class AuthService {
     await this.notificationsService.createNotification({
       user_id: tenantId,
       type: 'INVITE_ACCEPTED',
-      title: 'Welcome to RentCredit',
+      title: 'Welcome to CRENIT',
       message: 'Your tenant invitation has been accepted and your onboarding is now active.',
       metadata: {
         invitation_token: token,

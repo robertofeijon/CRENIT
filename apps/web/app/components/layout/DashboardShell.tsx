@@ -4,10 +4,18 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import MarketingNav from './MarketingNav';
 
-export type NavItem = { label: string; href: string; icon: string };
+export type NavItem = { label: string; href: string; icon?: string | LucideIcon; section?: string };
+
+/** Lucide icons can be functions or forward-ref objects ({ $$typeof, render }) */
+function resolveNavIcon(icon: NavItem['icon']): LucideIcon | null {
+  if (!icon || typeof icon === 'string') return null;
+  return icon as LucideIcon;
+}
 
 export type DashboardShellProps = {
   role: 'landlord' | 'tenant' | 'admin';
@@ -20,9 +28,14 @@ export type DashboardShellProps = {
 };
 
 function dashboardPill(role: DashboardShellProps['role']) {
-  if (role === 'admin') return { label: 'Admin Portal', className: 'bg-[#1A1A2E] text-white' };
-  if (role === 'landlord') return { label: 'Landlord Dashboard', className: 'bg-[#C0392B] text-white' };
-  return { label: 'Tenant Dashboard', className: 'bg-[#C0392B] text-white' };
+  if (role === 'admin') return { label: 'Admin Portal', href: '/admin', className: 'bg-[#1A1A1A] text-white hover:bg-[#111111]' };
+  if (role === 'landlord')
+    return {
+      label: 'Partner portal',
+      href: '/landlord/overview',
+      className: 'bg-[#C0392B] text-white hover:bg-[#992d24]',
+    };
+  return { label: 'Tenant home', href: '/tenant/home', className: 'bg-[#C0392B] text-white hover:bg-[#992d24]' };
 }
 
 export default function DashboardShell({
@@ -51,31 +64,82 @@ export default function DashboardShell({
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const isAdminShell = role === 'admin';
+  const isPartnerShell = role === 'landlord';
+  const isTenantShell = role === 'tenant';
+  const isPolishedShell = isAdminShell || isPartnerShell || isTenantShell;
+
   const sidebar = (
-    <aside className="flex h-full w-[240px] flex-col border-r border-gray-200 bg-[#F9FAFB]">
-      <div className="border-b border-gray-200 p-5">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">{roleLabel}</p>
-        <h2 className="mt-2 text-lg font-bold text-gray-900">{sectionTitle}</h2>
-        <p className="mt-1 text-xs leading-5 text-gray-500">{sectionDescription}</p>
+    <aside
+      className={`flex h-full w-[260px] flex-col border-r ${
+        isPolishedShell ? 'border-slate-200 bg-white' : 'border-gray-200 bg-[#F9FAFB]'
+      }`}
+    >
+      <div className={`border-b p-5 ${isPolishedShell ? 'border-slate-200' : 'border-gray-200'}`}>
+        <p
+          className={`text-[10px] font-semibold uppercase tracking-[0.35em] ${
+            isPolishedShell ? 'text-[#C0392B]/90' : 'text-gray-500'
+          }`}
+        >
+          {roleLabel}
+        </p>
+        <h2 className="mt-2 text-lg font-semibold text-[#1A1A1A]">{sectionTitle}</h2>
+        <p className="mt-1 text-xs leading-5 text-slate-500">{sectionDescription}</p>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {navItems.map((item) => {
+        {navItems.map((item, index) => {
+          const hasMoreSpecificMatch = navItems.some(
+            (other) =>
+              other.href !== item.href &&
+              other.href.length > item.href.length &&
+              (pathname === other.href || pathname.startsWith(`${other.href}/`)) &&
+              (other.href === item.href || other.href.startsWith(`${item.href}/`)),
+          );
           const active =
-            pathname === item.href ||
-            (item.href !== `/${role}` && pathname.startsWith(item.href));
+            !hasMoreSpecificMatch &&
+            (pathname === item.href ||
+              (item.href === '/admin' && pathname === '/admin') ||
+              (item.href === '/landlord/overview' && (pathname === '/landlord' || pathname === '/landlord/overview')) ||
+              (item.href === '/tenant/home' && (pathname === '/tenant' || pathname === '/tenant/home')) ||
+              (item.href !== `/${role}` &&
+                item.href !== '/admin' &&
+                item.href !== '/landlord/overview' &&
+                item.href !== '/tenant/home' &&
+                pathname.startsWith(`${item.href}/`)));
+          const NavIcon = resolveNavIcon(item.icon);
           return (
+            <div key={item.href}>
+              {item.section ? (
+                <p
+                  className={`px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 ${
+                    index === 0 ? 'pt-0' : 'pt-4'
+                  }`}
+                >
+                  {item.section}
+                </p>
+              ) : null}
             <Link
-              key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                active ? 'bg-[#1A1A2E] text-white' : 'text-gray-700 hover:bg-gray-100'
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                active
+                  ? isPolishedShell
+                    ? 'bg-[#C0392B] text-white shadow-md shadow-[#C0392B]/20'
+                    : 'bg-[#1A1A2E] text-white'
+                  : isPolishedShell
+                    ? 'text-slate-700 hover:bg-[#FDEDEC]'
+                    : 'text-gray-700 hover:bg-gray-100'
               }`}
             >
-              <span className="text-base" aria-hidden>
-                {item.icon}
-              </span>
+              {NavIcon ? (
+                <NavIcon className="h-4 w-4 shrink-0" aria-hidden />
+              ) : typeof item.icon === 'string' ? (
+                <span className="text-base" aria-hidden>
+                  {item.icon}
+                </span>
+              ) : null}
               {item.label}
             </Link>
+            </div>
           );
         })}
       </nav>
@@ -84,50 +148,67 @@ export default function DashboardShell({
 
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
-      <header className="fixed left-0 right-0 top-0 z-50 h-16 border-b border-gray-200 bg-white">
+      <header
+        className={`fixed left-0 right-0 top-0 z-50 h-16 border-b backdrop-blur ${
+          isPolishedShell ? 'border-slate-200/80 bg-[#F3F4F6]/95' : 'border-gray-200 bg-white'
+        }`}
+      >
         <div className="flex h-full items-center justify-between gap-4 px-4 lg:px-6">
           <div className="flex items-center gap-3">
             <button
               type="button"
-              className="rounded-lg border border-gray-200 p-2 text-gray-700 md:hidden"
+              className="rounded-lg border border-slate-200 bg-white p-2 text-slate-700 md:hidden"
               onClick={() => setMobileOpen(true)}
               aria-label="Open menu"
             >
-              ☰
+              <Menu className="h-5 w-5" aria-hidden />
             </button>
-            <Link href="/" className="text-lg font-bold text-gray-900">
-              RentCredit
+            <Link href="/" className="text-lg font-semibold tracking-wide text-[#1A1A1A]">
+              CRENIT
             </Link>
             <div className="hidden lg:block">
               <MarketingNav compact />
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/auth" className="rc-btn-outline hidden sm:inline-flex">
-              View Demo
-            </Link>
-            <Link href={`/${role === 'admin' ? 'admin' : role}`} className={`rounded-lg px-4 py-2 text-sm font-semibold ${pill.className}`}>
+            <Link href={pill.href} className={`rounded-full px-4 py-2 text-sm font-semibold ${pill.className}`}>
               {pill.label}
             </Link>
-            <button type="button" onClick={() => logout()} className="rc-btn-outline">
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-slate-50"
+            >
               Logout
             </button>
           </div>
         </div>
       </header>
 
-      <div className="hidden md:fixed md:left-0 md:top-16 md:z-40 md:block md:h-[calc(100vh-4rem)]">
+      <div className="hidden md:fixed md:left-0 md:top-16 md:z-40 md:block md:h-[calc(100vh-4rem)] md:w-[260px]">
         {sidebar}
       </div>
 
       {mobileOpen ? (
         <div className="fixed inset-0 z-[60] md:hidden">
           <button type="button" className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} aria-label="Close menu" />
-          <div className="absolute left-0 top-0 h-full w-[240px] shadow-xl transition-transform">{sidebar}</div>
+          <div className="absolute left-0 top-0 flex h-full w-[min(280px,88vw)] flex-col shadow-xl">
+            <div className="flex justify-end border-b border-slate-200 bg-white p-2">
+              <button
+                type="button"
+                className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" aria-hidden />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden">{sidebar}</div>
+          </div>
         </div>
       ) : null}
 
-      <main className="mt-16 min-h-[calc(100vh-4rem)] p-4 md:ml-[240px] md:p-8">
+      <main className="mt-16 min-h-[calc(100vh-4rem)] p-4 md:ml-[260px] md:p-8">
         {banner}
         {children}
       </main>

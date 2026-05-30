@@ -17,6 +17,67 @@ export class DepositsService {
     return this.supabaseService.getClient();
   }
 
+  private async ensureEscrowAccount(deposit: any) {
+    const client = this.getClient();
+    const { data: existing } = await client
+      .from('escrow_accounts')
+      .select('*')
+      .eq('deposit_id', deposit.id)
+      .maybeSingle();
+    if (existing) return existing;
+
+    const { data, error } = await client
+      .from('escrow_accounts')
+      .insert([
+        {
+          deposit_id: deposit.id,
+          lease_id: deposit.lease_id,
+          tenant_id: deposit.tenant_id,
+          landlord_id: deposit.landlord_id,
+          total_held: Number(deposit.amount || 0),
+          status: 'HELD',
+        },
+      ])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  private async logEscrowTransaction(payload: {
+    escrow_account_id: string;
+    deposit_id: string;
+    dispute_id?: string;
+    transaction_type:
+      | 'HOLD'
+      | 'RELEASE_TO_TENANT'
+      | 'RELEASE_TO_LANDLORD'
+      | 'REFUND'
+      | 'DISPUTE_OPENED'
+      | 'DISPUTE_RESOLVED'
+      | 'ADJUSTMENT';
+    amount: number;
+    status?: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+    created_by?: string;
+    notes?: string;
+    metadata?: Record<string, any>;
+  }) {
+    const client = this.getClient();
+    await client.from('escrow_transactions').insert([
+      {
+        escrow_account_id: payload.escrow_account_id,
+        deposit_id: payload.deposit_id,
+        dispute_id: payload.dispute_id || null,
+        transaction_type: payload.transaction_type,
+        amount: Number(payload.amount || 0),
+        status: payload.status || 'COMPLETED',
+        created_by: payload.created_by || null,
+        notes: payload.notes || null,
+        metadata: payload.metadata || {},
+      },
+    ]);
+  }
+
   async fileDispute(
     tenantId: string,
     { depositId, reason, description, requestedAmount }: { depositId: string; reason: string; description: string; requestedAmount: number },
@@ -57,6 +118,17 @@ export class DepositsService {
       }));
       await client.from('dispute_evidence').insert(evidenceRecords);
     }
+
+    const escrowAccount = await this.ensureEscrowAccount(deposit);
+    await this.logEscrowTransaction({
+      escrow_account_id: escrowAccount.id,
+      deposit_id: deposit.id,
+      dispute_id: dispute.id,
+      transaction_type: 'DISPUTE_OPENED',
+      amount: Number(requestedAmount || deposit.amount || 0),
+      created_by: tenantId,
+      notes: `Dispute opened: ${reason}`,
+    });
 
     if (deposit.landlord_id) {
       const { data: landlordProfile } = await client.from('landlord_profiles').select('user_id').eq('id', deposit.landlord_id).maybeSingle();
@@ -258,8 +330,17 @@ export class DepositsService {
     if (error || !rows?.[0]) {
       throw error || new BadRequestException('Failed to collect deposit');
     }
-
-    return { ...rows[0], timeline: this.buildDepositTimeline(rows[0]) };
+    const collected = rows[0];
+    const escrowAccount = await this.ensureEscrowAccount(collected);
+    await this.logEscrowTransaction({
+      escrow_account_id: escrowAccount.id,
+      deposit_id: collected.id,
+      transaction_type: 'HOLD',
+      amount: Number(collected.amount || 0),
+      created_by: landlordUserId,
+      notes: 'Deposit held in escrow',
+    });
+    return { ...collected, timeline: this.buildDepositTimeline(collected) };
   }
 
   async requestRefund(landlordUserId: string, depositId: string) {
@@ -280,6 +361,23 @@ export class DepositsService {
       .single();
 
     if (error) throw error;
+    const escrowAccount = await this.ensureEscrowAccount(data);
+    await client
+      .from('escrow_accounts')
+      .update({
+        status: 'PARTIALLY_RELEASED',
+        total_refunded: Number(data.amount || 0),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', escrowAccount.id);
+    await this.logEscrowTransaction({
+      escrow_account_id: escrowAccount.id,
+      deposit_id: data.id,
+      transaction_type: 'REFUND',
+      amount: Number(data.amount || 0),
+      created_by: landlordUserId,
+      notes: 'Refund requested by landlord',
+    });
     return { ...data, timeline: this.buildDepositTimeline(data) };
   }
 
@@ -301,6 +399,25 @@ export class DepositsService {
       .single();
 
     if (error) throw error;
+    const escrowAccount = await this.ensureEscrowAccount(data);
+    await client
+      .from('escrow_accounts')
+      .update({
+        status: 'RELEASED',
+        total_released: Number(data.amount || 0),
+        total_refunded: Number(data.amount || 0),
+        closed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', escrowAccount.id);
+    await this.logEscrowTransaction({
+      escrow_account_id: escrowAccount.id,
+      deposit_id: data.id,
+      transaction_type: 'RELEASE_TO_TENANT',
+      amount: Number(data.amount || 0),
+      created_by: landlordUserId,
+      notes: 'Deposit released to tenant',
+    });
     await this.notificationsService.createNotification({
       user_id: data.tenant_id,
       type: 'DEPOSIT_RELEASED',
@@ -328,6 +445,7 @@ export class DepositsService {
         throw new BadRequestException('Not authorized to view this deposit');
       }
     }
+    // ADMIN can view any deposit for operational arbitration.
 
     const { data: disputes } = await client.from('disputes').select('*').eq('deposit_id', depositId).order('opened_at', { ascending: false });
 
@@ -336,6 +454,26 @@ export class DepositsService {
       disputes: disputes || [],
       timeline: this.buildDepositTimeline(deposit, disputes || []),
     };
+  }
+
+  async getEscrowLedger(userId: string, depositId: string, role: string) {
+    const deposit = await this.getDepositById(userId, depositId, role);
+    const client = this.getClient();
+    const { data: account } = await client
+      .from('escrow_accounts')
+      .select('*')
+      .eq('deposit_id', depositId)
+      .maybeSingle();
+    if (!account) {
+      return { account: null, transactions: [] };
+    }
+    const { data: transactions, error } = await client
+      .from('escrow_transactions')
+      .select('*')
+      .eq('escrow_account_id', account.id)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return { account, transactions: transactions || [] };
   }
 
   private async getDepositForLandlord(landlordId: string, depositId: string) {
@@ -418,6 +556,26 @@ export class DepositsService {
     if (amountToTenant > 0 && status !== 'RESOLVED_LANDLORD') {
       await client.from('deposits').update({ status: 'REFUND_PENDING' }).eq('id', deposit.id);
     }
+
+    const escrowAccount = await this.ensureEscrowAccount(deposit);
+    await client
+      .from('escrow_accounts')
+      .update({
+        status: status === 'RESOLVED_LANDLORD' ? 'CLOSED' : 'DISPUTED',
+        total_disputed: Number(amountToTenant || 0),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', escrowAccount.id);
+    await this.logEscrowTransaction({
+      escrow_account_id: escrowAccount.id,
+      deposit_id: deposit.id,
+      dispute_id: disputeId,
+      transaction_type: 'DISPUTE_RESOLVED',
+      amount: Number(amountToTenant || 0),
+      created_by: adminId,
+      notes: `Arbitration: ${decision}`,
+      metadata: { decision, reason },
+    });
 
     const { data: landlordProfile } = await client.from('landlord_profiles').select('user_id').eq('id', deposit.landlord_id).maybeSingle();
     if (deposit.tenant_id) {

@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
 import api from '../../../../src/lib/api';
 import { useAuth } from '../../../../src/contexts/AuthContext';
+import AdminPageHeader from '../../../components/ui/AdminPageHeader';
+import AdminStatCard from '../../../components/ui/AdminStatCard';
 import SkeletonBlocks from '../../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../../components/ui/EmptyStateCard';
@@ -12,125 +15,204 @@ export default function AdminKycCompliancePage() {
   const { user, role, loading } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<any>(null);
+  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
   const [selectedAudit, setSelectedAudit] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(false);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/auth');
     if (!loading && user && role !== 'ADMIN') router.replace('/auth');
   }, [loading, user, role, router]);
 
-  useEffect(() => {
-    if (!user || role !== 'ADMIN') return;
+  const loadData = useCallback(() => {
     setLoadingData(true);
+    setError(null);
     api
       .get('/admin/kyc/compliance')
       .then((res) => setData(res.data?.data))
       .catch((err: any) => setError(err?.response?.data?.message || 'Unable to load KYC compliance data.'))
       .finally(() => setLoadingData(false));
-  }, [user, role]);
+  }, []);
+
+  useEffect(() => {
+    if (user && role === 'ADMIN') {
+      loadData();
+    }
+  }, [user, role, loadData]);
 
   const loadAudit = async (tenantId: string) => {
+    setSelectedTenantId(tenantId);
+    setAuditLoading(true);
     try {
       const res = await api.get(`/admin/kyc/audit/${tenantId}?limit=50`);
       setSelectedAudit(res.data?.data || []);
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Unable to load audit trail.');
+    } finally {
+      setAuditLoading(false);
     }
   };
 
   const dismissFlag = async (flagId: string) => {
+    setError(null);
     try {
       await api.post(`/admin/kyc/flags/${flagId}/dismiss`, { note: 'Reviewed by compliance admin.' });
-      const refreshed = await api.get('/admin/kyc/compliance');
-      setData(refreshed.data?.data);
+      loadData();
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Unable to dismiss quality flag.');
     }
   };
 
-  if (loading || !user) return <p className="text-sm text-gray-500">Loading data...</p>;
+  if (loading || !user || role !== 'ADMIN') {
+    return <p className="text-sm text-slate-500">Loading admin workspace...</p>;
+  }
 
   const stats = data?.stats || {};
+
   return (
-    <div>
-      <h1 className="mb-4 text-2xl font-bold text-gray-900">KYC compliance dashboard</h1>
-      {error ? <ErrorStateCard message={error} onRetry={() => router.refresh()} /> : null}
-      {loadingData ? <SkeletonBlocks rows={4} /> : null}
+    <div className="space-y-6">
+      <AdminPageHeader
+        badge="KYC compliance"
+        title="KYC compliance dashboard"
+        subtitle="Regulatory oversight — submission throughput, review SLAs, quality flags, and per-tenant audit chronology."
+        actions={
+          <button
+            type="button"
+            onClick={loadData}
+            disabled={loadingData}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-slate-50 disabled:opacity-60"
+          >
+            <RefreshCw className={`h-4 w-4 ${loadingData ? 'animate-spin' : ''}`} aria-hidden />
+            Refresh
+          </button>
+        }
+      />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ['Total KYC Submissions', stats.total_submissions],
-          ['Approved This Month', stats.approved_this_month],
-          ['Rejected This Month', stats.rejected_this_month],
-          ['Average Review Time (hours)', stats.average_review_time_hours],
-        ].map(([label, value]) => (
-          <div key={String(label)} className="rounded-xl border border-gray-200 bg-white p-4">
-            <p className="text-xs uppercase text-gray-500">{label}</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900">{value ?? '—'}</p>
-          </div>
-        ))}
-      </div>
+      {error ? <ErrorStateCard message={error} onRetry={loadData} /> : null}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-900">KYC submissions</h2>
-          <div className="space-y-3">
-            {(data?.rows || []).map((row: any) => (
-              <div key={row.tenant_id} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                <p className="font-semibold text-gray-900">{row.tenant_name}</p>
-                <p className="text-xs text-gray-600">
-                  Submitted: {row.submission_date ? new Date(row.submission_date).toLocaleString() : 'N/A'} · Reviewed by:{' '}
-                  {row.reviewed_by || 'Pending'} · Decision: {row.decision || 'PENDING'}
-                </p>
-                <p className="mt-1 text-xs text-gray-600">Time to decision: {row.time_to_decision_hours ?? '—'} hours</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {row.flags?.map((flag: any) => (
-                    <button
-                      key={flag.id}
-                      type="button"
-                      onClick={() => dismissFlag(flag.id)}
-                      className="rounded-full border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] text-amber-800"
-                    >
-                      ⚠ {flag.flag_type} (dismiss)
-                    </button>
+      {loadingData && !data ? (
+        <SkeletonBlocks rows={4} />
+      ) : (
+        <>
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <AdminStatCard label="Total submissions" value={stats.total_submissions ?? '—'} icon={ShieldCheck} />
+            <AdminStatCard
+              label="Approved (month)"
+              value={stats.approved_this_month ?? '—'}
+              accent="success"
+              icon={ShieldCheck}
+            />
+            <AdminStatCard
+              label="Rejected (month)"
+              value={stats.rejected_this_month ?? '—'}
+              accent="warning"
+              icon={AlertTriangle}
+            />
+            <AdminStatCard
+              label="Avg review (hrs)"
+              value={stats.average_review_time_hours ?? '—'}
+              sub="Submission → decision"
+            />
+            <AdminStatCard
+              label="Open quality flags"
+              value={stats.open_quality_flags ?? '—'}
+              accent={(stats.open_quality_flags ?? 0) > 0 ? 'warning' : 'default'}
+              icon={AlertTriangle}
+            />
+          </section>
+
+          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <h2 className="font-semibold text-[#1A1A1A]">Submission register</h2>
+              <p className="mt-1 text-sm text-slate-500">Click a row to load the full KYC audit trail.</p>
+              <div className="mt-4 space-y-3">
+                {(data?.rows || []).map((row: any) => (
+                  <button
+                    key={row.tenant_id}
+                    type="button"
+                    onClick={() => void loadAudit(row.tenant_id)}
+                    className={`w-full rounded-xl border p-4 text-left transition ${
+                      selectedTenantId === row.tenant_id
+                        ? 'border-[#C0392B] bg-[#FDEDEC]'
+                        : 'border-slate-200 bg-[#F3F4F6] hover:border-slate-300'
+                    }`}
+                  >
+                    <p className="font-semibold text-[#1A1A1A]">{row.tenant_name}</p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Submitted: {row.submission_date ? new Date(row.submission_date).toLocaleString() : '—'}
+                    </p>
+                    <p className="text-xs text-slate-600">
+                      Reviewer: {row.reviewed_by || 'Pending'} · Decision:{' '}
+                      <span className="font-medium">{row.decision || 'PENDING'}</span>
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Time to decision: {row.time_to_decision_hours ?? '—'} hours
+                    </p>
+                    {row.flags?.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {row.flags.map((flag: any) => (
+                          <span
+                            key={flag.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void dismissFlag(flag.id);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.stopPropagation();
+                                void dismissFlag(flag.id);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-900"
+                          >
+                            <AlertTriangle className="h-3 w-3" aria-hidden />
+                            {flag.flag_type} — dismiss
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </button>
+                ))}
+                {!data?.rows?.length ? (
+                  <EmptyStateCard
+                    title="No submissions in register"
+                    description="KYC submissions with a submitted_at timestamp appear here."
+                  />
+                ) : null}
+              </div>
+            </section>
+
+            <aside className="h-fit rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <h2 className="font-semibold text-[#1A1A1A]">Audit trail</h2>
+              {auditLoading ? (
+                <p className="mt-4 text-sm text-slate-500">Loading audit events…</p>
+              ) : selectedAudit.length ? (
+                <ul className="mt-4 max-h-[480px] space-y-2 overflow-auto">
+                  {selectedAudit.map((event) => (
+                    <li key={event.id} className="rounded-lg bg-[#F3F4F6] p-3 text-xs">
+                      <p className="font-semibold text-[#1A1A1A]">{event.action}</p>
+                      <p className="mt-1 text-slate-600">
+                        {event.previous_status || 'N/A'} → {event.next_status || 'N/A'}
+                      </p>
+                      {event.reason ? <p className="mt-1 text-slate-600">Reason: {event.reason}</p> : null}
+                      <p className="mt-1 text-slate-400">{new Date(event.created_at).toLocaleString()}</p>
+                    </li>
                   ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => loadAudit(row.tenant_id)}
-                  className="mt-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs"
-                >
-                  View audit trail
-                </button>
-              </div>
-            ))}
-            {!loadingData && !data?.rows?.length ? (
-              <EmptyStateCard title="No compliance rows" description="No KYC submissions currently match the compliance criteria." />
-            ) : null}
+                </ul>
+              ) : (
+                <EmptyStateCard
+                  title="No tenant selected"
+                  description="Select a submission from the register to view chronology."
+                />
+              )}
+            </aside>
           </div>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-900">Audit trail</h2>
-          <div className="space-y-2">
-            {selectedAudit.map((event) => (
-              <div key={event.id} className="rounded-lg bg-gray-50 p-3 text-xs">
-                <p className="font-semibold text-gray-900">{event.action}</p>
-                <p className="text-gray-700">
-                  {event.previous_status || 'N/A'} → {event.next_status || 'N/A'}
-                </p>
-                {event.reason ? <p className="text-gray-700">Reason: {event.reason}</p> : null}
-                <p className="text-gray-500">{new Date(event.created_at).toLocaleString()}</p>
-              </div>
-            ))}
-            {!selectedAudit.length ? (
-              <EmptyStateCard title="No audit selected" description="Select a tenant row to view full KYC audit chronology." />
-            ) : null}
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

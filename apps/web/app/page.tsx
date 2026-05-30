@@ -2,466 +2,393 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowRight,
+  BarChart3,
+  Building2,
+  FileCheck2,
+  ShieldCheck,
+  TrendingUp,
+  UserRound,
+  Wallet,
+} from 'lucide-react';
 import NumberCounter from '../src/components/NumberCounter';
-import Revealer from '../src/components/Revealer';
 import ForceRevealButton from '../src/components/ForceRevealButton';
-import RentalCreditModelCard from './components/credit/RentalCreditModelCard';
+import AuthModal from './components/auth/AuthModal';
+import MarketingHeader from './components/marketing/MarketingHeader';
+import MarketingFooter from './components/marketing/MarketingFooter';
 
-const services = [
+const platformCards = [
   {
-    key: 'Rent Payments',
-    title: 'Rent Payments',
-    description:
-      'Streamline rent collection, automate receipts, and provide tenants with an on-time payment record that can be reported for credit building.',
-    highlight: 'Fast reconciliation and verified payment history.',
+    icon: Wallet,
+    title: 'Rent & receipts',
+    description: 'Collect rent on-platform or record verified payments—with receipts tenants can use anywhere.',
+    href: '/products/rent-payments',
   },
   {
-    key: 'Credit Score',
-    title: 'Credit Score',
-    description:
-      'Turn every verified rent payment into a trusted credit data point so tenants can build strong financial profiles and access better lending terms.',
-    highlight: 'Transparent scoring backed by rental behavior.',
+    icon: TrendingUp,
+    title: 'Rental credit score',
+    description: 'A defensible 300–900 score built only from verified rent behaviour, not self-reported data.',
+    href: '/products/credit-score',
   },
   {
-    key: 'Deposit Management',
-    title: 'Deposit Management',
-    description:
-      'Manage tenant deposits securely while giving tenants confidence that their funds are held and returned fairly.',
-    highlight: 'Secure flow for landlords and renters.',
+    icon: ShieldCheck,
+    title: 'KYC & identity',
+    description: 'Rigorous onboarding so every record in the system is tied to a real person and property.',
+    href: '/solutions/for-tenants',
   },
   {
-    key: 'KYC & Identity',
-    title: 'KYC & Identity',
-    description:
-      'Verify tenant identity in minutes with document capture and streamlined onboarding for landlords and partners.',
-    highlight: 'Reduce fraud and speed approvals.',
+    icon: FileCheck2,
+    title: 'Deposit management',
+    description: 'Track holds and releases with a clear audit trail for landlords and tenants.',
+    href: '/products/deposit-management',
   },
   {
-    key: 'Market Data',
-    title: 'Market Data',
-    description:
-      'Access verified rent and occupancy trends across Namibia to power smarter pricing, underwriting, and portfolio decisions.',
-    highlight: 'Actionable insights for market-leading decisions.',
+    icon: BarChart3,
+    title: 'Market intelligence',
+    description: 'Suburb-level rent and on-time rates from actual payments—not listings or estimates.',
+    href: '/products/market-data',
+    featured: true,
   },
 ];
 
+const flywheel = [
+  { step: '01', label: 'Verified landlords onboard properties' },
+  { step: '02', label: 'Tenants pay rent through CRENIT' },
+  { step: '03', label: 'Payments feed credit scores & aggregates' },
+  { step: '04', label: 'Banks & developers license market data' },
+];
+
+const proofPoints = [
+  { value: '100%', label: 'Transaction-sourced rent data' },
+  { value: '5+', label: 'Min. records per suburb in reports' },
+  { value: '0', label: 'PII in market intelligence exports' },
+];
+
+function ScoreGauge({ score }: { score: number }) {
+  const needle = useMemo(() => {
+    const ratio = Math.max(0, Math.min(1, (score - 300) / 600));
+    const angle = Math.PI - ratio * Math.PI;
+    const length = 64;
+    return { x: 120 + Math.cos(angle) * length, y: 100 - Math.sin(angle) * length };
+  }, [score]);
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#111] p-5">
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-500">Rental credit score</p>
+          <p className="mt-1 text-4xl font-semibold tabular-nums text-white">{score}</p>
+        </div>
+        <span className="rounded-full bg-[#C0392B]/20 px-3 py-1 text-xs font-medium text-[#f5b4ae]">Good</span>
+      </div>
+      <svg viewBox="0 0 240 120" className="mt-3 h-[96px] w-full" aria-hidden>
+        <path d="M20 100 A100 100 0 0 1 220 100" fill="none" stroke="#2a2a2a" strokeWidth="14" />
+        <path d="M30 100 A90 90 0 0 1 210 100" fill="none" stroke="#C0392B" strokeWidth="10" strokeLinecap="round" />
+        <circle cx="120" cy="100" r="6" fill="#fff" />
+        <line x1="120" y1="100" x2={needle.x} y2={needle.y} stroke="#fff" strokeWidth="4" strokeLinecap="round" />
+      </svg>
+      <p className="mt-2 text-center text-xs text-slate-500">300 — 900 · Updated on verified payment</p>
+    </div>
+  );
+}
+
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('Credit Score');
-  const [showDemo, setShowDemo] = useState(false);
-  const [animatedScore, setAnimatedScore] = useState(300);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [score, setScore] = useState(300);
+
+  const openAuth = (mode: 'login' | 'register') => {
+    setAuthMode(mode);
+    setAuthModalOpen(true);
+  };
 
   useEffect(() => {
     const start = performance.now();
-    const durationMs = 1400;
+    const durationMs = 1600;
     const from = 300;
-    const to = 780;
+    const to = 742;
     let rafId = 0;
 
     const tick = (now: number) => {
       const progress = Math.min(1, (now - start) / durationMs);
       const eased = 1 - Math.pow(1 - progress, 3);
-      setAnimatedScore(Math.round(from + (to - from) * eased));
-      if (progress < 1) {
-        rafId = requestAnimationFrame(tick);
-      }
+      setScore(Math.round(from + (to - from) * eased));
+      if (progress < 1) rafId = requestAnimationFrame(tick);
     };
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  const needle = useMemo(() => {
-    const ratio = Math.max(0, Math.min(1, (animatedScore - 300) / 600));
-    const angle = Math.PI - ratio * Math.PI;
-    const length = 64;
-    return {
-      x: 120 + Math.cos(angle) * length,
-      y: 100 - Math.sin(angle) * length,
-    };
-  }, [animatedScore]);
-
   return (
-    <main className="bg-[#F3F4F6] text-[#111827]">
-      <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-[#F3F4F6]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-8">
-          <Link href="/" className="text-lg font-semibold tracking-wide text-[#1A1A1A]">RentCredit</Link>
-          <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
-            <a href="#services" className="hover:text-[#1A1A1A]">Services</a>
-            <a href="#market-data" className="hover:text-[#1A1A1A]">Market Data</a>
-            <a href="#get-started" className="hover:text-[#1A1A1A]">Get Started</a>
-          </nav>
-          <Link
-            href="/auth"
-            className="inline-flex items-center justify-center rounded-full bg-[#C0392B] px-5 py-2 text-sm font-semibold text-white shadow-md shadow-[#C0392B]/25 transition hover:bg-[#992d24]"
-          >
-            Login
-          </Link>
-        </div>
-      </header>
-      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-8 sm:py-6">
-        <section id="about" className="rounded-[2rem] bg-white px-6 py-10 shadow-[0_24px_80px_rgba(0,0,0,0.08)] sm:px-12 sm:py-14">
-          <div className="mx-auto max-w-5xl">
-            <div className="mb-10 inline-flex rounded-full border border-[#C0392B]/20 bg-[#FDEDEC] px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-[#C0392B]">
-              PARTNER LANDLORDS NOW ACCEPTING APPLICATIONS
-            </div>
-            <div className="grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-              <div>
-                <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">RentCredit</p>
-                <h1 className="mt-6 text-4xl font-semibold leading-tight tracking-tight text-[#1A1A1A] sm:text-5xl">
-                  Every Payment Builds Your <span className="text-[#C0392B]">Credit Story</span>
-                </h1>
-                <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-                  RentCredit helps landlords manage portfolios while tenants build verified credit from rent payments.
-                </p>
-                <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-                  <Link
-                    href="/auth"
-                    className="inline-flex items-center justify-center rounded-full bg-[#C0392B] px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-[#C0392B]/20 transition hover:bg-[#992d24]"
-                  >
-                    Get Started Free
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => setShowDemo(true)}
-                    className="inline-flex items-center justify-center rounded-full border border-[#1A1A1A] px-7 py-3 text-sm font-semibold text-[#1A1A1A] transition hover:bg-slate-100"
-                  >
-                    Watch Demo
-                  </button>
-                </div>
-                <div className="mt-12 stat-grid">
-                  {[
-                    { label: 'Tracked', value: 'N$2.8B+' },
-                    { label: 'Tenants', value: '3.5M+' },
-                    { label: 'On-Time Rate', value: '95%' },
-                    { label: 'Avg Score Lift', value: '48 pts' },
-                  ].map((stat, idx) => (
-                    <Revealer key={stat.label} delay={idx * 80} className="stat-card">
-                      {(inView: boolean) => (
-                        <>
-                          <p className="text-xs uppercase tracking-[0.3em] text-slate-500">{stat.label}</p>
-                          <NumberCounter value={stat.value} play={inView} className="stat-value" />
-                        </>
-                      )}
-                    </Revealer>
-                  ))}
-                </div>
-              </div>
-              <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-[#F8F8F8] p-8 shadow-sm">
-                <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#C0392B]/10 blur-3xl" />
-                <div className="rounded-[1.75rem] bg-[#1A1A1A] px-8 py-10 text-white shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
-                  <p className="text-xs uppercase tracking-[0.35em] text-[#F5F5F5]/70">RentCredit Platform</p>
-                  <h2 className="mt-6 text-3xl font-semibold">Build, verify and leverage rent payment history in one place.</h2>
-                  <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                    {['Verified records', 'Score-powered reports', 'Tenant onboarding', 'Portfolio oversight'].map((item) => (
-                      <div key={item} className="rounded-3xl bg-[#111111]/90 p-5 text-sm text-slate-200">
-                        <p>{item}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-8 rounded-3xl border border-white/10 bg-[#111111] p-5">
-                    <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Live score</p>
-                    <div className="mt-3 flex items-end justify-between">
-                      <p className="text-3xl font-semibold">{animatedScore}</p>
-                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs">Good</span>
-                    </div>
-                    <svg viewBox="0 0 240 120" className="mt-3 h-[120px] w-full">
-                      <path d="M20 100 A100 100 0 0 1 220 100" fill="none" stroke="#2a2a2a" strokeWidth="16" />
-                      <path d="M30 100 A90 90 0 0 1 210 100" fill="none" stroke="#C0392B" strokeWidth="12" strokeLinecap="round" />
-                      <circle cx="120" cy="100" r="7" fill="#FFFFFF" />
-                      <line x1="120" y1="100" x2={needle.x} y2={needle.y} stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+    <div className="marketing-page">
+      <MarketingHeader onOpenAuth={openAuth} />
 
-        <section id="how-it-works" className="mt-20">
-          <div className="mb-10 flex items-center justify-between gap-4">
+      {/* Hero — asymmetric, CRENIT voice */}
+      <section className="border-b border-slate-200/60">
+        <div className="marketing-container py-14 sm:py-20 lg:py-24">
+          <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
             <div>
-              <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">How it works</p>
-              <h2 className="mt-3 text-3xl font-semibold text-[#1A1A1A]">The Core Loop</h2>
+              <div className="marketing-accent-bar" />
+              <p className="marketing-eyebrow mt-6">Verified rental finance</p>
+              <h1 className="marketing-h1 mt-5">
+                Every on-time rent payment builds your <em>credit story</em>
+              </h1>
+              <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">
+                CRENIT turns real rent into rental credit scores and suburb-level market intelligence—so tenants get
+                fair access to finance and landlords, banks, and developers work from data they can trust.
+              </p>
+              <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <button type="button" onClick={() => openAuth('register')} className="marketing-btn-primary">
+                  Create free account
+                </button>
+                <Link
+                  href="/company/how-it-works"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#1A1A1A] hover:text-[#C0392B]"
+                >
+                  See how it works
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+              <p className="mt-8 text-sm text-slate-500">
+                For tenants, landlords, and partners licensing anonymised market data.
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-[#1A1A1A] p-6 shadow-xl sm:p-8">
+              <p className="text-xs font-medium uppercase tracking-widest text-slate-500">Tenant dashboard</p>
+              <p className="mt-3 text-xl font-medium leading-snug text-white">
+                Payment history, score, and downloadable reports—in one place.
+              </p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {[
+                  { label: 'Last payment', value: 'On time · Mar 2026' },
+                  { label: 'Lease', value: 'Khomasdal · Active' },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-xl bg-[#141414] px-4 py-3">
+                    <p className="text-xs text-slate-500">{item.label}</p>
+                    <p className="mt-1 text-sm font-medium text-slate-200">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4">
+                <ScoreGauge score={score} />
+              </div>
             </div>
           </div>
-          <div className="grid gap-4 overflow-x-auto pb-6 sm:grid-cols-3 lg:grid-cols-6">
-            {[
-              'Partner Landlord Onboards',
-              'Tenant Pays Via Platform',
-              'Commission Earned',
-              'Payment Verified & Recorded',
-              'Credit Score Updated',
-              'Score Used for Loan / Mortgage',
-            ].map((step, idx) => (
-              <Revealer key={step} delay={idx * 60} className="group relative rounded-[1.75rem] border border-slate-200 bg-white p-6 text-center shadow-sm">
-                {(inView: boolean) => (
-                  <>
-                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#C0392B]/10 text-[#C0392B] font-semibold">{idx + 1}</div>
-                    <p className="text-sm font-semibold text-[#1A1A1A]">{step}</p>
-                    {idx < 5 ? (
-                      <div className="pointer-events-none absolute right-[-15px] top-1/2 hidden h-8 w-8 -translate-y-1/2 rotate-45 border-r border-b border-slate-200 sm:block" />
-                    ) : null}
-                  </>
-                )}
-              </Revealer>
+        </div>
+      </section>
+
+      {/* What makes CRENIT different — not fake logos */}
+      <section className="border-b border-slate-200/60 bg-white">
+        <div className="marketing-container py-14 sm:py-16">
+          <div className="max-w-2xl">
+            <p className="marketing-eyebrow">Why CRENIT</p>
+            <h2 className="marketing-h2 mt-4">Built for accountable rental markets—not copied from abroad</h2>
+            <p className="mt-4 text-base leading-7 text-slate-600">
+              Most rental platforms stop at payments. CRENIT&apos;s commercial engine is{' '}
+              <strong className="font-semibold text-[#1A1A1A]">monthly data recording</strong> and{' '}
+              <strong className="font-semibold text-[#1A1A1A]">verified market intelligence</strong>: landlords pay to
+              keep payment history on record; tenants build credit from that verified trail.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-4 sm:grid-cols-3">
+            {proofPoints.map((point) => (
+              <div key={point.label} className="marketing-bento-card">
+                <div className="marketing-stat-value text-[#C0392B]">
+                  <NumberCounter value={point.value} />
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{point.label}</p>
+              </div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section id="services" className="mt-20">
-          <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Our Services</p>
-              <h2 className="mt-3 text-3xl font-semibold text-[#1A1A1A]">Our Services</h2>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {services.map((service) => (
-                <button
-                  key={service.key}
-                  type="button"
-                  onClick={() => setActiveTab(service.key)}
-                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                    activeTab === service.key
-                      ? 'border-[#C0392B] bg-[#C0392B] text-white'
-                      : 'border-slate-300 bg-white text-[#1A1A1A] hover:border-[#C0392B]/60'
+      {/* Platform — bento, not Esusu tabs */}
+      <section id="services" className="marketing-section">
+        <div className="marketing-container">
+          <p className="marketing-eyebrow">Platform</p>
+          <h2 className="marketing-h2 mt-4">One stack for rent, credit, and data</h2>
+          <p className="mt-4 max-w-2xl text-slate-600">
+            Each product feeds the same flywheel: better verification → better payments → better scores → better market
+            data for lenders and partners.
+          </p>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {platformCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <Link
+                  key={card.title}
+                  href={card.href}
+                  className={`marketing-bento-card group flex flex-col ${
+                    card.featured ? 'border-[#C0392B]/30 bg-gradient-to-br from-[#FDEDEC] to-white lg:col-span-1' : ''
                   }`}
                 >
-                  {service.key}
-                </button>
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                      card.featured ? 'bg-[#C0392B] text-white' : 'bg-slate-100 text-[#1A1A1A]'
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" strokeWidth={1.75} />
+                  </div>
+                  <h3 className="mt-4 text-lg font-semibold group-hover:text-[#C0392B]">{card.title}</h3>
+                  <p className="mt-2 flex-1 text-sm leading-6 text-slate-600">{card.description}</p>
+                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[#C0392B]">
+                    Explore <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Flywheel — own story */}
+      <section id="how-it-works" className="border-y border-slate-200/60 bg-white">
+        <div className="marketing-container py-14 sm:py-20">
+          <p className="marketing-eyebrow">The flywheel</p>
+          <h2 className="marketing-h2 mt-4">How verified data compounds</h2>
+          <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {flywheel.map((item, idx) => (
+              <div key={item.step} className="marketing-flywheel-step">
+                <span className="text-xs font-bold tabular-nums text-[#C0392B]">{item.step}</span>
+                <p className="text-sm font-medium leading-6 text-[#1A1A1A]">{item.label}</p>
+                {idx < flywheel.length - 1 ? (
+                  <span className="absolute -right-2 top-1/2 hidden h-px w-4 bg-slate-300 lg:block" aria-hidden />
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Market data — flagship differentiator */}
+      <section id="market-data" className="bg-[#1A1A2E] text-white">
+        <div className="marketing-container py-14 sm:py-20">
+          <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#C0392B]">Market intelligence</p>
+              <h2 className="mt-4 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+                Real rent data from real payments—not property listings
+              </h2>
+              <p className="mt-5 text-base leading-7 text-slate-400">
+                When a payment is confirmed on CRENIT, anonymised signals flow into suburb aggregates. Banks, developers,
+                and agents license reports with minimum sample rules—never tenant names or addresses.
+              </p>
+              <Link
+                href="/products/market-data"
+                className="marketing-btn-primary mt-8 inline-flex bg-[#C0392B] hover:bg-[#992d24]"
+              >
+                Request data access
+              </Link>
+            </div>
+            <div className="overflow-hidden rounded-2xl border border-white/10">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-[#141428] text-slate-400">
+                  <tr>
+                    <th className="px-5 py-3.5 font-medium">Suburb</th>
+                    <th className="px-5 py-3.5 font-medium">Avg 2BR</th>
+                    <th className="px-5 py-3.5 font-medium">On-time</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {[
+                    ['Khomasdal', 'N$8,200', '92%'],
+                    ['Pioneerspark', 'N$7,450', '94%'],
+                    ['Klein Windhoek', 'N$10,300', '96%'],
+                    ['Katutura', 'N$6,900', '91%'],
+                    ['Eros', 'N$11,100', '97%'],
+                  ].map((row) => (
+                    <tr key={row[0]} className="hover:bg-white/5">
+                      <td className="px-5 py-3.5 font-medium">{row[0]}</td>
+                      <td className="px-5 py-3.5 text-slate-300">{row[1]}</td>
+                      <td className="px-5 py-3.5 text-emerald-400/90">{row[2]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="border-t border-white/10 px-5 py-3 text-xs text-slate-500">
+                Illustrative demo figures · Live data requires partner access
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Single featured story — not Esusu outcome grid */}
+      <section className="marketing-section">
+        <div className="marketing-container">
+          <div className="rounded-3xl border border-slate-200 bg-white p-8 sm:p-12 lg:grid lg:grid-cols-[1.2fr_0.8fr] lg:gap-12">
+            <div>
+              <p className="marketing-eyebrow">From the field</p>
+              <blockquote className="mt-4 text-2xl font-medium leading-9 text-[#1A1A1A] sm:text-3xl">
+                &ldquo;We stopped guessing what Khomasdal rents should be. CRENIT gave us payment-backed numbers our
+                underwriters actually use.&rdquo;
+              </blockquote>
+              <footer className="mt-6">
+                <p className="font-semibold">Sarah M.</p>
+                <p className="text-sm text-slate-500">Credit analyst · Banking partner, Windhoek</p>
+              </footer>
+            </div>
+            <div className="mt-8 flex flex-col justify-center gap-4 lg:mt-0">
+              {[
+                'Landlords see portfolio on-time rates by property',
+                'Tenants download score reports for applications',
+                'Developers license suburb feasibility packs',
+              ].map((item) => (
+                <div key={item} className="flex gap-3 rounded-xl bg-[#F3F4F6] px-4 py-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#C0392B] text-xs text-white">
+                    ✓
+                  </span>
+                  <p className="text-sm leading-6 text-slate-700">{item}</p>
+                </div>
               ))}
             </div>
           </div>
-
-          <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr] lg:items-center">
-            <div className="space-y-6 rounded-[2rem] border border-slate-200 bg-white p-10 shadow-sm">
-              <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">{activeTab}</p>
-              <h3 className="text-3xl font-semibold text-[#1A1A1A]">{services.find((service) => service.key === activeTab)?.title}</h3>
-              <p className="max-w-xl text-lg leading-8 text-slate-600">{services.find((service) => service.key === activeTab)?.description}</p>
-              <p className="text-sm font-semibold text-[#C0392B]">{services.find((service) => service.key === activeTab)?.highlight}</p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-3xl bg-[#F5F5F5] p-5">
-                  <p className="text-sm font-semibold text-[#1A1A1A]">Workflow</p>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">A single experience for landlords, tenants, and financial partners.</p>
-                </div>
-                <div className="rounded-3xl bg-[#F5F5F5] p-5">
-                  <p className="text-sm font-semibold text-[#1A1A1A]">Verified Data</p>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">Every value comes from rental behavior and verified transaction records.</p>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-[2rem] border border-slate-200 bg-[#F8F8F8] p-6 shadow-sm sm:p-10">
-              {activeTab === 'Credit Score' ? (
-                <div className="space-y-4">
-                  <RentalCreditModelCard />
-                  <div className="relative overflow-hidden rounded-[1.75rem] bg-white p-8 shadow-lg">
-                  <div className="absolute inset-x-0 top-0 h-1 bg-[#C0392B]/20" />
-                  <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Score Gauge</p>
-                  <div className="mt-8 flex items-end justify-between gap-6">
-                    <div className="text-5xl font-semibold text-[#1A1A1A]">{animatedScore}</div>
-                    <div className="rounded-3xl bg-[#F5F5F5] px-4 py-2 text-sm font-semibold text-[#1A1A1A]">Good</div>
-                  </div>
-                  <div className="mt-8 flex items-center justify-center">
-                    <svg viewBox="0 0 240 120" className="h-[220px] w-full">
-                      <path d="M20 100 A100 100 0 0 1 220 100" fill="none" stroke="#E5E7EB" strokeWidth="18" />
-                      <path d="M30 100 A90 90 0 0 1 210 100" fill="none" stroke="#C0392B" strokeWidth="14" strokeLinecap="round" />
-                      <circle cx="120" cy="100" r="8" fill="#1A1A1A" />
-                      <line x1="120" y1="100" x2={needle.x} y2={needle.y} stroke="#1A1A1A" strokeWidth="6" strokeLinecap="round" />
-                    </svg>
-                  </div>
-                  <div className="mt-6 grid grid-cols-3 gap-4 text-center text-sm text-slate-600">
-                    <div>
-                      <p className="font-semibold text-[#1A1A1A]">300</p>
-                      <p>Min</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-[#1A1A1A]">{animatedScore}</p>
-                      <p>Current</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-[#1A1A1A]">900</p>
-                      <p>Max</p>
-                    </div>
-                  </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-[1.75rem] bg-white p-10 text-center text-sm text-slate-600 shadow-lg">
-                  <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#C0392B]/10 text-[#C0392B] text-3xl">{activeTab.charAt(0)}</div>
-                  <p className="text-lg font-semibold text-[#1A1A1A]">{activeTab} Preview</p>
-                  <p className="mt-4 leading-7">A polished illustration of the platform experience for {activeTab.toLowerCase()} partners.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section id="market-data" className="mt-20 rounded-[2rem] bg-[#1A1A1A] px-6 py-10 text-white shadow-[0_24px_80px_rgba(0,0,0,0.16)] sm:px-10">
-          <div className="mb-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/80">Verified rent data</p>
-              <h2 className="mt-3 text-3xl font-semibold">Real Verified Rent Data — Nowhere Else in Namibia</h2>
-            </div>
-            <p className="max-w-2xl text-sm leading-6 text-slate-300">
-              Our proprietary dataset is built from actual tenant payments, not advertised listings. That means lenders and landlords can rely on transactional performance, not estimates.
-            </p>
-          </div>
-          <div className="overflow-hidden rounded-[1.75rem] border border-slate-700 bg-[#111111]">
-            <table className="min-w-full border-collapse text-left text-sm text-slate-200">
-              <thead className="bg-[#141414] text-slate-400">
-                <tr>
-                  <th className="px-6 py-4">Suburb</th>
-                  <th className="px-6 py-4">Verified Avg Rent (2BR)</th>
-                  <th className="px-6 py-4">On-Time Rate</th>
-                  <th className="px-6 py-4">Key Uses</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ['Khomasdal', 'N$8,200', '92%', 'Rental pricing'],
-                  ['Pioneerspark', 'N$7,450', '94%', 'Underwriting'],
-                  ['Katutura', 'N$6,900', '91%', 'Tenant screening'],
-                  ['Klein Windhoek', 'N$10,300', '96%', 'Deposit analytics'],
-                  ['Olympia', 'N$9,050', '95%', 'Portfolio insights'],
-                  ['Eros', 'N$11,100', '97%', 'Market forecasting'],
-                ].map((row) => (
-                  <tr key={row[0]} className="border-t border-slate-800 hover:bg-[#181818]">
-                    <td className="px-6 py-4 font-semibold text-white">{row[0]}</td>
-                    <td className="px-6 py-4">{row[1]}</td>
-                    <td className="px-6 py-4">{row[2]}</td>
-                    <td className="px-6 py-4 text-slate-300">{row[3]}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section id="social-proof" className="mt-20">
-          <div className="mb-10">
-            <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">What Our Partners Say</p>
-            <h2 className="mt-3 text-3xl font-semibold text-[#1A1A1A]">What Our Partners Say</h2>
-          </div>
-            <div className="grid gap-6 lg:grid-cols-3">
-            {[
-              {
-                quote: 'RentCredit made rent payments transparent and helped us show renters as credible borrowers.',
-                name: 'Linda N.',
-                role: 'Property Manager',
-              },
-              {
-                quote: 'Our tenants now have a way to build credit history while we get cleaner reporting.',
-                name: 'Tomas K.',
-                role: 'Landlord',
-              },
-              {
-                quote: 'The verified data has changed how we underwrite rental-backed lending products.',
-                name: 'Sarah M.',
-                role: 'Banking Partner',
-              },
-            ].map((testimonial, idx) => (
-              <div
-                key={testimonial.name}
-                className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm reveal"
-                style={{ animationDelay: `${idx * 90}ms` }}
-              >
-                <p className="text-lg leading-8 text-slate-700">“{testimonial.quote}”</p>
-                <div className="mt-6">
-                  <p className="font-semibold text-[#1A1A1A]">{testimonial.name}</p>
-                  <p className="text-sm text-slate-500">{testimonial.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section id="get-started" className="mt-20 grid gap-6 lg:grid-cols-2">
-          <div id="for-tenants" className="rounded-[2rem] bg-[#1A1A1A] p-10 text-white shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
-            <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Are You a Tenant?</p>
-            <h3 className="mt-4 text-3xl font-semibold">Find credit strength in every on-time payment.</h3>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-slate-300">
-              Sign up as a tenant to start building a verified credit profile from rent payments and make stronger applications for future housing.
-            </p>
-            <Link
-              href="/auth"
-              className="mt-8 inline-flex items-center justify-center rounded-full bg-white px-7 py-3 text-sm font-semibold text-[#1A1A1A] shadow-lg shadow-[#000000]/10 transition hover:bg-slate-100"
-            >
-              Sign Up as Tenant
-            </Link>
-          </div>
-          <div id="for-landlords" className="rounded-[2rem] bg-white p-10 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
-            <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Are You a Landlord?</p>
-            <h3 className="mt-4 text-3xl font-semibold text-[#1A1A1A]">Manage your portfolio with verified rent finance.</h3>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600">
-              Partner with RentCredit to improve portfolio insights, reduce risk, and help your tenants build financial identity.
-            </p>
-            <Link
-              href="/auth"
-              className="mt-8 inline-flex items-center justify-center rounded-full bg-[#C0392B] px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-[#C0392B]/20 transition hover:bg-[#992d24]"
-            >
-              Partner With Us
-            </Link>
-          </div>
-        </section>
-
-        <footer className="mt-20 rounded-[2rem] bg-[#1A1A1A] px-8 py-14 text-white shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
-          <div className="footer-grid">
-            <div>
-              <p className="text-2xl font-semibold text-white">RentCredit</p>
-              <p className="mt-4 max-w-xs text-sm leading-7 text-slate-400">Turning Rent Payments Into Financial Identity</p>
-            </div>
-            {[
-              { title: 'Products', links: ['Rent Payments', 'Credit Score', 'Deposit Management', 'Market Data'] },
-              { title: 'Solutions', links: ['For Tenants', 'For Landlords', 'For Banks & Lenders', 'For Developers'] },
-              { title: 'Company', links: ['About Us', 'How It Works', 'Blog', 'Contact'] },
-              { title: 'Support', links: ['Help Center', 'Terms', 'Privacy', 'Partners'] },
-            ].map((column) => (
-              <div key={column.title}>
-                <p className="mb-5 text-sm uppercase tracking-[0.35em] text-slate-500">{column.title}</p>
-                <ul className="space-y-3 text-sm text-slate-300">
-                  {column.links.map((link) => (
-                    <li key={link}>{link}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-          <div className="mt-12 flex flex-col gap-4 border-t border-slate-700 pt-8 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between" id="contact">
-            <p>rentcredit.co · hello@rentcredit.co · Windhoek, Namibia</p>
-            <p className="text-xs uppercase tracking-[0.35em] text-slate-600">Build Credit</p>
-          </div>
-        </footer>
-      </div>
-
-      {showDemo ? (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-10">
-    <div className="w-full max-w-3xl rounded-[2rem] bg-white p-6 shadow-2xl">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Demo</p>
-          <h3 className="mt-2 text-2xl font-semibold text-[#1A1A1A]">Watch RentCredit in action</h3>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowDemo(false)}
-          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-slate-100 transition-colors"
-        >
-          Close
-        </button>
-      </div>
-      <div className="mt-6 aspect-video overflow-hidden rounded-[1.5rem] bg-slate-900">
-        <iframe
-          className="h-full w-full"
-          src="https://youtu.be/o0Bpq_v5dM4"
-          title="RentCredit Demo"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
-      </div>
-    </div>
-  </div>
-) : null}
+      </section>
+
+      {/* Get started */}
+      <section id="get-started" className="border-t border-slate-200/60 bg-white pb-20 pt-14 sm:pb-24">
+        <div className="marketing-container">
+          <h2 className="marketing-h2 text-center">Start with the role that fits you</h2>
+          <div className="mt-10 grid gap-5 lg:grid-cols-2">
+            <div className="rounded-3xl bg-[#1A1A1A] p-8 text-white sm:p-10">
+              <UserRound className="h-7 w-7 text-[#C0392B]" strokeWidth={1.5} />
+              <h3 className="mt-5 text-2xl font-semibold">I pay rent</h3>
+              <p className="mt-3 text-sm leading-7 text-slate-400">
+                Join when your landlord invites you—or register and link your lease. Build a verified score from every
+                on-time payment.
+              </p>
+              <button type="button" onClick={() => openAuth('register')} className="mt-8 marketing-btn-primary bg-white text-[#1A1A1A] hover:bg-slate-100">
+                Sign up as tenant
+              </button>
+            </div>
+            <div className="rounded-3xl border border-slate-200 p-8 sm:p-10">
+              <Building2 className="h-7 w-7 text-[#1A1A1A]" strokeWidth={1.5} />
+              <h3 className="mt-5 text-2xl font-semibold">I manage property</h3>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                Onboard units, invite tenants, and contribute payment-verified rent
+                dataset.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <button type="button" onClick={() => openAuth('register')} className="marketing-btn-primary">
+                  Partner with CRENIT
+                </button>
+                <Link href="/company/contact" className="marketing-btn-outline">
+                  Contact sales
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <MarketingFooter />
+      <AuthModal open={authModalOpen} mode={authMode} onClose={() => setAuthModalOpen(false)} />
       {process.env.NODE_ENV === 'development' ? <ForceRevealButton /> : null}
-    </main>
+    </div>
   );
 }

@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import api from '../lib/api';
 import type { ReactNode } from 'react';
@@ -10,6 +10,7 @@ interface AuthContextValue {
   role: string | null;
   session: Session | null;
   loading: boolean;
+  roleReady: boolean;
   login: (email: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
   register: (email: string, password: string, full_name: string, role: string, marketDataConsent?: boolean) => Promise<any>;
@@ -17,42 +18,86 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function roleFromUserMetadata(user: User | null): string | null {
+  if (!user) return null;
+  const raw = (user.user_metadata as Record<string, unknown>)?.role;
+  return raw ? raw.toString().toUpperCase() : null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [apiRole, setApiRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roleReady, setRoleReady] = useState(false);
+  const hydrateGeneration = useRef(0);
+
+  const hydrateFromSession = useCallback(async (nextSession: Session | null) => {
+    const generation = ++hydrateGeneration.current;
+
+    setSession(nextSession);
+    setUser(nextSession?.user ?? null);
+
+    if (!nextSession?.access_token) {
+      setApiRole(null);
+      setRoleReady(true);
+      setLoading(false);
+      return;
+    }
+
+    api.defaults.headers.common.Authorization = `Bearer ${nextSession.access_token}`;
+    setRoleReady(false);
+    setLoading(true);
+
+    try {
+      const me = await api.get('/auth/me', { timeout: 12_000 });
+      if (generation !== hydrateGeneration.current) return;
+
+      const profile = me.data?.data?.profile;
+      if (profile?.role) {
+        setApiRole(profile.role.toString().toUpperCase());
+      } else {
+        setApiRole(roleFromUserMetadata(nextSession.user));
+      }
+    } catch {
+      if (generation !== hydrateGeneration.current) return;
+      setApiRole(roleFromUserMetadata(nextSession.user));
+    } finally {
+      if (generation === hydrateGeneration.current) {
+        setRoleReady(true);
+        setLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
 
-    const init = async () => {
+    const bootstrap = async () => {
       const {
-        data: { session },
+        data: { session: initialSession },
       } = await supabase.auth.getSession();
       if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      await hydrateFromSession(initialSession);
     };
 
-    init();
+    void bootstrap();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, currentSession) => {
       if (!mounted) return;
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setLoading(false);
+      // Initial session is handled by bootstrap() — duplicate calls caused a stuck loading state.
+      if (event === 'INITIAL_SESSION') return;
+      void hydrateFromSession(currentSession);
     });
 
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [hydrateFromSession]);
 
   const login = async (email: string, password: string) => {
-    const res = await api.post('/auth/login', { email, password });
+    const res = await api.post('/auth/login', { email, password }, { timeout: 12_000 });
     const payload = res.data?.data;
     const authData = payload?.data ? payload.data : payload;
     const sessionData = authData?.session;
@@ -63,91 +108,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         access_token: sessionData.access_token,
         refresh_token: sessionData.refresh_token,
       });
-      setSession(sessionData);
-      setUser(userData ?? null);
-      api.defaults.headers.common.Authorization = `Bearer ${sessionData.access_token}`;
-      try {
-        const me = await api.get('/auth/me');
-        const profile = me.data?.data?.profile;
-        if (profile?.role) {
-          setApiRole(profile.role.toString().toUpperCase());
-        }
-      } catch {
-        setApiRole(null);
-      }
+      await hydrateFromSession({ ...sessionData, user: userData ?? sessionData.user } as Session);
     }
     return authData;
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
-    setSession(null);
-    setUser(null);
-    setApiRole(null);
+    await hydrateFromSession(null);
   };
 
-  useEffect(() => {
-    if (session?.access_token) {
-      api.defaults.headers.common.Authorization = `Bearer ${session.access_token}`;
-    } else {
-      delete api.defaults.headers.common.Authorization;
-    }
-  }, [session]);
+  const role = useMemo(() => {
+    if (apiRole) return apiRole;
+    return roleFromUserMetadata(user);
+  }, [user, apiRole]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const value = useMemo(
+    () => ({ user, role, session, loading, roleReady, login, logout, register }),
+    [user, role, session, loading, roleReady],
+  );
 
-    const loadProfileRole = async () => {
-      if (!session?.access_token) {
-        setApiRole(null);
-        return;
-      }
-
-      try {
-        const res = await api.get('/auth/me');
-        const profile = res.data?.data?.profile;
-        if (!cancelled && profile?.role) {
-          setApiRole(profile.role.toString().toUpperCase());
-        }
-      } catch {
-        if (!cancelled) {
-          setApiRole(null);
-        }
-      }
-    };
-
-    loadProfileRole();
-    return () => {
-      cancelled = true;
-    };
-  }, [session?.access_token]);
-
-  const register = async (email: string, password: string, full_name: string, role: string, marketDataConsent = false) => {
+  async function register(
+    email: string,
+    password: string,
+    full_name: string,
+    roleValue: string,
+    marketDataConsent = false,
+  ) {
     const res = await api.post('/auth/register', {
       email,
       password,
       full_name,
-      role,
+      role: roleValue,
       market_data_consent: marketDataConsent,
     });
     return res.data?.data;
-  };
-
-  const role = useMemo(() => {
-    if (apiRole) {
-      return apiRole;
-    }
-    if (!user) {
-      return null;
-    }
-    const rawRole = (user.user_metadata as Record<string, unknown>)?.role;
-    return rawRole ? rawRole.toString().toUpperCase() : null;
-  }, [user, apiRole]);
-
-  const value = useMemo(
-    () => ({ user, role, session, loading, login, logout, register }),
-    [user, role, session, loading],
-  );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

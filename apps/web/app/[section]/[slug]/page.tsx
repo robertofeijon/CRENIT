@@ -24,7 +24,7 @@ const pageData: Record<string, { title: string; headline: string; description: s
   },
   'products/market-data': {
     title: 'Market Data',
-    headline: 'Unlock verified rent and occupancy insights across Namibia.',
+    headline: 'Unlock verified rent and occupancy insights by market.',
     description:
       'Use our unique rent dataset to make smarter pricing, underwriting, and portfolio decisions backed by real tenant payments.',
     bullets: ['Verified rent metrics', 'Local market trends', 'Data-driven decisions'],
@@ -54,21 +54,21 @@ const pageData: Record<string, { title: string; headline: string; description: s
     title: 'For Developers',
     headline: 'Build better rental communities with data-driven leasing.',
     description:
-      'Use RentCredit insights to set pricing, attract long-term tenants, and position new developments for financial success.',
+      'Use CRENIT insights to set pricing, attract long-term tenants, and position new developments for financial success.',
     bullets: ['Market intelligence', 'Tenant credit visibility', 'Demand forecasting'],
   },
   'company/about-us': {
     title: 'About Us',
-    headline: 'RentCredit is building a new rental credit economy.',
+    headline: 'CRENIT is building a new rental credit economy.',
     description:
       'We help landlords, tenants, and financial partners turn rent payments into verified financial identity through trusted technology and local market expertise.',
-    bullets: ['Mission-driven fintech', 'Namibia-first rental data', 'Trusted rental partners'],
+    bullets: ['Mission-driven fintech', 'Payment-verified rental data', 'Trusted rental partners'],
   },
   'company/how-it-works': {
     title: 'How It Works',
     headline: 'A seamless experience for payments, scoring, and reporting.',
     description:
-      'RentCredit connects landlords, tenants, and lenders through verified rental payment flows, transparent score updates, and actionable market data.',
+      'CRENIT connects landlords, tenants, and lenders through verified rental payment flows, transparent score updates, and actionable market data.',
     bullets: ['Tenant rent verification', 'Landlord dashboard', 'Credit reporting'],
   },
   'company/blog': {
@@ -80,9 +80,9 @@ const pageData: Record<string, { title: string; headline: string; description: s
   },
   'company/contact': {
     title: 'Contact',
-    headline: 'Get in touch with the RentCredit team.',
+    headline: 'Get in touch with the CRENIT team.',
     description:
-      "We're here to answer questions from landlords, tenants, and financial partners. Reach out for a demo, onboarding support, or partnership inquiries.",
+      "We're here to answer questions from landlords, tenants, and financial partners. Reach out for onboarding support or partnership inquiries.",
     bullets: ['Sales inquiries', 'Partner support', 'General questions'],
   },
 };

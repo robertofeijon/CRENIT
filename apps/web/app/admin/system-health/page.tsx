@@ -1,30 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Activity, CheckCircle2, AlertTriangle, RefreshCw, ScrollText, Server, Shield } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
-import PageHeader from '../../components/ui/PageHeader';
-import Badge from '../../components/ui/Badge';
+import AdminPageHeader from '../../components/ui/AdminPageHeader';
+import AdminStatCard from '../../components/ui/AdminStatCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 
-const services = [
-  { name: 'Payment Processing', key: 'payments' },
-  { name: 'KYC Service', key: 'kyc' },
-  { name: 'Credit Score Engine', key: 'credit' },
-  { name: 'Report Generator', key: 'reports' },
-  { name: 'Data Pipeline', key: 'data' },
-  { name: 'Email/Notification Service', key: 'notifications' },
-];
-
 export default function AdminSystemHealthPage() {
   const { user, role, loading } = useAuth();
   const router = useRouter();
-  const [health, setHealth] = useState<Record<string, string>>({});
   const [snapshot, setSnapshot] = useState<any>(null);
+  const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingSnapshot, setLoadingSnapshot] = useState(false);
 
@@ -33,78 +26,225 @@ export default function AdminSystemHealthPage() {
     if (!loading && user && role !== 'ADMIN') router.replace('/auth');
   }, [loading, user, role, router]);
 
+  const loadHealth = useCallback(() => {
+    setLoadingSnapshot(true);
+    setError(null);
+    api
+      .get('/admin/system-health/overview')
+      .then((res) => {
+        setSnapshot(res.data?.data || null);
+        setLastChecked(new Date());
+      })
+      .catch((err: any) => setError(err?.response?.data?.message || 'Unable to load system health.'))
+      .finally(() => setLoadingSnapshot(false));
+  }, []);
+
   useEffect(() => {
     if (user && role === 'ADMIN') {
-      setLoadingSnapshot(true);
-      api
-        .get('/admin/system-health/overview')
-        .then((res) => {
-          setSnapshot(res.data?.data || null);
-          setHealth({ admin: 'Operational' });
-        })
-        .catch((err: any) => setError(err?.response?.data?.message || 'Unable to load system health.'))
-        .finally(() => setLoadingSnapshot(false));
+      loadHealth();
     }
-  }, [user, role]);
+  }, [user, role, loadHealth]);
+
+  if (loading || !user || role !== 'ADMIN') {
+    return <p className="text-sm text-slate-500">Loading admin workspace...</p>;
+  }
 
   const chartData = snapshot?.error_rate_7d || [];
+  const platformOk = snapshot?.platform_status === 'Operational';
 
   return (
-    <div>
-      <PageHeader title="System health" subtitle="Service status and error rates." />
-      {error ? <ErrorStateCard message={error} onRetry={() => router.refresh()} /> : null}
-      {loadingSnapshot ? <SkeletonBlocks rows={3} /> : null}
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {services.map((svc) => (
-          <div key={svc.key} className="rc-card">
-            <p className="text-sm font-semibold text-gray-900">{svc.name}</p>
-            <div className="mt-3 flex items-center justify-between">
-              <Badge variant={snapshot?.services?.find((x: any) => x.key === svc.key)?.status === 'Operational' ? 'success' : 'warning'}>
-                {snapshot?.services?.find((x: any) => x.key === svc.key)?.status || 'Operational'}
-              </Badge>
-              <span className="text-xs text-gray-500">
-                {snapshot?.services?.find((x: any) => x.key === svc.key)?.uptime_30d ?? 99.9}% uptime
-              </span>
+    <div className="space-y-6">
+      <AdminPageHeader
+        badge="Operations"
+        title="System health"
+        subtitle="Live probes against Supabase tables and admin audit activity — refreshed on demand."
+        actions={
+          <button
+            type="button"
+            onClick={loadHealth}
+            disabled={loadingSnapshot}
+            className="inline-flex items-center gap-2 rounded-full bg-[#C0392B] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#C0392B]/20 disabled:opacity-60"
+          >
+            <RefreshCw className={`h-4 w-4 ${loadingSnapshot ? 'animate-spin' : ''}`} aria-hidden />
+            Run health check
+          </button>
+        }
+      />
+
+      <p className="text-xs text-slate-500">
+        Last checked: {lastChecked ? lastChecked.toLocaleString() : '—'}
+        {platformOk ? (
+          <span className="ml-3 inline-flex items-center gap-1 font-semibold text-emerald-700">
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+            Platform operational
+          </span>
+        ) : (
+          <span className="ml-3 inline-flex items-center gap-1 font-semibold text-amber-800">
+            <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+            {snapshot?.platform_status || 'Degraded'}
+          </span>
+        )}
+      </p>
+
+      {error ? <ErrorStateCard message={error} onRetry={loadHealth} /> : null}
+
+      <p className="text-sm text-slate-600">
+        Related:{' '}
+        <Link href="/admin/audit" className="font-semibold text-[#C0392B] hover:underline">
+          Audit log →
+        </Link>
+        {' · '}
+        <Link href="/admin/compliance" className="font-semibold text-[#C0392B] hover:underline">
+          GDPR compliance
+        </Link>
+      </p>
+
+      {loadingSnapshot && !snapshot ? (
+        <SkeletonBlocks rows={5} />
+      ) : snapshot ? (
+        <>
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <AdminStatCard
+              label="Services OK"
+              value={`${snapshot.summary?.services_operational ?? 0}/${snapshot.summary?.services_total ?? 6}`}
+              icon={Server}
+              accent={platformOk ? 'success' : 'warning'}
+            />
+            <AdminStatCard
+              label="Admin actions (recent)"
+              value={snapshot.summary?.admin_actions_logged ?? 0}
+              sub="Latest audit log batch"
+              icon={Activity}
+            />
+            <AdminStatCard
+              label="GDPR events"
+              value={snapshot.summary?.gdpr_events ?? 0}
+              sub="Exports & deletions logged"
+              icon={Activity}
+              accent="dark"
+            />
+            <AdminStatCard
+              label="Error signals"
+              value={snapshot.recent_errors?.length ?? 0}
+              sub="From admin audit (7d view)"
+              icon={AlertTriangle}
+              accent={(snapshot.recent_errors?.length ?? 0) > 0 ? 'warning' : 'default'}
+            />
+          </section>
+
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(snapshot.services || []).map((svc: any) => (
+              <article
+                key={svc.key}
+                className={`rounded-[1.5rem] border p-5 shadow-sm ${
+                  svc.status === 'Operational' ? 'border-slate-200 bg-white' : 'border-amber-200 bg-amber-50'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold text-[#1A1A1A]">{svc.name}</p>
+                  {svc.status === 'Operational' ? (
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden />
+                  ) : (
+                    <AlertTriangle className="h-5 w-5 text-amber-700" aria-hidden />
+                  )}
+                </div>
+                <p className="mt-2 text-sm font-medium text-slate-700">{svc.status}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Table <code className="rounded bg-slate-100 px-1">{svc.table}</code> · {svc.record_count?.toLocaleString() ?? 0}{' '}
+                  rows
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Checked {svc.last_checked ? new Date(svc.last_checked).toLocaleTimeString() : '—'}
+                </p>
+                {svc.probe_error ? <p className="mt-2 text-xs text-amber-800">{svc.probe_error}</p> : null}
+              </article>
+            ))}
+          </section>
+
+          <section className="grid gap-6 lg:grid-cols-2">
+            <article className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="font-semibold text-[#1A1A1A]">Admin activity (7 days)</h2>
+              <p className="mt-1 text-xs text-slate-500">Actions logged vs error-like entries</p>
+              <div className="mt-4 h-[220px]">
+                {chartData.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="admin_actions" stroke="#1A1A1A" strokeWidth={2} dot={false} name="Actions" />
+                      <Line type="monotone" dataKey="errors" stroke="#C0392B" strokeWidth={2} dot={false} name="Errors" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="flex h-full items-center justify-center text-sm text-slate-400">No audit data</p>
+                )}
+              </div>
+            </article>
+
+            <article className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-semibold text-[#1A1A1A]">Recent admin actions</h2>
+                <Link
+                  href="/admin/audit"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#C0392B] hover:underline"
+                >
+                  <ScrollText className="h-3.5 w-3.5" aria-hidden />
+                  Full audit log
+                </Link>
+              </div>
+              <ul className="mt-4 max-h-[220px] space-y-2 overflow-auto">
+                {(snapshot.recent_admin_actions || []).map((row: any, idx: number) => (
+                  <li key={`${row.timestamp}-${idx}`} className="rounded-lg bg-[#F3F4F6] px-3 py-2 text-xs text-slate-700">
+                    <span className="font-semibold text-[#1A1A1A]">{row.action}</span>
+                    <span className="text-slate-400"> · {new Date(row.timestamp).toLocaleString()}</span>
+                  </li>
+                ))}
+              </ul>
+              {!snapshot.recent_admin_actions?.length ? (
+                <p className="mt-4 text-sm text-slate-500">No admin actions in the latest batch.</p>
+              ) : null}
+            </article>
+          </section>
+
+          <article className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-semibold text-[#1A1A1A]">Error-like audit entries</h2>
+              {(snapshot.summary?.gdpr_events ?? 0) > 0 ? (
+                <Link
+                  href="/admin/compliance"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#C0392B] hover:underline"
+                >
+                  <Shield className="h-3.5 w-3.5" aria-hidden />
+                  {snapshot.summary.gdpr_events} GDPR events logged
+                </Link>
+              ) : null}
             </div>
-            <p className="mt-2 text-[11px] text-gray-500">
-              Last checked:{' '}
-              {snapshot?.services?.find((x: any) => x.key === svc.key)?.last_checked
-                ? new Date(snapshot.services.find((x: any) => x.key === svc.key).last_checked).toLocaleString()
-                : 'N/A'}
-            </p>
-          </div>
-        ))}
-      </div>
-      <div className="rc-card mb-6">
-        <h2 className="text-sm font-semibold text-gray-900">Error rate (7 days)</h2>
-        <div className="mt-4 h-[220px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="day" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              {services.map((svc) => (
-                <Line key={svc.key} type="monotone" dataKey={svc.key} strokeWidth={2} dot={false} />
+            <div className="mt-4 space-y-2">
+              {(snapshot.recent_errors || []).map((row: any, idx: number) => (
+                <div key={`${row.timestamp}-${idx}`} className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                  {new Date(row.timestamp).toLocaleString()} · {row.error_type} · {row.affected_endpoint}
+                </div>
               ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-      <div className="rc-card">
-        <h2 className="text-sm font-semibold text-gray-900">Recent errors</h2>
-        <div className="mt-2 space-y-2">
-          {(snapshot?.recent_errors || []).slice(0, 8).map((row: any, idx: number) => (
-            <div key={`${row.timestamp}-${idx}`} className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700">
-              {new Date(row.timestamp).toLocaleString()} · {row.service} · {row.error_type} · {row.affected_endpoint} · {row.resolution_status}
+              {!snapshot.recent_errors?.length ? (
+                <p className="text-sm text-slate-500">No error-like actions in the latest audit batch.</p>
+              ) : null}
             </div>
-          ))}
-          {!snapshot?.recent_errors?.length ? (
-            <EmptyStateCard title="No recent errors" description="No critical errors were recorded in the selected period." />
-          ) : null}
-        </div>
-        {health.admin ? <p className="mt-2 text-xs text-gray-400">Admin API: {health.admin}</p> : null}
-      </div>
+          </article>
+
+          <section className="rounded-[1.5rem] border border-dashed border-slate-300 bg-[#F3F4F6]/80 p-5">
+            <p className="text-sm font-semibold text-[#1A1A1A]">Operational runbook</p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-slate-600">
+              <li>Degraded service → confirm Supabase migration status and RLS policies on the probed table.</li>
+              <li>Zero row counts on core tables → run <code className="rounded bg-white px-1">supabase/seed.sql</code> in staging.</li>
+              <li>Spike in audit errors → review escrow disputes and payment webhooks.</li>
+            </ul>
+          </section>
+        </>
+      ) : !loadingSnapshot ? (
+        <EmptyStateCard title="No health data" description="Run a health check to probe platform services." />
+      ) : null}
     </div>
   );
 }

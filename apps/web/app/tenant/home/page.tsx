@@ -1,19 +1,27 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  ArrowRight,
+  Bell,
+  CreditCard,
+  RefreshCw,
+  ScrollText,
+  TrendingUp,
+} from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
-import PageHeader from '../../components/ui/PageHeader';
-import StatCard from '../../components/ui/StatCard';
-import Badge from '../../components/ui/Badge';
+import TenantPageHeader from '../../components/ui/TenantPageHeader';
+import LandlordStatCard from '../../components/ui/LandlordStatCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
+import { formatN$, statusPillClass, tenantInputClass } from '../../components/tenant/tenantUi';
 
 export default function TenantHomePage() {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, roleReady } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [upcoming, setUpcoming] = useState<any>(null);
@@ -23,39 +31,47 @@ export default function TenantHomePage() {
   const [counterByRenewal, setCounterByRenewal] = useState<Record<string, { proposed_rent: string; proposed_end_date: string }>>({});
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [switchRequests, setSwitchRequests] = useState<any[]>([]);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/auth');
-    if (!loading && user && role === 'LANDLORD') router.replace('/landlord');
-  }, [loading, user, role, router]);
+    if (!loading && roleReady && !user) router.replace('/auth');
+    if (!loading && roleReady && user && role === 'LANDLORD') router.replace('/landlord/overview');
+  }, [loading, roleReady, user, role, router]);
 
-  useEffect(() => {
+  const loadDashboard = useCallback(async () => {
     if (!user || role === 'LANDLORD') return;
     setLoadingDashboard(true);
-    Promise.all([
-      api.get('/tenants/me'),
-      api.get('/payments/upcoming').catch(() => null),
-      api.get('/notifications/unread').catch(() => null),
-      api.get('/tenants/renewals').catch(() => null),
-      api.get('/tenants/lease/payment-method-switch/requests').catch(() => null),
-    ])
-      .then(([me, up, notes, renewalRes, switchRes]) => {
-        setData(me.data.data);
-        setUpcoming(up?.data?.data ?? null);
-        setNotifications(notes?.data?.data ?? []);
-        setRenewals(renewalRes?.data?.data ?? []);
-        setSwitchRequests(switchRes?.data?.data ?? []);
-      })
-      .catch((err: any) => setError(err?.response?.data?.message || 'Unable to load dashboard data.'))
-      .finally(() => setLoadingDashboard(false));
+    setError(null);
+    try {
+      const [me, up, notes, renewalRes, switchRes] = await Promise.all([
+        api.get('/tenants/me'),
+        api.get('/payments/upcoming').catch(() => null),
+        api.get('/notifications/unread').catch(() => null),
+        api.get('/tenants/renewals').catch(() => null),
+        api.get('/tenants/lease/payment-method-switch/requests').catch(() => null),
+      ]);
+      setData(me.data.data);
+      setUpcoming(up?.data?.data ?? null);
+      setNotifications(notes?.data?.data ?? []);
+      setRenewals(renewalRes?.data?.data ?? []);
+      setSwitchRequests(switchRes?.data?.data ?? []);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Unable to load dashboard.');
+    } finally {
+      setLoadingDashboard(false);
+    }
   }, [user, role]);
+
+  useEffect(() => {
+    void loadDashboard();
+  }, [loadDashboard]);
 
   const markNotificationRead = async (id: string) => {
     try {
       await api.post(`/notifications/${id}/read`);
       setNotifications((prev) => prev.filter((n) => n.id !== id));
     } catch {
-      // Non-blocking UI action.
+      /* non-blocking */
     }
   };
 
@@ -65,8 +81,9 @@ export default function TenantHomePage() {
       setRenewals((prev) =>
         prev.map((item) => (item.id === renewalId ? { ...item, status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED' } : item)),
       );
+      setMessage(`Renewal ${action === 'APPROVE' ? 'accepted' : 'declined'}.`);
     } catch {
-      // Keep non-blocking in dashboard.
+      setError('Unable to update renewal.');
     }
   };
 
@@ -81,12 +98,15 @@ export default function TenantHomePage() {
         proposed_end_date: counter?.proposed_end_date || undefined,
       });
       setRenewals((prev) => prev.map((item) => (item.id === renewalId ? { ...item, status: 'PENDING_APPROVAL' } : item)));
+      setMessage('Counter proposal sent to your landlord.');
     } catch {
-      // Keep non-blocking in dashboard.
+      setError('Unable to send counter proposal.');
     }
   };
 
-  if (loading || !user) return <p className="text-sm text-gray-500">Loading data...</p>;
+  if (loading || !roleReady || !user) {
+    return <p className="text-sm text-slate-500">Loading tenant workspace…</p>;
+  }
 
   const name = data?.profile?.full_name ?? user.email?.split('@')[0] ?? 'there';
   const score = data?.score?.score ?? '—';
@@ -103,117 +123,227 @@ export default function TenantHomePage() {
   const daysUntil = next?.days_until_due ?? null;
   const showAlert = daysUntil != null && daysUntil <= 3;
   const onboarding = data?.onboarding;
-  const leasePaymentMethod = data?.activeLease?.payment_method || 'PLATFORM';
+  const leaseSummary = data?.leaseSummary;
+  const hasLease = Boolean(leaseSummary?.lease_id || data?.activeLease?.id);
+  const leasePaymentMethod = leaseSummary?.payment_method || data?.activeLease?.payment_method || 'PLATFORM';
 
   return (
-    <div>
-      <PageHeader title={`Good morning, ${name}`} subtitle="Your rent, credit score, and payment health." />
+    <div className="space-y-6">
+      <TenantPageHeader
+        badge="Home"
+        title={`Good morning, ${name}`}
+        subtitle="Your rent, credit score, and verified payment history in one place."
+        actions={
+          <button type="button" onClick={() => void loadDashboard()} disabled={loadingDashboard} className="tenant-btn-secondary">
+            <RefreshCw className={`h-4 w-4 ${loadingDashboard ? 'animate-spin' : ''}`} aria-hidden />
+            Refresh
+          </button>
+        }
+      />
+
+      {message ? (
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{message}</p>
+      ) : null}
+      {error ? <ErrorStateCard message={error} onRetry={() => void loadDashboard()} /> : null}
 
       {showAlert ? (
-        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-amber-900">
-            Rent of N${Number(next.amount || 0).toLocaleString()} is due in {daysUntil} day{daysUntil === 1 ? '' : 's'}.
+            Rent of {formatN$(next.amount)} is due in {daysUntil} day{daysUntil === 1 ? '' : 's'}.
           </p>
-          <Link href="/tenant/payments" className="rc-btn-primary text-center">
+          <Link href="/tenant/payments" className="tenant-btn-primary text-center">
             Pay now
           </Link>
         </div>
       ) : null}
 
-      {error ? <ErrorStateCard message={error} onRetry={() => router.refresh()} /> : null}
-      {loadingDashboard ? <SkeletonBlocks rows={5} /> : null}
+      {loadingDashboard ? <SkeletonBlocks rows={4} /> : null}
 
-      {!onboarding?.completed ? (
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
-          <h2 className="text-lg font-semibold text-slate-900">Complete your setup</h2>
-          <div className="mt-4 space-y-3">
-            {(onboarding?.steps || []).map((step: any) => (
-              <div key={step.key} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm">{step.completed ? '✅' : step.blocked ? '🔒' : '⬜'}</span>
-                  <p className="text-sm text-slate-800">{step.label}</p>
-                </div>
-                {!step.completed && !step.blocked && step.action ? (
-                  <Link href={step.action} className="rounded-lg bg-brand-red px-3 py-1.5 text-xs font-semibold text-white">
-                    {step.key === 'kyc_submitted'
-                      ? 'Start KYC'
-                      : step.key === 'payment_method_linked'
-                        ? 'Add Payment Method'
-                        : step.key === 'first_payment_paid'
-                          ? 'Pay Now'
-                          : 'Open'}
-                  </Link>
+      {hasLease && !loadingDashboard ? (
+        <section className="tenant-panel border-[#C0392B]/20 bg-gradient-to-br from-white to-[#FDEDEC]/40">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#FDEDEC]">
+                <ScrollText className="h-5 w-5 text-[#C0392B]" aria-hidden />
+              </span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C0392B]/90">Your lease</p>
+                <h2 className="mt-1 text-xl font-semibold text-[#1A1A1A]">
+                  {leaseSummary?.property_name || 'Linked property'}
+                  {leaseSummary?.unit_identifier ? ` · ${leaseSummary.unit_identifier}` : ''}
+                </h2>
+                {leaseSummary?.address ? <p className="mt-1 text-sm text-slate-600">{leaseSummary.address}</p> : null}
+                <p className="mt-2 text-sm text-slate-600">
+                  Landlord: <span className="font-medium text-[#1A1A1A]">{leaseSummary?.landlord_name}</span>
+                </p>
+              </div>
+            </div>
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusPillClass(leaseSummary?.status || 'ACTIVE')}`}>
+              {leaseSummary?.status || 'ACTIVE'}
+            </span>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl bg-white/80 p-4 ring-1 ring-slate-100">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">Monthly rent</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums text-[#1A1A1A]">{formatN$(leaseSummary?.monthly_rent)}</p>
+            </div>
+            <div className="rounded-xl bg-white/80 p-4 ring-1 ring-slate-100">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">Lease term</p>
+              <p className="mt-1 text-sm font-medium text-[#1A1A1A]">
+                {leaseSummary?.start_date ? new Date(leaseSummary.start_date).toLocaleDateString() : '—'}
+                {' → '}
+                {leaseSummary?.end_date ? new Date(leaseSummary.end_date).toLocaleDateString() : 'Open-ended'}
+              </p>
+            </div>
+            <div className="rounded-xl bg-white/80 p-4 ring-1 ring-slate-100">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">Payments</p>
+              <p className="mt-1 text-sm font-medium text-[#1A1A1A]">
+                {leasePaymentMethod === 'PLATFORM' ? 'Via CRENIT' : 'Direct to landlord'}
+              </p>
+            </div>
+            <div className="rounded-xl bg-white/80 p-4 ring-1 ring-slate-100">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">Security deposit</p>
+              <p className="mt-1 text-sm font-medium text-[#1A1A1A]">
+                {leaseSummary?.deposit_amount != null ? formatN$(leaseSummary.deposit_amount) : 'Not on file'}
+                {leaseSummary?.deposit_status ? (
+                  <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${statusPillClass(leaseSummary.deposit_status)}`}>
+                    {leaseSummary.deposit_status}
+                  </span>
                 ) : null}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-2">
+            <Link href="/tenant/payments" className="tenant-btn-primary inline-flex">
+              Pay rent
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+            <Link href="/tenant/deposit" className="tenant-btn-secondary">
+              View deposit
+            </Link>
+            <Link href="/tenant/reports" className="tenant-btn-secondary">
+              Download reports
+            </Link>
+          </div>
+        </section>
+      ) : !loadingDashboard ? (
+        <section className="tenant-panel border-dashed border-slate-300 bg-[#F3F4F6]/50">
+          <div className="flex items-start gap-3">
+            <ScrollText className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
+            <div>
+              <h2 className="text-lg font-semibold text-[#1A1A1A]">No lease linked yet</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                When your landlord registers you on CRENIT or you accept an invite, your lease details will appear here.
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {!onboarding?.completed && !loadingDashboard ? (
+        <section className="tenant-panel">
+          <h2 className="text-lg font-semibold text-[#1A1A1A]">Complete your setup</h2>
+          <div className="mt-4 space-y-2">
+            {(onboarding?.steps || []).map((step: any) => (
+              <div key={step.key} className="flex items-center justify-between rounded-xl bg-[#F3F4F6] px-4 py-3">
+                <p className="text-sm text-slate-800">{step.label}</p>
+                {!step.completed && !step.blocked && step.action ? (
+                  <Link href={step.action} className="tenant-btn-primary px-3 py-1.5 text-xs">
+                    Open
+                  </Link>
+                ) : (
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusPillClass(step.completed ? 'APPROVED' : 'PENDING')}`}>
+                    {step.completed ? 'Done' : step.blocked ? 'Locked' : 'Pending'}
+                  </span>
+                )}
               </div>
             ))}
           </div>
-        </div>
+        </section>
       ) : null}
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Current score" value={score} />
-        <StatCard label="Score tier" value={tier} />
-        <StatCard label="Payment streak" value={streak} />
-        <StatCard label="On-time rate" value={`${onTime}%`} />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <LandlordStatCard label="Current score" value={score} icon={TrendingUp} />
+        <LandlordStatCard label="Score tier" value={tier} />
+        <LandlordStatCard label="Paid streak" value={streak} icon={CreditCard} />
+        <LandlordStatCard label="On-time rate" value={`${onTime}%`} accent={onTime >= 80 ? 'success' : 'default'} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rc-card">
-          <h2 className="text-lg font-semibold text-gray-900">Current rent</h2>
-          <p className="mt-2 text-sm text-gray-500">
-            {data?.activeLease?.units?.unit_identifier ? `Unit ${data.activeLease.units.unit_identifier}` : 'Active lease'}
-          </p>
-          <p className="mt-4 text-2xl font-bold text-gray-900">
-            N${Number(data?.activeLease?.monthly_rent || next?.amount || 0).toLocaleString()}
-          </p>
-          <p className="mt-1 text-sm text-gray-500">Due: {next?.due_date ?? '—'}</p>
-          <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${leasePaymentMethod === 'PLATFORM' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
-            {leasePaymentMethod === 'PLATFORM' ? 'Platform Payments' : 'Direct Payments'}
-          </span>
-          <Link href="/tenant/payments" className="rc-btn-primary mt-6 inline-flex">
-            Pay rent
-          </Link>
-        </div>
+        {hasLease ? (
+          <section className="tenant-panel lg:col-span-1">
+            <h2 className="text-lg font-semibold text-[#1A1A1A]">Next payment</h2>
+            <p className="mt-4 text-3xl font-semibold tabular-nums text-[#1A1A1A]">
+              {formatN$(next?.amount ?? leaseSummary?.monthly_rent ?? 0)}
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Due: {next?.due_date ?? '—'}
+              {daysUntil != null ? ` · ${daysUntil} day(s) away` : ''}
+            </p>
+            <Link href="/tenant/payments" className="tenant-btn-primary mt-6 inline-flex">
+              Pay now
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </section>
+        ) : null}
 
-        <div className="rc-card">
-          <h2 className="text-lg font-semibold text-gray-900">Recent payments</h2>
-          <ul className="mt-4 space-y-3">
+        <section className={`tenant-panel ${hasLease ? '' : 'lg:col-span-2'}`}>
+          <h2 className="text-lg font-semibold text-[#1A1A1A]">Recent payments</h2>
+          <ul className="mt-4 space-y-2">
             {(data?.recentPayments ?? []).slice(0, 5).map((p: any) => (
-              <li key={p.id} className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3 text-sm">
-                <span>{p.paid_date ? new Date(p.paid_date).toLocaleDateString() : p.due_date}</span>
-                <span className="font-medium">N${Number(p.amount_gross || 0).toLocaleString()}</span>
-                <Badge variant={p.status === 'PAID' ? 'success' : 'warning'}>{p.status}</Badge>
+              <li key={p.id} className="flex items-center justify-between rounded-xl bg-[#F3F4F6] px-4 py-3 text-sm">
+                <span className="text-slate-600">{p.paid_date ? new Date(p.paid_date).toLocaleDateString() : p.due_date}</span>
+                <span className="font-semibold text-[#1A1A1A]">{formatN$(p.amount_gross)}</span>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusPillClass(p.status)}`}>{p.status}</span>
               </li>
             ))}
-            {!data?.recentPayments?.length ? <li className="text-sm text-gray-500">No payment activity yet.</li> : null}
+            {!data?.recentPayments?.length ? (
+              <li className="text-sm text-slate-500">No payment activity yet.</li>
+            ) : null}
           </ul>
-        </div>
+          <Link href="/tenant/payments" className="mt-4 inline-flex text-sm font-semibold text-[#C0392B] hover:underline">
+            View all payments →
+          </Link>
+        </section>
       </div>
 
       {leasePaymentMethod === 'DIRECT' ? (
-        <div className="mt-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+        <section className="tenant-panel border-indigo-200 bg-indigo-50/50">
           <p className="text-sm text-indigo-900">
-            Switching to platform payments enables instant score updates and removes manual confirmation.
+            Switch to platform payments for instant score updates — no manual landlord confirmation.
           </p>
           <button
             type="button"
-            onClick={() => api.post('/tenants/lease/payment-method-switch/request', { requested_method: 'PLATFORM' })}
-            className="mt-3 rounded-lg bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white"
+            className="tenant-btn-primary mt-3"
+            onClick={async () => {
+              try {
+                await api.post('/tenants/lease/payment-method-switch/request', { requested_method: 'PLATFORM' });
+                setMessage('Switch request sent to your landlord.');
+              } catch {
+                setError('Unable to request payment method switch.');
+              }
+            }}
           >
-            Request Switch
+            Request platform payments
           </button>
           {switchRequests.length ? (
             <div className="mt-3 space-y-2">
               {switchRequests.map((req) => (
-                <div key={req.id} className="rounded-lg bg-white px-3 py-2 text-xs text-slate-700">
+                <div key={req.id} className="rounded-xl bg-white px-3 py-2 text-xs text-slate-700">
                   Pending switch to {req.requested_method}.{' '}
                   {!req.tenant_confirmed ? (
                     <button
                       type="button"
-                      onClick={() => api.post('/tenants/lease/payment-method-switch/confirm', { request_id: req.id })}
-                      className="rounded bg-emerald-600 px-2 py-1 font-semibold text-white"
+                      className="ml-1 font-semibold text-emerald-700 hover:underline"
+                      onClick={() =>
+                        api.post('/tenants/lease/payment-method-switch/confirm', { request_id: req.id }).then(() =>
+                          setMessage('Switch confirmed — awaiting landlord.'),
+                        )
+                      }
                     >
-                      Confirm switch
+                      Confirm
                     </button>
                   ) : (
                     <span>Awaiting landlord confirmation.</span>
@@ -222,57 +352,60 @@ export default function TenantHomePage() {
               ))}
             </div>
           ) : null}
-        </div>
+        </section>
       ) : null}
 
-      <div className="mt-6 rc-card">
+      <section className="tenant-panel">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-gray-900">Unread notifications</h2>
+          <div className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-[#C0392B]" aria-hidden />
+            <h2 className="text-lg font-semibold text-[#1A1A1A]">Notifications</h2>
+          </div>
           {notifications.length ? (
             <button
               type="button"
-              onClick={() => notifications.forEach((n) => markNotificationRead(n.id))}
-              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700"
+              className="tenant-btn-secondary px-3 py-1.5 text-xs"
+              onClick={() => notifications.forEach((n) => void markNotificationRead(n.id))}
             >
-              Mark all shown as read
+              Mark all read
             </button>
           ) : null}
         </div>
-        <ul className="mt-4 space-y-3">
+        <ul className="mt-4 space-y-2">
           {notifications.slice(0, 5).map((note) => (
-            <li key={note.id} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+            <li key={note.id} className="rounded-xl border border-slate-100 bg-[#F3F4F6] p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{note.title}</p>
-                  <p className="mt-1 text-sm text-gray-600">{note.message}</p>
-                  <p className="mt-1 text-xs text-gray-400">{new Date(note.created_at).toLocaleString()}</p>
+                  <p className="text-sm font-semibold text-[#1A1A1A]">{note.title}</p>
+                  <p className="mt-1 text-sm text-slate-600">{note.message}</p>
+                  <p className="mt-1 text-xs text-slate-400">{new Date(note.created_at).toLocaleString()}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => markNotificationRead(note.id)}
-                  className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700"
-                >
+                <button type="button" className="text-xs font-semibold text-slate-600 hover:text-[#1A1A1A]" onClick={() => void markNotificationRead(note.id)}>
                   Dismiss
                 </button>
               </div>
             </li>
           ))}
           {!notifications.length ? (
-            <li>
-              <EmptyStateCard title="No unread notifications" description="You are all caught up for now." />
-            </li>
+            <EmptyStateCard title="All caught up" description="No unread notifications right now." />
           ) : null}
         </ul>
-      </div>
+      </section>
 
-      <div className="mt-6 rc-card">
-        <h2 className="text-lg font-semibold text-gray-900">Lease renewals</h2>
+      <section className="tenant-panel">
+        <div className="flex items-center gap-2">
+          <ScrollText className="h-5 w-5 text-[#C0392B]" aria-hidden />
+          <h2 className="text-lg font-semibold text-[#1A1A1A]">Lease renewals</h2>
+        </div>
         <ul className="mt-4 space-y-3">
           {renewals.slice(0, 3).map((renewal) => (
-            <li key={renewal.id} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-              <p className="text-sm font-semibold text-gray-900">Current lease ends {renewal.current_end_date}</p>
-              <p className="mt-1 text-sm text-gray-600">
-                Proposed: {renewal.proposed_end_date} at N${Number(renewal.proposed_rent || 0).toLocaleString()} ({renewal.status})
+            <li key={renewal.id} className="rounded-xl border border-slate-100 bg-[#F3F4F6] p-4">
+              <p className="text-sm font-semibold text-[#1A1A1A]">Current lease ends {renewal.current_end_date}</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Proposed: {renewal.proposed_end_date} at {formatN$(renewal.proposed_rent)} ·{' '}
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusPillClass(renewal.status)}`}>
+                  {renewal.status}
+                </span>
               </p>
               {renewal.status !== 'APPROVED' && renewal.status !== 'REJECTED' ? (
                 <div className="mt-3 space-y-2">
@@ -290,7 +423,7 @@ export default function TenantHomePage() {
                           },
                         }))
                       }
-                      className="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs text-gray-800"
+                      className={tenantInputClass}
                     />
                     <input
                       type="date"
@@ -304,45 +437,33 @@ export default function TenantHomePage() {
                           },
                         }))
                       }
-                      className="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs text-gray-800"
+                      className={tenantInputClass}
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className="tenant-btn-secondary" onClick={() => void sendCounterRenewal(renewal.id)}>
+                      Send counter
+                    </button>
+                    <button type="button" className="tenant-btn-primary" onClick={() => void respondRenewal(renewal.id, 'APPROVE')}>
+                      Accept
+                    </button>
                     <button
                       type="button"
-                      onClick={() => sendCounterRenewal(renewal.id)}
-                      className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700"
+                      className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-800 hover:bg-red-100"
+                      onClick={() => void respondRenewal(renewal.id, 'REJECT')}
                     >
-                      Counter
+                      Decline
                     </button>
                   </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => respondRenewal(renewal.id, 'APPROVE')}
-                    className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white"
-                  >
-                    Accept
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => respondRenewal(renewal.id, 'REJECT')}
-                    className="rounded-md bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white"
-                  >
-                    Reject
-                  </button>
-                </div>
                 </div>
               ) : null}
             </li>
           ))}
           {!renewals.length ? (
-            <li>
-              <EmptyStateCard title="No renewal proposals" description="There are currently no lease renewal actions required." />
-            </li>
+            <EmptyStateCard title="No renewal proposals" description="Your landlord has not sent a renewal offer yet." />
           ) : null}
         </ul>
-      </div>
+      </section>
     </div>
   );
 }

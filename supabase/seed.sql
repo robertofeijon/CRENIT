@@ -215,6 +215,38 @@ BEGIN
     END LOOP;
   END LOOP;
 
+  -- Public verify page test reference: /verify/RC-TEST01
+  IF coalesce(array_length(tenant_ids, 1), 0) >= 1 THEN
+    INSERT INTO public.report_verifications (
+      report_reference,
+      tenant_id,
+      score,
+      tier,
+      generated_at,
+      score_calculation_date,
+      verified_payment_records,
+      tenancy_months
+    )
+    VALUES (
+      'RC-TEST01',
+      tenant_ids[1],
+      594,
+      'GOOD',
+      now() - interval '7 days',
+      now() - interval '7 days',
+      10,
+      12
+    )
+    ON CONFLICT (report_reference) DO UPDATE
+      SET tenant_id = excluded.tenant_id,
+          score = excluded.score,
+          tier = excluded.tier,
+          generated_at = excluded.generated_at,
+          score_calculation_date = excluded.score_calculation_date,
+          verified_payment_records = excluded.verified_payment_records,
+          tenancy_months = excluded.tenancy_months;
+  END IF;
+
   IF to_regclass('market_intelligence.b2b_clients') IS NOT NULL THEN
     INSERT INTO market_intelligence.b2b_clients (name, client_type, access_tier, subscription_status, reports_pulled_this_month, rate_limit_per_hour)
     VALUES
@@ -231,5 +263,5 @@ BEGIN
     WHERE c.name IN ('Namibia Bank Partner', 'Windhoek Dev Group');
   END IF;
 
-  RAISE NOTICE 'Seed completed: 1 admin, 3 landlords, 10 tenants, 12-month payment histories, score history, market snapshots, and B2B usage.';
+  RAISE NOTICE 'Seed completed: 1 admin, 3 landlords, 10 tenants, 12-month payment histories, score history, report RC-TEST01, market snapshots, and B2B usage.';
 END $$;

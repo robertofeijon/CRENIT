@@ -5,8 +5,8 @@ import { AuthProvider } from '../src/contexts/AuthContext';
 import AppShell from './components/layout/AppShell';
 
 export const metadata: Metadata = {
-  title: 'RentCredit',
-  description: 'RentCredit fintech platform for rent payments and credit score building.',
+  title: 'CRENIT',
+  description: 'CRENIT fintech platform for rent payments and credit score building.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

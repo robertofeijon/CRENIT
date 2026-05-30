@@ -320,6 +320,21 @@ export class LandlordsService {
       throw updateError;
     }
 
+    await client.from('kyc_verifications').upsert(
+      [
+        {
+          profile_id: tenantId,
+          status,
+          reviewed_at: new Date().toISOString(),
+          reviewer_id: landlordProfile.user_id,
+          rejection_reason: status === 'REJECTED' ? reason || null : null,
+          updated_at: new Date().toISOString(),
+          metadata: { reviewer_role: 'LANDLORD' },
+        },
+      ],
+      { onConflict: 'profile_id' },
+    );
+
     const { data: updatedProfile, error: profileError } = await client
       .from('profiles')
       .select('id, full_name, kyc_status, income_monthly, kyc_rejection_reason')
@@ -348,7 +363,7 @@ export class LandlordsService {
       title: status === 'APPROVED' ? 'KYC approved' : status === 'REJECTED' ? 'KYC requires action' : 'KYC status updated',
       message:
         status === 'APPROVED'
-          ? 'Your identity has been verified — your RentCredit Score is now active.'
+          ? 'Your identity has been verified — your CRENIT Score is now active.'
           : status === 'REJECTED'
             ? `Action required: your KYC submission needs attention.${reason ? ` Reason: ${reason}` : ''}`
             : `Your KYC status is now ${status}.`,
@@ -404,6 +419,13 @@ export class LandlordsService {
       .maybeSingle();
 
     if (existingPendingInvite) {
+      await this.dispatchTenantInviteEmail(landlordProfile, {
+        email: normalizedEmail,
+        full_name: payload.full_name,
+        unit_id: payload.unit_id,
+        token: existingPendingInvite.token,
+        expires_at: existingPendingInvite.expires_at,
+      });
       return {
         tenant: {
           id: tenantId,
@@ -450,10 +472,18 @@ export class LandlordsService {
         user_id: tenantId,
         type: 'INVITE_SENT',
         title: 'You have been invited',
-        message: 'A landlord invited you to join a rental unit on RentCredit.',
+        message: 'A landlord invited you to join a rental unit on CRENIT.',
         metadata: { invited_email: normalizedEmail, unit_id: payload.unit_id ?? null, token: inviteToken },
       });
     }
+
+    await this.dispatchTenantInviteEmail(landlordProfile, {
+      email: normalizedEmail,
+      full_name: payload.full_name,
+      unit_id: payload.unit_id,
+      token: inviteToken,
+      expires_at: expiresAt,
+    });
 
     return {
       tenant: {
@@ -469,6 +499,57 @@ export class LandlordsService {
         existing_account: Boolean(existingTenant),
       },
     };
+  }
+
+  private async dispatchTenantInviteEmail(
+    landlordProfile: { id: string; business_name?: string },
+    payload: { email: string; full_name: string; unit_id?: string; token: string; expires_at: string },
+  ) {
+    const client = this.supabase.getClient();
+    let propertyAddress = '';
+    let rentAmount: number | undefined;
+    let propertyErf = '';
+    let propertyStreet = '';
+    let propertySuburb = '';
+    let propertyCity = '';
+
+    if (payload.unit_id) {
+      const { data: unit } = await client
+        .from('units')
+        .select(
+          'unit_identifier, monthly_rent, property_id, properties(property_name, erf_number, address_street, address_suburb, address_city)',
+        )
+        .eq('id', payload.unit_id)
+        .maybeSingle();
+      if (unit) {
+        rentAmount = unit.monthly_rent != null ? Number(unit.monthly_rent) : undefined;
+        const prop = (unit as any).properties;
+        propertyErf = prop?.erf_number || '';
+        propertyStreet = prop?.address_street || '';
+        propertySuburb = prop?.address_suburb || '';
+        propertyCity = prop?.address_city || '';
+        propertyAddress = [propertyErf ? `Erf ${propertyErf}` : null, propertyStreet, propertySuburb, propertyCity]
+          .filter(Boolean)
+          .join(', ');
+        if (unit.unit_identifier) {
+          propertyAddress = propertyAddress ? `${propertyAddress} · Unit ${unit.unit_identifier}` : `Unit ${unit.unit_identifier}`;
+        }
+      }
+    }
+
+    await this.notificationsService.sendTenantInvitationEmail({
+      to: payload.email,
+      tenant_name: payload.full_name,
+      landlord_name: landlordProfile.business_name || 'Your landlord',
+      accept_path: `/join/${payload.token}`,
+      property_address: propertyAddress,
+      property_erf: propertyErf,
+      property_street: propertyStreet,
+      property_suburb: propertySuburb,
+      property_city: propertyCity,
+      rent_amount: rentAmount,
+      expires_at: payload.expires_at,
+    });
   }
 
   async listInvites(landlordUserId: string) {
@@ -547,6 +628,14 @@ export class LandlordsService {
       title: 'Tenant invite resent',
       message: `Invitation resent to ${invite.invited_email}.`,
       metadata: { invite_id: inviteId, invited_email: invite.invited_email, token: newToken },
+    });
+
+    await this.dispatchTenantInviteEmail(landlordProfile, {
+      email: invite.invited_email,
+      full_name: invite.invited_email.split('@')[0],
+      unit_id: invite.unit_id,
+      token: newToken,
+      expires_at: expiresAt,
     });
 
     return {
@@ -1025,6 +1114,110 @@ export class LandlordsService {
       .order('submitted_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    return data || null;
+    const { data: profile } = await client
+      .from('profiles')
+      .select('partner_approval_status')
+      .eq('id', landlordUserId)
+      .maybeSingle();
+    return {
+      submission: data || null,
+      partner_approval_status: profile?.partner_approval_status ?? 'PENDING_APPROVAL',
+    };
+  }
+
+  async uploadOnboardingDocument(
+    landlordUserId: string,
+    payload: { doc_type: 'id' | 'ownership'; filename: string; fileBase64: string },
+  ) {
+    const client = this.supabase.getClient();
+    const buffer = Buffer.from(payload.fileBase64, 'base64');
+    const safeName = payload.filename.replace(/\s+/g, '-');
+    const path = `partner-onboarding/${landlordUserId}/${payload.doc_type}-${Date.now()}-${safeName}`;
+    const bucket = 'kyc-documents';
+    const res = await client.storage.from(bucket).upload(path, buffer, { upsert: true });
+    if (res.error) throw res.error;
+    const publicUrl = client.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+    return { path, public_url: publicUrl, doc_type: payload.doc_type };
+  }
+
+  async listLeaseAgreements(landlordUserId: string, leaseId: string) {
+    const client = this.supabase.getClient();
+    const landlordProfile = await this.ensureLandlordProfile(landlordUserId);
+    const { data: lease, error: leaseError } = await client
+      .from('leases')
+      .select('id')
+      .eq('id', leaseId)
+      .eq('landlord_id', landlordProfile.id)
+      .single();
+    if (leaseError || !lease) {
+      throw new NotFoundException('Lease not found');
+    }
+    const { data, error } = await client
+      .from('lease_agreements')
+      .select('*')
+      .eq('lease_id', leaseId)
+      .order('version', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async uploadLeaseAgreement(
+    landlordUserId: string,
+    leaseId: string,
+    file: any,
+    payload?: { title?: string; document_type?: 'LEASE_AGREEMENT' | 'ADDENDUM' | 'RENEWAL' | 'TERMINATION' | 'OTHER'; notes?: string },
+  ) {
+    const client = this.supabase.getClient();
+    if (!file) throw new BadRequestException('No file provided');
+    const landlordProfile = await this.ensureLandlordProfile(landlordUserId);
+    const { data: lease, error: leaseError } = await client
+      .from('leases')
+      .select('id, tenant_id')
+      .eq('id', leaseId)
+      .eq('landlord_id', landlordProfile.id)
+      .single();
+    if (leaseError || !lease) {
+      throw new NotFoundException('Lease not found');
+    }
+
+    const { data: latest } = await client
+      .from('lease_agreements')
+      .select('version')
+      .eq('lease_id', leaseId)
+      .order('version', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const nextVersion = Number(latest?.version || 0) + 1;
+    const storagePath = `${landlordUserId}/leases/${leaseId}/v${nextVersion}-${Date.now()}-${file.originalname}`;
+
+    const { error: uploadError } = await client.storage
+      .from('landlord-attachments')
+      .upload(storagePath, file.buffer, { contentType: file.mimetype });
+    if (uploadError) throw new BadRequestException(`Upload failed: ${uploadError.message}`);
+
+    const { data, error } = await client
+      .from('lease_agreements')
+      .insert([
+        {
+          lease_id: leaseId,
+          landlord_profile_id: landlordProfile.id,
+          tenant_id: lease.tenant_id,
+          version: nextVersion,
+          title: payload?.title || `Lease Agreement v${nextVersion}`,
+          document_type: payload?.document_type || 'LEASE_AGREEMENT',
+          storage_path: storagePath,
+          file_name: file.originalname,
+          mime_type: file.mimetype,
+          file_size: file.size,
+          signature_status: 'DRAFT',
+          uploaded_by: landlordUserId,
+          uploaded_for_landlord_id: landlordUserId,
+          notes: payload?.notes || null,
+        },
+      ])
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data;
   }
 }
