@@ -8,6 +8,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Menu, X } from 'lucide-react';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import MarketingNav from './MarketingNav';
+import Logo from '../ui/Logo';
 
 export type NavItem = { label: string; href: string; icon?: string | LucideIcon; section?: string };
 
@@ -163,9 +164,7 @@ export default function DashboardShell({
             >
               <Menu className="h-5 w-5" aria-hidden />
             </button>
-            <Link href="/" className="text-lg font-semibold tracking-wide text-[#1A1A1A]">
-              CRENIT
-            </Link>
+            <Logo />
             <div className="hidden lg:block">
               <MarketingNav compact />
             </div>

@@ -7,6 +7,7 @@ import { Menu, X } from 'lucide-react';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import MarketingNav from '../layout/MarketingNav';
 import AuthModal from '../auth/AuthModal';
+import Logo from '../ui/Logo';
 
 type MarketingHeaderProps = {
   onOpenAuth?: (mode: 'login' | 'register') => void;
@@ -49,9 +50,7 @@ export default function MarketingHeader({ onOpenAuth }: MarketingHeaderProps) {
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
-            <Link href="/" className="text-xl font-semibold tracking-tight text-[#1A1A1A]">
-              CRENIT
-            </Link>
+            <Logo />
             <div className="hidden lg:block">
               <MarketingNav />
             </div>
