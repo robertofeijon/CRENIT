@@ -104,9 +104,11 @@ The **landlord UI** (`/landlord/market-data`) calls **`/market-data/*`** (landlo
 
 - **Base:** `GET /api/v1/...` with header `X-CRENIT-Key` (or legacy `X-RentCredit-Key`)
 - **Endpoints:**
-  - `GET /api/v1/suburb/:name` — rent distribution, bedroom breakdown, on-time trend, income bands, confidence + licensing notice
+  - `GET /api/v1/suburb/:name` — rent distribution, bedroom breakdown, on-time trend, income bands, compliance envelope
+  - `GET /api/v1/suburb/:name/trends` — on-time trend series only
   - `GET /api/v1/city-overview` — Windhoek-wide suburb comparison
-  - `GET /api/v1/lender-risk/:suburb` — underwriting-oriented pack
+  - `GET /api/v1/lender-risk/:suburb` — underwriting pack (stub when n &lt; 5)
+  - `GET /api/v1/reports`, `/reports/:type/preview`, `/reports/:type/pdf` — licensed PDF reports
 - **Controls:** API key hash, client subscription status, hourly rate limits, tier daily caps, `api_usage_logs`
 
 ### 3.4 Marketing & commercial pages
