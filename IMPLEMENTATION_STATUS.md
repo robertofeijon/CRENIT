@@ -9,8 +9,10 @@
 | Branch | Status | Notes |
 |--------|--------|-------|
 | `feat/kyc-landlord-verification` | Merged into MI | Tenant KYC wizard, landlord verification, `0026`/`0027` |
-| `feat/market-intelligence-compliance` | Integration branch | B2B MI, webhooks, sale comps, `0028`–`0032`, plus platform items below |
-| `main` | Behind integration branch | Merge MI branch after review; see `docs/MIGRATION_RUNBOOK.md` |
+| `main` | **Current production trunk** | KYC + MI + TOTP 2FA + tenant metrics + ops smoke (`f1ea96e`+) |
+| `feat/market-intelligence-compliance` | Merged to `main` | Keep for PR history only |
+
+**Gap audit:** see **`docs/CRITICAL_GAPS.md`** for P0–P3 launch checklist.
 
 **Payment gateway (C):** Deferred — card/mobile initiate remains simulated until a merchant is selected.
 
@@ -59,7 +61,10 @@
 | Item | Priority | Notes |
 |------|----------|-------|
 | Production payment gateway | P1 | Blocked on merchant |
-| Merge integration branch → `main` + staging deploy | P0 | Run full migration runbook |
+| Staging deploy + migration runbook | P0 | `docs/MIGRATION_RUNBOOK.md` |
+| Password reset (forgot / reset email) | Done | `/auth/forgot-password`, `/auth/reset-password` |
+| Privacy / Terms marketing pages | Partial | `/company/privacy`, `/company/terms` — legal review still needed |
+| Automated tests (CI) | Done | Vitest payment-metrics + Playwright public pages (`.github/workflows/ci.yml`) |
 | RLS validation on staging | P0 | Release gate in `UPDATED_IMPLEMENTATION_SUMMARY.md` |
 | Real-time Supabase subscriptions | P2 | Dashboards still poll |
 | SMS 2FA | P2 | TOTP only for now |

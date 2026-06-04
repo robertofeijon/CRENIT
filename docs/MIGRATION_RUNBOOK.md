@@ -34,8 +34,10 @@ Run each file in `supabase/migrations/` **in numeric order**. On an existing pro
    - MI tables from `0028` (webhooks, sale comps) if using data intelligence
 4. **Storage** — Bucket `kyc-documents` exists; policies allow service role uploads.
 5. **Restart API** — Pick up new env and code paths.
-6. **Smoke** — Admin login → `POST /admin/system-health/smoke` (see below).
-7. **Functional** — Invite accept, landlord verify, tenant KYC submit, tenant home payment metrics.
+6. **Smoke** — `npm run validate:rls` then `npm run smoke:staging` (API running + demo seed).
+7. **Functional** — Full UI path in `docs/STAGING_RELEASE_CHECKLIST.md`.
+8. **Auth** — `npm run email:test` + forgot-password UI; Supabase redirect URLs for `/auth/reset-password`.
+9. **CI** — `npm run test:metrics` and `npm run test:e2e` (`.github/workflows/ci.yml`).
 
 ## Production procedure
 

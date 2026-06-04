@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../src/contexts/AuthContext';
 
@@ -21,7 +22,7 @@ interface AuthModalProps {
 
 export default function AuthModal({ open, mode = 'login', onClose }: AuthModalProps) {
   const router = useRouter();
-  const { user, role: sessionRole, roleReady, login, register } = useAuth();
+  const { user, role: sessionRole, roleReady, twoFactorRequired, login, register } = useAuth();
   const [activeMode, setActiveMode] = useState<AuthMode>(mode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,11 +48,11 @@ export default function AuthModal({ open, mode = 'login', onClose }: AuthModalPr
   }, [open]);
 
   useEffect(() => {
-    if (user && roleReady && sessionRole && open) {
+    if (user && roleReady && sessionRole && open && !twoFactorRequired) {
       onClose();
       router.replace(getDashboardRoute(sessionRole));
     }
-  }, [user, sessionRole, roleReady, open, onClose, router]);
+  }, [user, sessionRole, roleReady, twoFactorRequired, open, onClose, router]);
 
   if (!open) return null;
 
@@ -76,7 +77,12 @@ export default function AuthModal({ open, mode = 'login', onClose }: AuthModalPr
     }
     setSubmitting(true);
     try {
-      await login(email, password);
+      const result = await login(email, password);
+      if (result?.requires_two_factor) {
+        onClose();
+        router.replace('/auth/verify-2fa');
+        return;
+      }
       setMessage('Login successful. Redirecting...');
       setMessageType('success');
     } catch (error: unknown) {
@@ -210,6 +216,12 @@ export default function AuthModal({ open, mode = 'login', onClose }: AuthModalPr
                 }
               }}
             />
+
+            {activeMode === 'login' ? (
+              <Link href="/auth/forgot-password" className="mt-2 inline-block text-sm font-semibold text-[#C0392B] hover:underline">
+                Forgot password?
+              </Link>
+            ) : null}
 
             {activeMode === 'register' ? (
               <label className="mt-4 flex items-start gap-3 text-sm text-slate-600">

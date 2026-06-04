@@ -8,7 +8,9 @@
     "start:prod": "node dist/main.js",
     "build": "nest build",
     "prebuild": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
-    "lint": "eslint \"src/**/*.ts\" --fix"
+    "lint": "eslint \"src/**/*.ts\" --fix",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@nestjs/common": "10.4.22",
@@ -43,6 +45,7 @@
     "eslint-config-prettier": "^8.0.0",
     "eslint-plugin-import": "^2.0.0",
     "ts-node": "^10.0.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.0"
   }
 }

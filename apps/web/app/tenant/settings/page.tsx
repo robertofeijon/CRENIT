@@ -12,6 +12,7 @@ import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import { tenantInputClass, tenantSelectClass } from '../../components/tenant/tenantUi';
 import MarketDataConsentSection from '../../components/settings/MarketDataConsentSection';
+import TwoFactorSetupBlock from '../../components/auth/TwoFactorSetupBlock';
 
 export default function TenantSettingsPage() {
   const { user, loading, roleReady } = useAuth();
@@ -22,7 +23,8 @@ export default function TenantSettingsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [setupCode, setSetupCode] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [manualKey, setManualKey] = useState<string | null>(null);
   const [confirmCode, setConfirmCode] = useState('');
   const [methodType, setMethodType] = useState<'CARD' | 'MOBILE_MONEY' | 'EFT'>('EFT');
   const [cardNumber, setCardNumber] = useState('');
@@ -112,7 +114,8 @@ export default function TenantSettingsPage() {
     setIsLoading(true);
     try {
       const res = await api.post('/auth/2fa/setup');
-      setSetupCode(res.data.data.verification_code);
+      setQrDataUrl(res.data.data.qr_data_url || null);
+      setManualKey(res.data.data.manual_entry_key || null);
       setMessage(res.data.data.message);
       await loadSettings();
     } catch (err: any) {
@@ -126,7 +129,8 @@ export default function TenantSettingsPage() {
     setIsLoading(true);
     try {
       await api.post('/auth/2fa/confirm', { code: confirmCode });
-      setSetupCode(null);
+      setQrDataUrl(null);
+      setManualKey(null);
       setConfirmCode('');
       setMessage('Two-factor authentication enabled.');
       await loadSettings();
@@ -265,28 +269,21 @@ export default function TenantSettingsPage() {
         <p className="mt-2 text-sm text-slate-600">
           Status: {twoFactor?.enabled ? 'Enabled' : twoFactor?.pending_setup ? 'Pending confirmation' : 'Disabled'}
         </p>
-        {setupCode ? (
-          <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
-            Setup code: <strong>{setupCode}</strong>
-          </p>
-        ) : null}
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <input value={confirmCode} onChange={(e) => setConfirmCode(e.target.value)} placeholder="6-digit code" className={tenantInputClass} maxLength={6} />
-          {!twoFactor?.enabled ? (
-            <>
-              <button type="button" onClick={() => void handleSetup2fa()} disabled={isLoading} className="tenant-btn-secondary">
-                Generate code
-              </button>
-              <button type="button" onClick={() => void handleConfirm2fa()} disabled={isLoading} className="tenant-btn-primary">
-                Confirm enable
-              </button>
-            </>
-          ) : (
-            <button type="button" onClick={() => void handleDisable2fa()} disabled={isLoading} className="rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
-              Disable 2FA
-            </button>
-          )}
-        </div>
+        <TwoFactorSetupBlock
+          qrDataUrl={qrDataUrl}
+          manualKey={manualKey}
+          message={null}
+          confirmCode={confirmCode}
+          onConfirmCodeChange={setConfirmCode}
+          twoFactorEnabled={Boolean(twoFactor?.enabled)}
+          isLoading={isLoading}
+          inputClass={tenantInputClass}
+          onSetup={() => void handleSetup2fa()}
+          onConfirm={() => void handleConfirm2fa()}
+          onDisable={() => void handleDisable2fa()}
+          secondaryButtonClass="tenant-btn-secondary"
+          primaryButtonClass="tenant-btn-primary"
+        />
       </section>
 
       <MarketDataConsentSection consentType="TENANT_MARKET_DATA" />

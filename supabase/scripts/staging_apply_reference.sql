@@ -1,0 +1,19 @@
+-- Reference: apply on STAGING in order (Supabase SQL Editor or CLI).
+-- Do not run blindly on production without backup.
+-- Full runbook: docs/MIGRATION_RUNBOOK.md
+
+-- 0026_kyc_wizard_residence.sql
+-- 0027_landlord_verification_wizard.sql
+-- 0028_market_intelligence_pilot_webhooks.sql
+-- 0029_webhook_delivery_retries.sql
+-- 0030_landlord_licensable_notify.sql
+-- 0031_market_capture_suburb_snapshot.sql
+-- 0032_notification_market_alerts.sql
+-- 0033_two_factor_totp.sql
+
+-- After apply, verify:
+--   SELECT column_name FROM information_schema.columns
+--   WHERE table_schema = 'public' AND table_name = 'profiles'
+--     AND column_name IN ('partner_approval_status', 'two_factor_verified_until');
+
+-- RLS policies live in migration 0012_rls_policies.sql (re-apply safe via CREATE OR REPLACE policies there).

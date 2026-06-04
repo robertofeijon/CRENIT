@@ -85,6 +85,20 @@ const pageData: Record<string, { title: string; headline: string; description: s
       "We're here to answer questions from landlords, tenants, and financial partners. Reach out for onboarding support or partnership inquiries.",
     bullets: ['Sales inquiries', 'Partner support', 'General questions'],
   },
+  'company/privacy': {
+    title: 'Privacy Policy',
+    headline: 'How CRENIT protects your personal data.',
+    description:
+      'We collect only what is needed to verify rent payments, run KYC, and provide credit and market intelligence services. Data is stored securely and used in line with applicable privacy law (including POPIA where applicable).',
+    bullets: ['Purpose-limited collection', 'Encrypted storage', 'GDPR export and anonymisation tools for admins'],
+  },
+  'company/terms': {
+    title: 'Terms of Service',
+    headline: 'Rules for using the CRENIT platform.',
+    description:
+      'By using CRENIT you agree to accurate profile information, lawful use of payment and KYC features, and our market data consent terms where you opt in to aggregated intelligence products.',
+    bullets: ['Account responsibilities', 'Payment verification', 'Market data consent versioning'],
+  },
 };
 
 export default function SectionPage({ params }: { params: { section: string; slug: string } }) {
