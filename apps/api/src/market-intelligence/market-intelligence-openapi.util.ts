@@ -96,6 +96,42 @@ export function buildOpenApiDocument(serverUrl = 'http://localhost:3001') {
           responses: { '200': { description: 'Pilot sale statistics' } },
         },
       },
+      '/api/v1/sale-comps/ingest': {
+        post: {
+          summary: 'Ingest sale comps (partner pilot, max 100 records)',
+          tags: ['Sale comps (pilot)'],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['records'],
+                  properties: {
+                    records: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        required: ['suburb', 'sale_price', 'transfer_date'],
+                        properties: {
+                          suburb: { type: 'string' },
+                          city: { type: 'string' },
+                          sale_price: { type: 'number' },
+                          transfer_date: { type: 'string', format: 'date' },
+                          source_type: {
+                            type: 'string',
+                            enum: ['deeds', 'valuer', 'mls', 'bank_collateral', 'pilot_manual'],
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: { '200': { description: 'Insert count' } },
+        },
+      },
       '/api/v1/city-overview': {
         get: { summary: 'City-wide suburb rankings', tags: ['Rental'], responses: { '200': { description: 'OK' } } },
       },

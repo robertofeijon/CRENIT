@@ -69,7 +69,13 @@ export class MarketIntelligenceCaptureService {
         ) : Promise.resolve(false),
       ]);
 
-      if (!tenantConsent && !landlordConsent) {
+      const requireDualConsent = process.env.REQUIRE_DUAL_MARKET_CONSENT === 'true';
+      if (requireDualConsent) {
+        if (!tenantConsent || !landlordConsent) {
+          this.logger.debug(`Market capture skipped for payment ${payment.id}: dual consent required`);
+          return;
+        }
+      } else if (!tenantConsent && !landlordConsent) {
         this.logger.debug(`Market capture skipped for payment ${payment.id}: no consent`);
         return;
       }

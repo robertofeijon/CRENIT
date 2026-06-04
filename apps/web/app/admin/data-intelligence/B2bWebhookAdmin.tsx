@@ -12,6 +12,10 @@ type DeliveryRow = {
   suburb: string | null;
   url: string | null;
   client_name: string | null;
+  attempt_count?: number;
+  pending_retry?: boolean;
+  next_retry_at?: string | null;
+  last_error?: string | null;
 };
 
 type Props = {
@@ -22,6 +26,7 @@ type Props = {
 
 export default function B2bWebhookAdmin({ clients, onError, onMessage }: Props) {
   const [syncBusy, setSyncBusy] = useState(false);
+  const [retryBusy, setRetryBusy] = useState(false);
   const [expandedClient, setExpandedClient] = useState<string | null>(null);
   const [webhooksByClient, setWebhooksByClient] = useState<Record<string, WebhookRow[]>>({});
   const [urlByClient, setUrlByClient] = useState<Record<string, string>>({});
@@ -154,14 +159,37 @@ export default function B2bWebhookAdmin({ clients, onError, onMessage }: Props) 
           <span className="ml-1 font-medium text-emerald-900">Watch table: {watchCount} licensable suburb(s).</span>
         ) : null}
       </p>
-      <button
-        type="button"
-        disabled={syncBusy}
-        onClick={() => void syncLicensable()}
-        className="mt-4 rounded-full bg-emerald-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-      >
-        {syncBusy ? 'Syncing…' : 'Sync licensable suburbs now'}
-      </button>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={syncBusy}
+          onClick={() => void syncLicensable()}
+          className="rounded-full bg-emerald-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {syncBusy ? 'Syncing…' : 'Sync licensable suburbs now'}
+        </button>
+        <button
+          type="button"
+          disabled={retryBusy}
+          onClick={async () => {
+            setRetryBusy(true);
+            try {
+              const res = await api.post('/admin/data-intelligence/webhooks/retry-pending');
+              const d = res.data.data as { retried?: number; succeeded?: number };
+              onMessage(`Retry job: ${d?.retried ?? 0} attempted, ${d?.succeeded ?? 0} succeeded.`);
+              await loadDeliveries();
+            } catch (err: unknown) {
+              const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
+              onError(apiErr?.response?.data?.message || apiErr?.message || 'Retry failed.');
+            } finally {
+              setRetryBusy(false);
+            }
+          }}
+          className="rounded-full border border-emerald-800 px-4 py-2 text-sm font-semibold text-emerald-900 disabled:opacity-50"
+        >
+          {retryBusy ? 'Retrying…' : 'Retry pending deliveries'}
+        </button>
+      </div>
 
       {revealedSecret ? (
         <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950">
@@ -255,6 +283,9 @@ export default function B2bWebhookAdmin({ clients, onError, onMessage }: Props) 
                 {d.client_name ?? '—'} · {d.event_type}
                 {d.suburb ? ` · ${d.suburb}` : ''}
                 {d.response_status != null ? ` · HTTP ${d.response_status}` : ' · failed'}
+                {d.attempt_count && d.attempt_count > 1 ? ` · attempt ${d.attempt_count}` : ''}
+                {d.pending_retry ? ' · retry scheduled' : ''}
+                {d.last_error && d.pending_retry ? ` · ${d.last_error}` : ''}
                 {' · '}
                 {new Date(d.created_at).toLocaleString()}
               </li>

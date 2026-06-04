@@ -15,9 +15,10 @@ type Props = {
   clients: { id: string; name: string }[];
   onError: (message: string) => void;
   onSuccess: () => void;
+  onMessage?: (message: string) => void;
 };
 
-export default function SaleCompsPilotPanel({ pilotSummary, suburbOptions, clients, onError, onSuccess }: Props) {
+export default function SaleCompsPilotPanel({ pilotSummary, suburbOptions, clients, onError, onSuccess, onMessage }: Props) {
   const [suburb, setSuburb] = useState(suburbOptions[0] ?? '');
   const [salePrice, setSalePrice] = useState('');
   const [transferDate, setTransferDate] = useState(new Date().toISOString().slice(0, 10));
@@ -25,6 +26,8 @@ export default function SaleCompsPilotPanel({ pilotSummary, suburbOptions, clien
   const [busy, setBusy] = useState(false);
   const [previewSuburb, setPreviewSuburb] = useState('');
   const [preview, setPreview] = useState<unknown>(null);
+  const [bulkJson, setBulkJson] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const ingest = async () => {
     const price = Number(salePrice);
@@ -71,7 +74,8 @@ export default function SaleCompsPilotPanel({ pilotSummary, suburbOptions, clien
     <div className="rounded-xl border border-sky-200 bg-sky-50/60 p-5">
       <h4 className="font-semibold text-[#1A1A1A]">Sale comps pilot</h4>
       <p className="mt-1 text-sm text-slate-600">
-        Partner-sourced deeds feed <code className="text-xs">sale_comps_records</code>. Public API:{' '}
+        Partner-sourced deeds feed <code className="text-xs">sale_comps_records</code>. B2B partners:{' '}
+        <code className="text-xs">POST /api/v1/sale-comps/ingest</code> (max 100). Read:{' '}
         <code className="text-xs">GET /api/v1/suburb/:name/sale-comps</code>.
       </p>
       {pilotSummary ? (
@@ -138,6 +142,48 @@ export default function SaleCompsPilotPanel({ pilotSummary, suburbOptions, clien
           className="rounded-full bg-sky-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
           {busy ? 'Ingesting…' : 'Ingest record'}
+        </button>
+      </div>
+      <div className="mt-6 border-t border-sky-200/80 pt-4">
+        <p className="text-sm font-semibold text-[#1A1A1A]">Bulk ingest (JSON array, max 500)</p>
+        <textarea
+          value={bulkJson}
+          onChange={(e) => setBulkJson(e.target.value)}
+          placeholder={`[\n  { "suburb": "Klein Windhoek", "sale_price": 2500000, "transfer_date": "2025-03-01", "source_type": "deeds" }\n]`}
+          className="mt-2 h-28 w-full rounded-lg border border-slate-200 bg-white p-3 font-mono text-xs"
+        />
+        <button
+          type="button"
+          disabled={bulkBusy}
+          onClick={async () => {
+            let records: unknown[];
+            try {
+              records = JSON.parse(bulkJson || '[]');
+              if (!Array.isArray(records)) throw new Error('Expected a JSON array');
+            } catch {
+              onError('Bulk ingest requires a valid JSON array of records.');
+              return;
+            }
+            setBulkBusy(true);
+            try {
+              const res = await api.post('/admin/data-intelligence/sale-comps/bulk-ingest', {
+                partner_client_id: partnerId || undefined,
+                records,
+              });
+              setBulkJson('');
+              const inserted = res.data.data?.inserted ?? 0;
+              onMessage?.(`Bulk ingest: ${inserted} record(s) inserted.`);
+              onSuccess();
+            } catch (err: unknown) {
+              const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
+              onError(apiErr?.response?.data?.message || apiErr?.message || 'Bulk ingest failed.');
+            } finally {
+              setBulkBusy(false);
+            }
+          }}
+          className="mt-2 rounded-full border border-sky-700 px-4 py-2 text-sm font-semibold text-sky-900 disabled:opacity-50"
+        >
+          {bulkBusy ? 'Ingesting…' : 'Bulk ingest'}
         </button>
       </div>
       <div className="mt-6 flex flex-wrap items-end gap-2 border-t border-sky-200/80 pt-4">

@@ -284,7 +284,7 @@ See also `docs/MARKET_INTELLIGENCE.md` and `docs/pull-requests/feat-market-intel
 
 ## 10. Deployment checklist
 
-1. Run migrations `0026`, `0027`, and `0028` (sale comps pilot + B2B webhooks) on Supabase.  
+1. Run migrations `0026`, `0027`, `0028` (sale comps pilot + B2B webhooks), and `0029` (webhook retries) on Supabase.  
 2. Ensure `kyc-documents` storage bucket exists and API service role can upload.  
 3. Configure SMTP env vars for Nodemailer.  
 4. Restart API + web after deploy.  

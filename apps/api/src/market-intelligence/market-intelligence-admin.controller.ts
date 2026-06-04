@@ -245,6 +245,13 @@ export class MarketIntelligenceAdminController {
     return { success: true, data, error: null };
   }
 
+  @Post('webhooks/retry-pending')
+  async retryPendingWebhooks(@Headers('authorization') authHeader: string) {
+    await this.assertAdmin(authHeader);
+    const data = await this.marketIntelligenceService.retryWebhookDeliveries();
+    return { success: true, data, error: null };
+  }
+
   @Post('b2b-clients/:clientId/webhooks')
   async registerClientWebhook(
     @Headers('authorization') authHeader: string,
@@ -298,6 +305,31 @@ export class MarketIntelligenceAdminController {
   async licensableWatch(@Headers('authorization') authHeader: string) {
     await this.assertAdmin(authHeader);
     const data = await this.marketIntelligenceService.getLicensableSuburbWatchState();
+    return { success: true, data, error: null };
+  }
+
+  @Post('sale-comps/bulk-ingest')
+  async bulkIngestSaleComps(
+    @Headers('authorization') authHeader: string,
+    @Body()
+    body: {
+      partner_client_id?: string;
+      records: Array<{
+        suburb: string;
+        city?: string;
+        sale_price: number;
+        transfer_date: string;
+        property_type?: string;
+        bedrooms?: number;
+        price_per_sqm?: number;
+        source_type?: string;
+      }>;
+    },
+  ) {
+    await this.assertAdmin(authHeader);
+    const records = body.records ?? [];
+    if (records.length > 500) throw new BadRequestException('Maximum 500 records per bulk ingest');
+    const data = await this.marketIntelligenceService.ingestSaleCompsPilot(body.partner_client_id ?? null, records);
     return { success: true, data, error: null };
   }
 

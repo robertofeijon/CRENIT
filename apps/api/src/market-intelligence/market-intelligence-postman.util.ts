@@ -47,6 +47,32 @@ export function buildPostmanCollection(options: {
     mk('Suburb detail', 'GET', ['api', 'v1', 'suburb', '{{suburb}}']),
     mk('Suburb trends', 'GET', ['api', 'v1', 'suburb', '{{suburb}}', 'trends']),
     mk('Sale comps pilot', 'GET', ['api', 'v1', 'suburb', '{{suburb}}', 'sale-comps']),
+    {
+      name: 'Sale comps ingest',
+      request: {
+        method: 'POST',
+        header: [authHeader, { key: 'Content-Type', value: 'application/json' }],
+        body: {
+          mode: 'raw',
+          raw: JSON.stringify(
+            {
+              records: [
+                {
+                  suburb: '{{suburb}}',
+                  city: 'Windhoek',
+                  sale_price: 2500000,
+                  transfer_date: '2025-03-01',
+                  source_type: 'deeds',
+                },
+              ],
+            },
+            null,
+            2,
+          ),
+        },
+        url: { raw: `${serverUrl}/api/v1/sale-comps/ingest`, host: [baseHost], path: ['api', 'v1', 'sale-comps', 'ingest'] },
+      },
+    },
     mk('City overview', 'GET', ['api', 'v1', 'city-overview']),
     mk('Lender risk', 'GET', ['api', 'v1', 'lender-risk', '{{suburb}}']),
     mk('Report catalog', 'GET', ['api', 'v1', 'reports']),

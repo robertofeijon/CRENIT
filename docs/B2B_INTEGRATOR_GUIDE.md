@@ -114,7 +114,25 @@ OpenAPI 3.0 document generated from the live catalog. Admins can also download f
 GET /api/v1/suburb/Klein%20Windhoek/sale-comps
 ```
 
-Partner-sourced transfer prices in `sale_comps_records` (separate from rental merge). Admin ingest: `POST /admin/data-intelligence/sale-comps/ingest`.
+Partner-sourced transfer prices in `sale_comps_records` (separate from rental merge).
+
+```http
+POST /api/v1/sale-comps/ingest
+Content-Type: application/json
+
+{
+  "records": [
+    {
+      "suburb": "Klein Windhoek",
+      "sale_price": 2500000,
+      "transfer_date": "2025-03-01",
+      "source_type": "deeds"
+    }
+  ]
+}
+```
+
+Max **100** records per request. `source_type`: `deeds` | `valuer` | `mls` | `bank_collateral` | `pilot_manual`. Admin bulk: `POST /admin/data-intelligence/sale-comps/bulk-ingest` (max 500).
 
 ### Webhooks — suburb becomes licensable
 
@@ -132,7 +150,7 @@ GET /api/v1/webhooks
 DELETE /api/v1/webhooks/:id
 ```
 
-Deliveries are **POST** JSON with header `X-CRENIT-Signature: sha256=<hmac>` (HMAC-SHA256 of raw body using the subscription secret returned at registration). Sync also runs after nightly rollup and on a 04:00 Windhoek cron.
+Deliveries are **POST** JSON with header `X-CRENIT-Signature: sha256=<hmac>` (HMAC-SHA256 of raw body using the subscription secret returned at registration). Sync also runs after nightly rollup and on a 04:00 Windhoek cron. Failed deliveries (HTTP ≥400 or network error) retry with exponential backoff up to 6 attempts (15‑minute cron).
 
 ---
 

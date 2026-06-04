@@ -257,7 +257,9 @@ Recommended wording:
 1. **Sale comps GA** — partner SLA, bulk ingest, separate licence SKU (pilot tables live).
 2. **Stricter consent** — optional require tenant **and** landlord consent before capture.
 3. **Geocode QA** — reduce suburb mis-labelling on properties.
-4. **Webhook retries** — exponential backoff for failed deliveries.
+4. ~~**Webhook retries**~~ — shipped: exponential backoff (15‑min cron + admin retry); migration `0029`.
+5. ~~**Dual consent mode**~~ — opt-in via `REQUIRE_DUAL_MARKET_CONSENT=true` on API.
+6. **Sale comps GA** — partner SLA, pricing SKU, deed bulk pipelines.
 
 ---
 

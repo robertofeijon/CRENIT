@@ -363,6 +363,7 @@ export class MarketIntelligenceService {
           ...SALE_COMPS_ROADMAP.partner_integration,
           technical_placeholder: {
             ingest_endpoint: 'POST /admin/data-intelligence/sale-comps/ingest',
+            partner_ingest: 'POST /api/v1/sale-comps/ingest',
             public_api: 'GET /api/v1/suburb/{name}/sale-comps',
             storage_table: 'market_intelligence.sale_comps_records',
           },
@@ -973,6 +974,7 @@ export class MarketIntelligenceService {
         { method: 'GET', path: '/api/v1/reports/:reportType/pdf', suburb_required: 'conditional', response: 'application/pdf' },
         { method: 'GET', path: '/api/v1/openapi.json', suburb_required: false },
         { method: 'GET', path: '/api/v1/suburb/:name/sale-comps', suburb_required: true, pilot: true },
+        { method: 'POST', path: '/api/v1/sale-comps/ingest', suburb_required: false, pilot: true, max_records: 100 },
         { method: 'GET', path: '/api/v1/webhooks', suburb_required: false },
         { method: 'POST', path: '/api/v1/webhooks', suburb_required: false },
       ],
@@ -1016,6 +1018,10 @@ export class MarketIntelligenceService {
 
   async sendWebhookTestDelivery(subscriptionId: string) {
     return this.webhookService.sendTestDelivery(subscriptionId);
+  }
+
+  retryWebhookDeliveries() {
+    return this.webhookService.retryPendingDeliveries();
   }
 
   async getLicensableSuburbWatchState() {

@@ -11,6 +11,8 @@ export type LicensableSuburbEvent = {
   on_time_rate: number | null;
 };
 
+const MAX_WEBHOOK_ATTEMPTS = 6;
+
 @Injectable()
 export class MarketIntelligenceWebhookService {
   private readonly logger = new Logger(MarketIntelligenceWebhookService.name);
@@ -63,7 +65,9 @@ export class MarketIntelligenceWebhookService {
   async listRecentDeliveries(limit = 50) {
     const { data, error } = await this.mi()
       .from('webhook_deliveries')
-      .select('id, event_type, payload, response_status, created_at, subscription_id')
+      .select(
+        'id, event_type, payload, response_status, created_at, subscription_id, attempt_count, next_retry_at, last_error',
+      )
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) throw error;
@@ -90,11 +94,61 @@ export class MarketIntelligenceWebhookService {
         event_type: d.event_type,
         response_status: d.response_status,
         created_at: d.created_at,
+        attempt_count: d.attempt_count ?? 1,
+        next_retry_at: d.next_retry_at ?? null,
+        last_error: d.last_error ?? null,
+        pending_retry: !!d.next_retry_at,
         suburb: (d.payload as { data?: { suburbs?: { suburb: string }[] } })?.data?.suburbs?.[0]?.suburb ?? null,
         url: sub?.url ?? null,
         client_name: sub ? clientMap.get(sub.client_id) ?? null : null,
       };
     });
+  }
+
+  async retryPendingDeliveries() {
+    const now = new Date().toISOString();
+    const { data: pending, error } = await this.mi()
+      .from('webhook_deliveries')
+      .select('*')
+      .not('next_retry_at', 'is', null)
+      .lte('next_retry_at', now)
+      .lt('attempt_count', MAX_WEBHOOK_ATTEMPTS)
+      .order('next_retry_at', { ascending: true })
+      .limit(25);
+    if (error) {
+      this.logger.warn('retryPendingDeliveries query failed', error);
+      return { retried: 0, succeeded: 0, exhausted: 0 };
+    }
+    let succeeded = 0;
+    let exhausted = 0;
+    for (const row of pending ?? []) {
+      const { data: sub } = await this.mi()
+        .from('b2b_webhook_subscriptions')
+        .select('*')
+        .eq('id', row.subscription_id)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (!sub) {
+        await this.mi()
+          .from('webhook_deliveries')
+          .update({ next_retry_at: null, last_error: 'Subscription inactive or removed' })
+          .eq('id', row.id);
+        exhausted += 1;
+        continue;
+      }
+      const status = await this.redeliverExisting(sub, row);
+      if (!this.deliveryNeedsRetry(status)) succeeded += 1;
+    }
+    return { retried: (pending ?? []).length, succeeded, exhausted };
+  }
+
+  private deliveryNeedsRetry(responseStatus: number | null) {
+    return responseStatus == null || responseStatus >= 400;
+  }
+
+  private nextRetryAt(attemptNumber: number) {
+    const delaySec = Math.min(3600, 60 * 2 ** Math.max(0, attemptNumber - 1));
+    return new Date(Date.now() + delaySec * 1000).toISOString();
   }
 
   async sendTestDelivery(subscriptionId: string) {
@@ -207,8 +261,59 @@ export class MarketIntelligenceWebhookService {
       occurred_at: new Date().toISOString(),
       data: payload,
     });
+    const { responseStatus, lastError } = await this.postWebhook(sub, eventType, body);
+    const needsRetry = this.deliveryNeedsRetry(responseStatus);
+    try {
+      await this.mi().from('webhook_deliveries').insert([
+        {
+          subscription_id: sub.id,
+          event_type: eventType,
+          payload: JSON.parse(body),
+          response_status: responseStatus,
+          attempt_count: 1,
+          next_retry_at: needsRetry ? this.nextRetryAt(1) : null,
+          last_error: lastError,
+        },
+      ]);
+    } catch {
+      /* ignore log failure */
+    }
+    return responseStatus;
+  }
+
+  private async redeliverExisting(
+    sub: { id: string; url: string; secret: string },
+    delivery: {
+      id: string;
+      event_type: string;
+      payload: Record<string, unknown>;
+      attempt_count: number;
+    },
+  ) {
+    const body = JSON.stringify(delivery.payload);
+    const { responseStatus, lastError } = await this.postWebhook(sub, delivery.event_type, body);
+    const attempt = (delivery.attempt_count ?? 1) + 1;
+    const needsRetry = this.deliveryNeedsRetry(responseStatus) && attempt < MAX_WEBHOOK_ATTEMPTS;
+    try {
+      await this.mi()
+        .from('webhook_deliveries')
+        .update({
+          response_status: responseStatus,
+          attempt_count: attempt,
+          next_retry_at: needsRetry ? this.nextRetryAt(attempt) : null,
+          last_error: lastError,
+        })
+        .eq('id', delivery.id);
+    } catch {
+      /* ignore */
+    }
+    return responseStatus;
+  }
+
+  private async postWebhook(sub: { url: string; secret: string }, eventType: string, body: string) {
     const signature = this.signPayload(sub.secret, body);
     let responseStatus: number | null = null;
+    let lastError: string | null = null;
     try {
       const res = await fetch(sub.url, {
         method: 'POST',
@@ -221,21 +326,13 @@ export class MarketIntelligenceWebhookService {
         signal: AbortSignal.timeout(15000),
       });
       responseStatus = res.status;
+      if (this.deliveryNeedsRetry(responseStatus)) {
+        lastError = `HTTP ${responseStatus}`;
+      }
     } catch (err) {
-      this.logger.warn(`Webhook delivery failed ${sub.url}: ${(err as Error).message}`);
+      lastError = (err as Error).message;
+      this.logger.warn(`Webhook delivery failed ${sub.url}: ${lastError}`);
     }
-    try {
-      await this.mi().from('webhook_deliveries').insert([
-        {
-          subscription_id: sub.id,
-          event_type: eventType,
-          payload: JSON.parse(body),
-          response_status: responseStatus,
-        },
-      ]);
-    } catch {
-      /* ignore log failure */
-    }
-    return responseStatus;
+    return { responseStatus, lastError };
   }
 }

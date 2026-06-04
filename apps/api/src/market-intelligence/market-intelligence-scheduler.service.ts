@@ -30,4 +30,16 @@ export class MarketIntelligenceSchedulerService {
       this.logger.error('Licensable suburb webhook sync failed', err as Error);
     }
   }
+
+  @Cron('*/15 * * * *', { timeZone: 'Africa/Windhoek' })
+  async retryFailedWebhooks() {
+    try {
+      const result = await this.marketIntelligenceService.retryWebhookDeliveries();
+      if (result.retried > 0) {
+        this.logger.log(`Webhook retries: ${result.retried} attempted, ${result.succeeded} succeeded`);
+      }
+    } catch (err) {
+      this.logger.error('Webhook retry job failed', err as Error);
+    }
+  }
 }

@@ -89,6 +89,33 @@ export class DataIntelligenceApiController {
     return { success: true, data, error: null };
   }
 
+  @Post('sale-comps/ingest')
+  async ingestSaleComps(
+    @Headers('x-crenit-key') crenitApiKey: string,
+    @Headers('x-rentcredit-key') legacyApiKey: string,
+    @Body()
+    body: {
+      records: Array<{
+        suburb: string;
+        city?: string;
+        sale_price: number;
+        transfer_date: string;
+        property_type?: string;
+        bedrooms?: number;
+        price_per_sqm?: number;
+        source_type?: string;
+      }>;
+    },
+  ) {
+    const { client, keyRecord } = await this.resolveClient(crenitApiKey || legacyApiKey);
+    const records = body?.records ?? [];
+    if (!records.length) throw new BadRequestException('records array is required');
+    if (records.length > 100) throw new BadRequestException('Maximum 100 records per request');
+    const data = await this.marketIntelligenceService.ingestSaleCompsPilot(client.id, records);
+    await this.marketIntelligenceService.logApiUsage(client.id, '/api/v1/sale-comps/ingest', 200, (keyRecord as any)?.id);
+    return { success: true, data, error: null };
+  }
+
   @Get('suburb/:name/sale-comps')
   async getSaleComps(
     @Headers('x-crenit-key') crenitApiKey: string,

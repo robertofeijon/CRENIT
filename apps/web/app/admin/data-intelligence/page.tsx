@@ -37,6 +37,7 @@ import B2bApiPlayground from './B2bApiPlayground';
 import B2bIntegratorExports from './B2bIntegratorExports';
 import B2bWebhookAdmin from './B2bWebhookAdmin';
 import SaleCompsPilotPanel from './SaleCompsPilotPanel';
+import LicensableWatchPanel from './LicensableWatchPanel';
 
 type Timeframe = 'today' | '7d' | '30d' | '90d' | 'qtd' | 'ytd' | 'all';
 
@@ -699,7 +700,7 @@ export default function DataIntelligencePage() {
                 { id: 'explorer' as TabId, label: 'Suburb comps' },
                 { id: 'licensing' as TabId, label: 'Ready to license' },
                 { id: 'products' as TabId, label: 'Licensed products' },
-                { id: 'roadmap' as TabId, label: 'Sale comps (planned)' },
+                { id: 'roadmap' as TabId, label: 'Sale comps pilot' },
                 { id: 'b2b' as TabId, label: 'Clients & API' },
               ] as const
             ).map((tab) => (
@@ -791,6 +792,10 @@ export default function DataIntelligencePage() {
                 clients={clients}
                 onGoToB2b={() => setActiveTab('b2b')}
                 onError={setError}
+                onMessage={(m) => {
+                  setSuccessMessage(m);
+                  setError(null);
+                }}
                 onRefresh={() => void loadAll()}
               />
             ) : null}
@@ -1033,6 +1038,7 @@ function SaleCompsRoadmapPanel({
   clients,
   onGoToB2b,
   onError,
+  onMessage,
   onRefresh,
 }: {
   roadmap?: SaleCompsRoadmap;
@@ -1040,6 +1046,7 @@ function SaleCompsRoadmapPanel({
   clients: { id: string; name: string }[];
   onGoToB2b: () => void;
   onError: (message: string) => void;
+  onMessage: (message: string) => void;
   onRefresh: () => void;
 }) {
   if (!roadmap) {
@@ -1123,6 +1130,7 @@ function SaleCompsRoadmapPanel({
         clients={clients}
         onError={onError}
         onSuccess={onRefresh}
+        onMessage={onMessage}
       />
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
@@ -1177,6 +1185,7 @@ function LicensingPanel({
         <AdminStatCard label="Below minimum" value={report.summary.below_minimum} icon={Database} />
         <AdminStatCard label="Data source" value={report.data_source === 'market_data_records' ? 'Verified' : 'Fallback'} icon={Activity} />
       </div>
+      <LicensableWatchPanel />
       {report.ready_to_license.length ? (
         <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="min-w-full text-left text-sm">
