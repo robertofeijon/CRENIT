@@ -1,8 +1,11 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
   Headers,
   Param,
+  Post,
   Query,
   Res,
   UnauthorizedException,
@@ -42,6 +45,64 @@ export class DataIntelligenceApiController {
     const { client, keyRecord } = await this.resolveClient(crenitApiKey || legacyApiKey);
     const data = this.marketIntelligenceService.getB2bApiCatalog();
     await this.marketIntelligenceService.logApiUsage(client.id, '/api/v1/catalog', 200, (keyRecord as any)?.id);
+    return { success: true, data, error: null };
+  }
+
+  @Get('openapi.json')
+  async getOpenApi(@Headers('x-crenit-key') crenitApiKey: string, @Headers('x-rentcredit-key') legacyApiKey: string) {
+    const { client, keyRecord } = await this.resolveClient(crenitApiKey || legacyApiKey);
+    const data = this.marketIntelligenceService.getOpenApiDocument();
+    await this.marketIntelligenceService.logApiUsage(client.id, '/api/v1/openapi.json', 200, (keyRecord as any)?.id);
+    return data;
+  }
+
+  @Get('webhooks')
+  async listWebhooks(@Headers('x-crenit-key') crenitApiKey: string, @Headers('x-rentcredit-key') legacyApiKey: string) {
+    const { client, keyRecord } = await this.resolveClient(crenitApiKey || legacyApiKey);
+    const data = await this.marketIntelligenceService.listB2bWebhooks(client.id);
+    await this.marketIntelligenceService.logApiUsage(client.id, '/api/v1/webhooks', 200, (keyRecord as any)?.id);
+    return { success: true, data, error: null };
+  }
+
+  @Post('webhooks')
+  async registerWebhook(
+    @Headers('x-crenit-key') crenitApiKey: string,
+    @Headers('x-rentcredit-key') legacyApiKey: string,
+    @Body() body: { url: string; events?: string[] },
+  ) {
+    const { client, keyRecord } = await this.resolveClient(crenitApiKey || legacyApiKey);
+    if (!body?.url?.trim()) throw new BadRequestException('url is required');
+    const data = await this.marketIntelligenceService.registerB2bWebhook(client.id, body.url.trim(), body.events);
+    await this.marketIntelligenceService.logApiUsage(client.id, '/api/v1/webhooks', 200, (keyRecord as any)?.id);
+    return { success: true, data, error: null };
+  }
+
+  @Delete('webhooks/:id')
+  async deleteWebhook(
+    @Headers('x-crenit-key') crenitApiKey: string,
+    @Headers('x-rentcredit-key') legacyApiKey: string,
+    @Param('id') id: string,
+  ) {
+    const { client, keyRecord } = await this.resolveClient(crenitApiKey || legacyApiKey);
+    const data = await this.marketIntelligenceService.deactivateB2bWebhook(client.id, id);
+    await this.marketIntelligenceService.logApiUsage(client.id, `/api/v1/webhooks/${id}`, 200, (keyRecord as any)?.id);
+    return { success: true, data, error: null };
+  }
+
+  @Get('suburb/:name/sale-comps')
+  async getSaleComps(
+    @Headers('x-crenit-key') crenitApiKey: string,
+    @Headers('x-rentcredit-key') legacyApiKey: string,
+    @Param('name') suburb: string,
+  ) {
+    const { client, keyRecord } = await this.resolveClient(crenitApiKey || legacyApiKey);
+    const data = await this.marketIntelligenceService.getSaleCompsForSuburb(suburb);
+    await this.marketIntelligenceService.logApiUsage(
+      client.id,
+      `/api/v1/suburb/${suburb}/sale-comps`,
+      200,
+      (keyRecord as any)?.id,
+    );
     return { success: true, data, error: null };
   }
 

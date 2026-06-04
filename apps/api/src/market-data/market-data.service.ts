@@ -25,4 +25,11 @@ export class MarketDataService {
   async getSnapshot(suburb: string, snapshotDate: string) {
     return this.marketIntelligence.getSnapshotByDate(suburb, snapshotDate);
   }
+
+  async compareUnitRent(
+    landlordUserId: string,
+    opts: { unitId?: string; suburb?: string; rentAmount?: number },
+  ) {
+    return this.marketIntelligence.getPortalLandlordRentCompare(landlordUserId, opts);
+  }
 }

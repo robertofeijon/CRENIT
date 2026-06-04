@@ -20,4 +20,14 @@ export class MarketIntelligenceSchedulerService {
       this.logger.error('Market snapshot rollup failed', err as Error);
     }
   }
+
+  @Cron('0 4 * * *', { timeZone: 'Africa/Windhoek' })
+  async syncLicensableWebhooks() {
+    try {
+      const result = await this.marketIntelligenceService.syncLicensableSuburbWebhooks();
+      this.logger.log(`Licensable suburb webhooks: ${result.newly_licensable} newly licensable`);
+    } catch (err) {
+      this.logger.error('Licensable suburb webhook sync failed', err as Error);
+    }
+  }
 }

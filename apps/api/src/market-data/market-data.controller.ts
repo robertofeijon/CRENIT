@@ -1,4 +1,4 @@
-import { Controller, Get, Headers, Param, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Headers, Param, Query, UnauthorizedException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { assertRole, getUserProfileFromAuthHeader } from '../supabase/supabase.utils';
 import { MarketDataService } from './market-data.service';
@@ -50,6 +50,22 @@ export class MarketDataController {
   async getSummary(@Headers('authorization') authHeader: string) {
     await this.assertLandlordOrAdmin(authHeader);
     const data = await this.marketDataService.getSummary();
+    return { success: true, data, error: null };
+  }
+
+  @Get('compare')
+  async compareRent(
+    @Headers('authorization') authHeader: string,
+    @Query('unit_id') unitId?: string,
+    @Query('suburb') suburb?: string,
+    @Query('rent_amount') rentAmount?: string,
+  ) {
+    const profile = await this.assertLandlordOrAdmin(authHeader);
+    const data = await this.marketDataService.compareUnitRent(profile.id, {
+      unitId,
+      suburb,
+      rentAmount: rentAmount != null ? Number(rentAmount) : undefined,
+    });
     return { success: true, data, error: null };
   }
 

@@ -258,9 +258,15 @@ Returns routes, compliance field names, report types, and sample thresholds (no 
 **Data Intelligence → Clients & API** tab:
 
 1. Generate an API key for a B2B client (one-time reveal).
-2. **B2B API playground** — call catalog, suburb, trends, city-overview, lender-risk, or report list live; envelope chips + JSON response.
-3. **B2B report API sample** — **Preview JSON** or **Download PDF** via `/api/v1/reports/...`; **Copy curl**.
-4. **Licensed products** tab links to the report sample; admin PDF still uses session auth.
+2. **Integrator exports** — download OpenAPI 3.0 and Postman collection (also `GET /api/v1/openapi.json` with API key).
+3. **Licensable suburb webhooks** — register per-client URLs; **Sync licensable suburbs now** or wait for rollup/cron.
+4. **B2B API playground** — catalog, OpenAPI, suburb, trends, sale-comps pilot, city-overview, lender-risk, webhooks, reports.
+5. **B2B report API sample** — **Preview JSON** or **Download PDF** via `/api/v1/reports/...`; **Copy curl**.
+6. **Licensed products** tab links to the report sample; admin PDF still uses session auth.
+
+**Sale comps roadmap** tab: pilot ingest UI when records exist (`POST /admin/data-intelligence/sale-comps/ingest`).
+
+**Landlord portal → Market intelligence:** **Your rent vs suburb median** — pick a unit or enter suburb + rent; `GET /market-data/compare`.
 
 Full integrator reference: **`docs/B2B_INTEGRATOR_GUIDE.md`**.
 
@@ -278,7 +284,7 @@ See also `docs/MARKET_INTELLIGENCE.md` and `docs/pull-requests/feat-market-intel
 
 ## 10. Deployment checklist
 
-1. Run migrations `0026` and `0027` on Supabase.  
+1. Run migrations `0026`, `0027`, and `0028` (sale comps pilot + B2B webhooks) on Supabase.  
 2. Ensure `kyc-documents` storage bucket exists and API service role can upload.  
 3. Configure SMTP env vars for Nodemailer.  
 4. Restart API + web after deploy.  

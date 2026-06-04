@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Database, MapPin, Percent, RefreshCw, TrendingUp, Users } from 'lucide-react';
+import { Database, MapPin, Percent, RefreshCw, Scale, TrendingUp, Users } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import LandlordPageHeader from '../../components/ui/LandlordPageHeader';
@@ -47,8 +47,23 @@ export default function LandlordMarketDataPage() {
   const [dataSourceLabel, setDataSourceLabel] = useState<string | undefined>();
   const [selectedSuburb, setSelectedSuburb] = useState('');
   const [suburbDetails, setSuburbDetails] = useState<any>(null);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [compareUnitId, setCompareUnitId] = useState('');
+  const [compareSuburb, setCompareSuburb] = useState('');
+  const [compareRent, setCompareRent] = useState('');
+  const [compareResult, setCompareResult] = useState<any>(null);
+  const [compareBusy, setCompareBusy] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const unitOptions = properties.flatMap((p: any) =>
+    (p.units ?? []).map((u: any) => ({
+      id: u.id,
+      label: `${p.property_name} — ${u.unit_identifier || 'Unit'} (${p.address_suburb})`,
+      suburb: p.address_suburb,
+      rent: u.monthly_rent,
+    })),
+  );
 
   useEffect(() => {
     if (!loading && !user) router.replace('/auth');
@@ -90,9 +105,38 @@ export default function LandlordMarketDataPage() {
     }
   }, []);
 
+  const loadProperties = useCallback(async () => {
+    try {
+      const res = await api.get('/landlords/properties');
+      setProperties(res.data.data || []);
+    } catch {
+      setProperties([]);
+    }
+  }, []);
+
+  const runCompare = useCallback(async () => {
+    setCompareBusy(true);
+    setCompareResult(null);
+    try {
+      const params: Record<string, string> = {};
+      if (compareUnitId) params.unit_id = compareUnitId;
+      if (compareSuburb) params.suburb = compareSuburb;
+      if (compareRent) params.rent_amount = compareRent;
+      const res = await api.get('/market-data/compare', { params });
+      setCompareResult(res.data.data);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Compare failed.');
+    } finally {
+      setCompareBusy(false);
+    }
+  }, [compareUnitId, compareSuburb, compareRent]);
+
   useEffect(() => {
-    if (user && (role === 'LANDLORD' || role === 'ADMIN')) void loadMarketData();
-  }, [user, role, loadMarketData]);
+    if (user && (role === 'LANDLORD' || role === 'ADMIN')) {
+      void loadMarketData();
+      void loadProperties();
+    }
+  }, [user, role, loadMarketData, loadProperties]);
 
   useEffect(() => {
     if (selectedSuburb) void loadSuburbDetails(selectedSuburb);
@@ -138,6 +182,102 @@ export default function LandlordMarketDataPage() {
           <LandlordStatCard label="Verified samples" value={summary.total_sample_count} icon={Users} />
         </section>
       ) : null}
+
+      <section className="landlord-panel">
+        <div className="flex flex-wrap items-center gap-2">
+          <Scale className="h-5 w-5 text-[#C0392B]" aria-hidden />
+          <h2 className="text-lg font-semibold text-[#1A1A1A]">Your rent vs suburb median</h2>
+        </div>
+        <p className="mt-2 text-sm text-slate-600">
+          Compare a registered unit&apos;s monthly rent to verified suburb benchmarks (same data as B2B suburb reports).
+        </p>
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          {unitOptions.length ? (
+            <label className="text-sm text-slate-700">
+              Your unit
+              <select
+                value={compareUnitId}
+                onChange={(e) => {
+                  setCompareUnitId(e.target.value);
+                  const u = unitOptions.find((o) => o.id === e.target.value);
+                  if (u) {
+                    setCompareSuburb(u.suburb);
+                    setCompareRent(String(u.rent ?? ''));
+                  }
+                }}
+                className="mt-1 block min-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2"
+              >
+                <option value="">— or enter suburb below —</option>
+                {unitOptions.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <label className="text-sm text-slate-700">
+            Suburb
+            <input
+              type="text"
+              value={compareSuburb}
+              onChange={(e) => setCompareSuburb(e.target.value)}
+              placeholder="e.g. Klein Windhoek"
+              className="mt-1 block rounded-lg border border-slate-200 px-3 py-2"
+            />
+          </label>
+          <label className="text-sm text-slate-700">
+            Monthly rent (NAD)
+            <input
+              type="number"
+              value={compareRent}
+              onChange={(e) => setCompareRent(e.target.value)}
+              className="mt-1 block w-28 rounded-lg border border-slate-200 px-3 py-2"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={compareBusy || (!compareUnitId && !compareSuburb)}
+            onClick={() => void runCompare()}
+            className="landlord-btn-primary disabled:opacity-50"
+          >
+            {compareBusy ? 'Comparing…' : 'Compare'}
+          </button>
+        </div>
+        {compareResult ? (
+          <div className="mt-5 rounded-xl border border-slate-100 bg-[#F3F4F6] p-5 text-sm">
+            {compareResult.unit_label ? (
+              <p className="font-semibold text-[#1A1A1A]">{compareResult.unit_label}</p>
+            ) : null}
+            <p className="mt-1 text-slate-600">
+              {compareResult.suburb}, {compareResult.city} · Your rent {formatN$(compareResult.your_monthly_rent)}
+            </p>
+            {compareResult.minimum_sample_not_met ? (
+              <p className="mt-3 text-amber-900">{compareResult.licensing_notice || 'Insufficient verified samples for this suburb.'}</p>
+            ) : (
+              <>
+                <p className="mt-3">
+                  Suburb median: {formatN$(compareResult.suburb_benchmark?.median_rent)} · Range{' '}
+                  {formatN$(compareResult.suburb_benchmark?.min_rent)} – {formatN$(compareResult.suburb_benchmark?.max_rent)}
+                  {compareResult.suburb_benchmark?.transaction_count
+                    ? ` · n=${compareResult.suburb_benchmark.transaction_count}`
+                    : ''}
+                </p>
+                {compareResult.comparison?.vs_median_pct != null ? (
+                  <p className="mt-2 font-medium text-[#1A1A1A]">
+                    {compareResult.comparison.vs_median_pct > 0 ? '+' : ''}
+                    {compareResult.comparison.vs_median_pct}% vs median
+                    {compareResult.comparison.vs_median_nad != null
+                      ? ` (${compareResult.comparison.vs_median_nad > 0 ? '+' : ''}${formatN$(Math.abs(compareResult.comparison.vs_median_nad))})`
+                      : ''}
+                  </p>
+                ) : null}
+                <p className="mt-2 text-slate-700">{compareResult.comparison?.assessment}</p>
+              </>
+            )}
+          </div>
+        ) : null}
+      </section>
 
       <section className="landlord-panel">
         <h2 className="text-lg font-semibold text-[#1A1A1A]">Suburb explorer</h2>

@@ -34,6 +34,9 @@ import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import B2bApiPlayground from './B2bApiPlayground';
+import B2bIntegratorExports from './B2bIntegratorExports';
+import B2bWebhookAdmin from './B2bWebhookAdmin';
+import SaleCompsPilotPanel from './SaleCompsPilotPanel';
 
 type Timeframe = 'today' | '7d' | '30d' | '90d' | 'qtd' | 'ytd' | 'all';
 
@@ -104,6 +107,7 @@ type SaleCompsRoadmap = {
   title: string;
   summary: string;
   target_window: string;
+  pilot_summary?: { record_count: number; suburb_count: number; suburbs: string[] };
   differentiation_from_rental: string;
   partner_integration: {
     headline: string;
@@ -198,6 +202,7 @@ export default function DataIntelligencePage() {
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const filterParams = useMemo(
@@ -493,6 +498,14 @@ export default function DataIntelligencePage() {
         ) : null}
 
         {error ? <ErrorStateCard message={error} onRetry={loadAll} /> : null}
+        {successMessage ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
+            <p>{successMessage}</p>
+            <button type="button" onClick={() => setSuccessMessage(null)} className="mt-2 text-xs font-semibold underline">
+              Dismiss
+            </button>
+          </div>
+        ) : null}
         {newKeyReveal ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
             <p className="font-semibold">New API key (copy now — shown once)</p>
@@ -772,7 +785,14 @@ export default function DataIntelligencePage() {
             ) : null}
 
             {activeTab === 'roadmap' ? (
-              <SaleCompsRoadmapPanel roadmap={commercial?.sale_comps_roadmap} onGoToB2b={() => setActiveTab('b2b')} />
+              <SaleCompsRoadmapPanel
+                roadmap={commercial?.sale_comps_roadmap}
+                suburbOptions={filterOptions?.suburbs ?? suburbs.map((s) => s.suburb)}
+                clients={clients}
+                onGoToB2b={() => setActiveTab('b2b')}
+                onError={setError}
+                onRefresh={() => void loadAll()}
+              />
             ) : null}
 
             {activeTab === 'b2b' ? (
@@ -783,6 +803,10 @@ export default function DataIntelligencePage() {
                 apiKeySample={newKeyReveal}
                 suburbOptions={filterOptions?.suburbs ?? suburbs.map((s) => s.suburb)}
                 onError={setError}
+                onMessage={(m) => {
+                  setSuccessMessage(m);
+                  setError(null);
+                }}
                 onGenerateKey={async (clientId) => {
                   setNewKeyReveal(null);
                   try {
@@ -1005,10 +1029,18 @@ function ExplorerPanel({
 
 function SaleCompsRoadmapPanel({
   roadmap,
+  suburbOptions,
+  clients,
   onGoToB2b,
+  onError,
+  onRefresh,
 }: {
   roadmap?: SaleCompsRoadmap;
+  suburbOptions: string[];
+  clients: { id: string; name: string }[];
   onGoToB2b: () => void;
+  onError: (message: string) => void;
+  onRefresh: () => void;
 }) {
   if (!roadmap) {
     return <EmptyStateCard title="Roadmap loading" description="Refresh the page to load sale comps roadmap." />;
@@ -1084,6 +1116,14 @@ function SaleCompsRoadmapPanel({
           ))}
         </div>
       </div>
+
+      <SaleCompsPilotPanel
+        pilotSummary={roadmap.pilot_summary}
+        suburbOptions={suburbOptions}
+        clients={clients}
+        onError={onError}
+        onSuccess={onRefresh}
+      />
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
         <p className="text-sm font-semibold text-amber-950">Admin checklist</p>
@@ -1347,6 +1387,7 @@ function B2bPanel({
   apiKeySample,
   suburbOptions,
   onError,
+  onMessage,
   onGenerateKey,
   onRevokeKey,
 }: {
@@ -1356,6 +1397,7 @@ function B2bPanel({
   apiKeySample: string | null;
   suburbOptions: string[];
   onError: (message: string) => void;
+  onMessage: (message: string | null) => void;
   onGenerateKey: (id: string) => void;
   onRevokeKey: (id: string) => void;
 }) {
@@ -1516,6 +1558,12 @@ function B2bPanel({
         ) : null}
       </div>
 
+      <B2bIntegratorExports onError={onError} />
+      <B2bWebhookAdmin
+        clients={clients.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name }))}
+        onError={onError}
+        onMessage={(m) => onMessage(m)}
+      />
       <B2bApiPlayground apiKey={apiKeySample} suburbOptions={suburbOptions} onError={onError} />
 
     <div className="grid gap-8 lg:grid-cols-2">

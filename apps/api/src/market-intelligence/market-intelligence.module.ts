@@ -5,6 +5,7 @@ import { DataIntelligenceApiController } from './data-intelligence-api.controlle
 import { MarketIntelligenceAdminController } from './market-intelligence-admin.controller';
 import { MarketIntelligenceCaptureService } from './market-intelligence-capture.service';
 import { MarketIntelligenceSchedulerService } from './market-intelligence-scheduler.service';
+import { MarketIntelligenceWebhookService } from './market-intelligence-webhook.service';
 import { MarketIntelligenceService } from './market-intelligence.service';
 
 @Module({
@@ -13,6 +14,7 @@ import { MarketIntelligenceService } from './market-intelligence.service';
     MarketIntelligenceService,
     MarketIntelligenceCaptureService,
     MarketIntelligenceSchedulerService,
+    MarketIntelligenceWebhookService,
     ConsentService,
   ],
   exports: [MarketIntelligenceCaptureService, ConsentService, MarketIntelligenceService],

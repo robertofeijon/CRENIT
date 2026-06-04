@@ -16,6 +16,9 @@ import {
   type MarketDataSource,
   type SuburbDetailPayload,
 } from './market-intelligence-response.util';
+import { buildOpenApiDocument } from './market-intelligence-openapi.util';
+import { buildPostmanCollection } from './market-intelligence-postman.util';
+import { MarketIntelligenceWebhookService } from './market-intelligence-webhook.service';
 import {
   IntelligenceFilters,
   MIN_STATISTICAL_SUBURB_SAMPLE,
@@ -44,7 +47,10 @@ type MarketRecord = {
 
 @Injectable()
 export class MarketIntelligenceService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly webhookService: MarketIntelligenceWebhookService,
+  ) {}
   private readonly minimumSample = 5;
 
   private mi() {
@@ -344,11 +350,24 @@ export class MarketIntelligenceService {
     };
   }
 
-  getCommercialCatalog() {
+  async getCommercialCatalog() {
+    const salePilot = await this.getSaleCompsPilotSummary();
     return {
       methodology: DATA_INTELLIGENCE_METHODOLOGY,
       buyer_personas: BUYER_PERSONAS,
-      sale_comps_roadmap: SALE_COMPS_ROADMAP,
+      sale_comps_roadmap: {
+        ...SALE_COMPS_ROADMAP,
+        status: salePilot.record_count > 0 ? ('pilot' as const) : SALE_COMPS_ROADMAP.status,
+        pilot_summary: salePilot,
+        partner_integration: {
+          ...SALE_COMPS_ROADMAP.partner_integration,
+          technical_placeholder: {
+            ingest_endpoint: 'POST /admin/data-intelligence/sale-comps/ingest',
+            public_api: 'GET /api/v1/suburb/{name}/sale-comps',
+            storage_table: 'market_intelligence.sale_comps_records',
+          },
+        },
+      },
       licensing_terms: [
         'Licensed for internal use and client advisory by active B2B subscribers only.',
         'Raw microdata and re-identification attempts are prohibited.',
@@ -952,9 +971,43 @@ export class MarketIntelligenceService {
         { method: 'GET', path: '/api/v1/reports', suburb_required: false },
         { method: 'GET', path: '/api/v1/reports/:reportType/preview', suburb_required: 'conditional' },
         { method: 'GET', path: '/api/v1/reports/:reportType/pdf', suburb_required: 'conditional', response: 'application/pdf' },
+        { method: 'GET', path: '/api/v1/openapi.json', suburb_required: false },
+        { method: 'GET', path: '/api/v1/suburb/:name/sale-comps', suburb_required: true, pilot: true },
+        { method: 'GET', path: '/api/v1/webhooks', suburb_required: false },
+        { method: 'POST', path: '/api/v1/webhooks', suburb_required: false },
       ],
       report_types: ['suburb_report', 'city_overview', 'lender_risk_pack', 'development_feasibility'],
+      integrator_exports: {
+        openapi: '/api/v1/openapi.json',
+        postman_admin: '/admin/data-intelligence/integrator/postman.json',
+        openapi_admin: '/admin/data-intelligence/integrator/openapi.json',
+      },
     };
+  }
+
+  getOpenApiDocument(serverUrl?: string) {
+    return buildOpenApiDocument(serverUrl ?? process.env.API_PUBLIC_URL ?? 'http://localhost:3001');
+  }
+
+  getPostmanCollection(serverUrl?: string) {
+    return buildPostmanCollection({ serverUrl: serverUrl ?? process.env.API_PUBLIC_URL ?? 'http://localhost:3001' });
+  }
+
+  async syncLicensableSuburbWebhooks() {
+    const { suburbs } = await this.getSuburbExplorer();
+    return this.webhookService.syncLicensableSuburbWatchAndNotify((suburbs ?? []) as any[]);
+  }
+
+  registerB2bWebhook(clientId: string, url: string, events?: string[]) {
+    return this.webhookService.registerWebhook(clientId, url, events);
+  }
+
+  listB2bWebhooks(clientId: string) {
+    return this.webhookService.listWebhooksForClient(clientId);
+  }
+
+  deactivateB2bWebhook(clientId: string, subscriptionId: string) {
+    return this.webhookService.deactivateWebhook(subscriptionId, clientId);
   }
 
   async getApiConfig() {
@@ -1287,13 +1340,180 @@ export class MarketIntelligenceService {
     const { error } = await client.from('market_data_snapshots').insert(rows);
     if (error) throw error;
 
-    return { rolled: rows.length, snapshot_date: snapshotDate, data_source: 'market_data_records' as const };
+    const result = { rolled: rows.length, snapshot_date: snapshotDate, data_source: 'market_data_records' as const };
+    await this.syncLicensableSuburbWebhooks();
+    return result;
+  }
+
+  async getPortalLandlordRentCompare(
+    landlordUserId: string,
+    opts: { unitId?: string; suburb?: string; rentAmount?: number },
+  ) {
+    const client = this.supabase.getClient();
+    let suburb = opts.suburb?.trim();
+    let rent = opts.rentAmount != null ? Number(opts.rentAmount) : undefined;
+    let unitLabel: string | null = null;
+    let city = 'Windhoek';
+
+    if (opts.unitId) {
+      const { data: unit, error } = await client
+        .from('units')
+        .select('id, unit_identifier, monthly_rent, property_id, properties(address_suburb, address_city, landlord_id, property_name)')
+        .eq('id', opts.unitId)
+        .maybeSingle();
+      if (error || !unit) throw new NotFoundException('Unit not found');
+      const property = (unit as any).properties;
+      const { data: landlord } = await client.from('landlord_profiles').select('id').eq('user_id', landlordUserId).maybeSingle();
+      if (!landlord || property?.landlord_id !== landlord.id) {
+        throw new BadRequestException('Unit does not belong to this landlord');
+      }
+      suburb = property?.address_suburb;
+      city = property?.address_city ?? 'Windhoek';
+      rent = Number(unit.monthly_rent ?? rent ?? 0);
+      unitLabel = unit.unit_identifier || property?.property_name || 'Your unit';
+    }
+
+    if (!suburb) throw new BadRequestException('suburb or unit_id is required');
+    if (rent == null || !Number.isFinite(rent) || rent <= 0) {
+      throw new BadRequestException('A positive monthly rent is required (from unit or rent_amount)');
+    }
+
+    const detail = await this.getSuburbDetail(suburb);
+    const median = detail.price_range?.median ?? null;
+    const min = detail.price_range?.min ?? null;
+    const max = detail.price_range?.max ?? null;
+    const vsMedianNad = median != null ? Math.round(rent - median) : null;
+    const vsMedianPct = median && median > 0 ? Math.round(((rent - median) / median) * 100) : null;
+
+    let assessment = 'Benchmark unavailable — insufficient suburb sample.';
+    if (!detail.minimum_sample_not_met && median != null && vsMedianPct != null) {
+      if (Math.abs(vsMedianPct) <= 5) assessment = 'In line with suburb median (within ±5%).';
+      else if (vsMedianPct < -5) assessment = `Below suburb median by ${Math.abs(vsMedianPct)}% — competitive vs market.`;
+      else assessment = `Above suburb median by ${vsMedianPct}% — premium vs verified market.`;
+      if (min != null && max != null) {
+        if (rent < min) assessment += ' Rent is below the observed suburb range.';
+        else if (rent > max) assessment += ' Rent is above the observed suburb range.';
+      }
+    }
+
+    return {
+      unit_label: unitLabel,
+      suburb,
+      city,
+      your_monthly_rent: Math.round(rent),
+      suburb_benchmark: {
+        median_rent: median,
+        min_rent: min,
+        max_rent: max,
+        transaction_count: detail.transaction_count,
+        on_time_rate: (detail as { on_time_rate?: number }).on_time_rate ?? null,
+        confidence_level: detail.confidence_level,
+        data_source: detail.data_source,
+      },
+      comparison: {
+        vs_median_nad: vsMedianNad,
+        vs_median_pct: vsMedianPct,
+        assessment,
+      },
+      minimum_sample_not_met: detail.minimum_sample_not_met,
+      licensing_notice: detail.licensing_notice,
+    };
+  }
+
+  async ingestSaleCompsPilot(
+    partnerClientId: string | null,
+    records: Array<{
+      suburb: string;
+      city?: string;
+      sale_price: number;
+      transfer_date: string;
+      property_type?: string;
+      bedrooms?: number;
+      price_per_sqm?: number;
+      source_type?: string;
+    }>,
+  ) {
+    if (!records?.length) throw new BadRequestException('records array is required');
+    const rows = records.map((r) => ({
+      partner_client_id: partnerClientId,
+      suburb: r.suburb,
+      city: r.city || 'Windhoek',
+      property_type: r.property_type ?? null,
+      bedrooms: r.bedrooms ?? null,
+      sale_price: Number(r.sale_price),
+      price_per_sqm: r.price_per_sqm ?? null,
+      transfer_date: r.transfer_date,
+      month_year: monthYearFromDate(r.transfer_date),
+      source_type: r.source_type ?? 'pilot_manual',
+    }));
+    const { data, error } = await this.mi().from('sale_comps_records').insert(rows).select('id');
+    if (error) throw error;
+    return { inserted: data?.length ?? 0 };
+  }
+
+  async getSaleCompsPilotSummary() {
+    try {
+      const { data, error } = await this.mi().from('sale_comps_records').select('suburb, city, sale_price');
+      if (error) return { record_count: 0, suburb_count: 0, suburbs: [] as string[] };
+      const suburbs = [...new Set((data ?? []).map((r: { suburb: string }) => r.suburb))];
+      return { record_count: data?.length ?? 0, suburb_count: suburbs.length, suburbs };
+    } catch {
+      return { record_count: 0, suburb_count: 0, suburbs: [] };
+    }
+  }
+
+  async getSaleCompsForSuburb(suburb: string) {
+    try {
+      const { data, error } = await this.mi()
+        .from('sale_comps_records')
+        .select('*')
+        .ilike('suburb', suburb)
+        .order('transfer_date', { ascending: false });
+      if (error) throw error;
+      const rows = data ?? [];
+      if (!rows.length) {
+        return buildMarketDataEnvelope(
+          {
+            suburb,
+            pilot: true,
+            status: 'no_sale_comps',
+            message: 'Sale comps pilot has no records for this suburb yet.',
+            transfers: [],
+          },
+          { transaction_count: 0, data_source: 'market_data_snapshots' },
+        );
+      }
+      const prices = rows.map((r: { sale_price: number }) => Number(r.sale_price));
+      const onTime = null;
+      return buildMarketDataEnvelope(
+        {
+          suburb,
+          pilot: true,
+          status: 'pilot',
+          transfer_count: rows.length,
+          median_sale_price: Math.round(median(prices)),
+          min_sale_price: Math.round(Math.min(...prices)),
+          max_sale_price: Math.round(Math.max(...prices)),
+          transfers: rows.slice(0, 24).map((r: any) => ({
+            transfer_date: r.transfer_date,
+            sale_price: Number(r.sale_price),
+            source_type: r.source_type,
+            bedrooms: r.bedrooms,
+          })),
+          disclaimer:
+            'Pilot sale data from partner/manual ingest — separate licence from verified rental payments.',
+        },
+        { transaction_count: rows.length, data_source: 'market_data_records', on_time_rate: onTime ?? 0 },
+      );
+    } catch {
+      throw new NotFoundException(`Sale comps unavailable for ${suburb}`);
+    }
   }
 
   async generateMethodologyPdf(generatedBy?: string): Promise<Buffer> {
     const health = await this.getPlatformHealth();
     const licensable = await this.getLicensableSuburbsReport();
-    const catalog = this.getCommercialCatalog();
+    const catalog = await this.getCommercialCatalog();
 
     const bufferChunks: Buffer[] = [];
     const doc = new PDFDocument({ size: 'A4', margin: 50 });

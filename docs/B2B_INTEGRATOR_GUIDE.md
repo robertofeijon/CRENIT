@@ -97,6 +97,43 @@ GET /api/v1/reports/suburb_report/pdf?suburb=Klein%20Windhoek
 
 PDF returns `application/pdf`. **400** if sample below minimum.
 
+### OpenAPI / Postman
+
+```http
+GET /api/v1/openapi.json
+```
+
+OpenAPI 3.0 document generated from the live catalog. Admins can also download from **Data Intelligence → Clients & API** (session auth):
+
+- `GET /admin/data-intelligence/integrator/openapi.json`
+- `GET /admin/data-intelligence/integrator/postman.json` (Postman Collection v2.1)
+
+### Sale comps (pilot)
+
+```http
+GET /api/v1/suburb/Klein%20Windhoek/sale-comps
+```
+
+Partner-sourced transfer prices in `sale_comps_records` (separate from rental merge). Admin ingest: `POST /admin/data-intelligence/sale-comps/ingest`.
+
+### Webhooks — suburb becomes licensable
+
+Register a URL to receive `suburb.licensable` when a suburb crosses **n ≥ 10** verified samples:
+
+```http
+POST /api/v1/webhooks
+Content-Type: application/json
+
+{ "url": "https://partner.example/hooks/crenit", "events": ["suburb.licensable"] }
+```
+
+```http
+GET /api/v1/webhooks
+DELETE /api/v1/webhooks/:id
+```
+
+Deliveries are **POST** JSON with header `X-CRENIT-Signature: sha256=<hmac>` (HMAC-SHA256 of raw body using the subscription secret returned at registration). Sync also runs after nightly rollup and on a 04:00 Windhoek cron.
+
 ---
 
 ## Data merge logic (per suburb)

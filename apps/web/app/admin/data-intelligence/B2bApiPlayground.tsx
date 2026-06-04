@@ -5,12 +5,15 @@ import { useMemo, useState } from 'react';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 const PLAYGROUND_ENDPOINTS = [
-  { id: 'catalog', label: 'Catalog', path: () => '/api/v1/catalog', needsSuburb: false },
+  { id: 'catalog', label: 'Catalog', path: (_s?: string) => '/api/v1/catalog', needsSuburb: false },
+  { id: 'openapi', label: 'OpenAPI spec', path: (_s?: string) => '/api/v1/openapi.json', needsSuburb: false },
   { id: 'suburb', label: 'Suburb detail', path: (s: string) => `/api/v1/suburb/${encodeURIComponent(s)}`, needsSuburb: true },
   { id: 'trends', label: 'Suburb trends', path: (s: string) => `/api/v1/suburb/${encodeURIComponent(s)}/trends`, needsSuburb: true },
-  { id: 'city', label: 'City overview', path: () => '/api/v1/city-overview', needsSuburb: false },
+  { id: 'sale_comps', label: 'Sale comps pilot', path: (s: string) => `/api/v1/suburb/${encodeURIComponent(s)}/sale-comps`, needsSuburb: true },
+  { id: 'city', label: 'City overview', path: (_s?: string) => '/api/v1/city-overview', needsSuburb: false },
   { id: 'lender', label: 'Lender risk', path: (s: string) => `/api/v1/lender-risk/${encodeURIComponent(s)}`, needsSuburb: true },
-  { id: 'reports', label: 'Report catalog', path: () => '/api/v1/reports', needsSuburb: false },
+  { id: 'reports', label: 'Report catalog', path: (_s?: string) => '/api/v1/reports', needsSuburb: false },
+  { id: 'webhooks', label: 'List webhooks', path: (_s?: string) => '/api/v1/webhooks', needsSuburb: false },
 ] as const;
 
 type Props = {

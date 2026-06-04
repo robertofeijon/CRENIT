@@ -40,7 +40,7 @@ export class MarketIntelligenceAdminController {
   @Get('commercial-catalog')
   async commercialCatalog(@Headers('authorization') authHeader: string) {
     await this.assertAdmin(authHeader);
-    const catalog = this.marketIntelligenceService.getCommercialCatalog();
+    const catalog = await this.marketIntelligenceService.getCommercialCatalog();
     const products = await this.marketIntelligenceService.getReportProducts();
     return { success: true, data: { ...catalog, products }, error: null };
   }
@@ -216,6 +216,80 @@ export class MarketIntelligenceAdminController {
   async rollupSnapshots(@Headers('authorization') authHeader: string) {
     await this.assertAdmin(authHeader);
     const data = await this.marketIntelligenceService.rollupSnapshotsFromVerifiedRecords();
+    return { success: true, data, error: null };
+  }
+
+  @Get('integrator/openapi.json')
+  async integratorOpenApi(@Headers('authorization') authHeader: string, @Res() res: Response) {
+    await this.assertAdmin(authHeader);
+    const doc = this.marketIntelligenceService.getOpenApiDocument();
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="crenit-data-intelligence-openapi.json"');
+    res.send(doc);
+  }
+
+  @Get('integrator/postman.json')
+  async integratorPostman(@Headers('authorization') authHeader: string, @Res() res: Response) {
+    await this.assertAdmin(authHeader);
+    const collection = this.marketIntelligenceService.getPostmanCollection();
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="crenit-data-intelligence.postman_collection.json"');
+    res.send(collection);
+  }
+
+  @Post('webhooks/sync-licensable')
+  async syncLicensableWebhooks(@Headers('authorization') authHeader: string) {
+    await this.assertAdmin(authHeader);
+    const data = await this.marketIntelligenceService.syncLicensableSuburbWebhooks();
+    return { success: true, data, error: null };
+  }
+
+  @Post('b2b-clients/:clientId/webhooks')
+  async registerClientWebhook(
+    @Headers('authorization') authHeader: string,
+    @Param('clientId') clientId: string,
+    @Body() body: { url: string; events?: string[] },
+  ) {
+    await this.assertAdmin(authHeader);
+    if (!body?.url?.trim()) throw new BadRequestException('url is required');
+    const data = await this.marketIntelligenceService.registerB2bWebhook(clientId, body.url.trim(), body.events);
+    return { success: true, data, error: null };
+  }
+
+  @Get('b2b-clients/:clientId/webhooks')
+  async listClientWebhooks(@Headers('authorization') authHeader: string, @Param('clientId') clientId: string) {
+    await this.assertAdmin(authHeader);
+    const data = await this.marketIntelligenceService.listB2bWebhooks(clientId);
+    return { success: true, data, error: null };
+  }
+
+  @Post('sale-comps/ingest')
+  async ingestSaleComps(
+    @Headers('authorization') authHeader: string,
+    @Body()
+    body: {
+      partner_client_id?: string;
+      records: Array<{
+        suburb: string;
+        city?: string;
+        sale_price: number;
+        transfer_date: string;
+        property_type?: string;
+        bedrooms?: number;
+        price_per_sqm?: number;
+        source_type?: string;
+      }>;
+    },
+  ) {
+    await this.assertAdmin(authHeader);
+    const data = await this.marketIntelligenceService.ingestSaleCompsPilot(body.partner_client_id ?? null, body.records ?? []);
+    return { success: true, data, error: null };
+  }
+
+  @Get('sale-comps/:suburb')
+  async saleCompsSuburb(@Headers('authorization') authHeader: string, @Param('suburb') suburb: string) {
+    await this.assertAdmin(authHeader);
+    const data = await this.marketIntelligenceService.getSaleCompsForSuburb(decodeURIComponent(suburb));
     return { success: true, data, error: null };
   }
 
