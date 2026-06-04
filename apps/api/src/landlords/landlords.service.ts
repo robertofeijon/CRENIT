@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException, UnauthorizedExcepti
 import { SupabaseService } from '../supabase/supabase.service';
 import { isKycApproved } from '../supabase/supabase.utils';
 import { NotificationsService } from '../notifications/notifications.service';
+import { residenceFromProperty } from '../kyc/kyc-location.util';
 
 @Injectable()
 export class LandlordsService {
@@ -27,7 +28,7 @@ export class LandlordsService {
         {
           user_id: userId,
           business_name: businessName || 'My Portfolio',
-          partner_status: 'APPROVED',
+          partner_status: 'PENDING',
         },
       ])
       .select()
@@ -66,6 +67,15 @@ export class LandlordsService {
     const client = this.supabase.getClient();
     const landlordProfile = await this.ensureLandlordProfile(userId);
     const landlordId = landlordProfile.id;
+    const { data: userProfile } = await client
+      .from('profiles')
+      .select('partner_approval_status')
+      .eq('id', userId)
+      .maybeSingle();
+    const partnerStatus =
+      userProfile?.partner_approval_status?.toString().toUpperCase() ||
+      landlordProfile.partner_status?.toString().toUpperCase() ||
+      'UNVERIFIED';
 
     const [propertiesRes, leasesRes, paymentsRes, depositsRes] = await Promise.all([
       client.from('properties').select('*, units(*)').eq('landlord_id', landlordId),
@@ -149,7 +159,7 @@ export class LandlordsService {
       landlord: {
         id: landlordProfile.id,
         businessName: landlordProfile.business_name,
-        partnerStatus: landlordProfile.partner_status,
+        partnerStatus,
       },
       stats: {
         totalProperties: properties.length,
@@ -791,13 +801,18 @@ export class LandlordsService {
       start_date?: string;
       end_date?: string;
       status?: string;
+      tenant_residence?: Record<string, string>;
     },
   ) {
     const client = this.supabase.getClient();
     const landlordProfile = await this.ensureLandlordProfile(landlordUserId);
     const landlordId = landlordProfile.id;
 
-    const { data: unit, error: unitError } = await client.from('units').select('id, property_id, is_occupied').eq('id', payload.unit_id).single();
+    const { data: unit, error: unitError } = await client
+      .from('units')
+      .select('id, property_id, is_occupied')
+      .eq('id', payload.unit_id)
+      .single();
     if (unitError || !unit) {
       throw new NotFoundException('Unit not found');
     }
@@ -805,9 +820,33 @@ export class LandlordsService {
       throw new BadRequestException('Unit is already occupied');
     }
 
-    const { data: leaseUnit } = await client.from('properties').select('landlord_id').eq('id', unit.property_id).single();
-    if (!leaseUnit || leaseUnit.landlord_id !== landlordId) {
+    const { data: property } = await client
+      .from('properties')
+      .select('landlord_id, address_street, address_suburb, address_city, address_postcode')
+      .eq('id', unit.property_id)
+      .single();
+    if (!property || property.landlord_id !== landlordId) {
       throw new BadRequestException('Unit does not belong to this landlord');
+    }
+
+    const tenantResidence = payload.tenant_residence?.street_address?.trim()
+      ? {
+          country: payload.tenant_residence.country?.trim() || 'Namibia',
+          region: payload.tenant_residence.region?.trim() || '',
+          city: payload.tenant_residence.city?.trim() || '',
+          street_address: payload.tenant_residence.street_address.trim(),
+          postal_code: payload.tenant_residence.postal_code?.trim() || '',
+          residential_status: payload.tenant_residence.residential_status?.trim() || 'RENTING',
+        }
+      : residenceFromProperty(property);
+
+    if (
+      payload.tenant_residence &&
+      (!tenantResidence.region || !tenantResidence.city || !tenantResidence.street_address)
+    ) {
+      throw new BadRequestException(
+        'Tenant residence requires country, region, city, and street address when provided.',
+      );
     }
 
     let tenantId = payload.tenant_id;
@@ -843,6 +882,7 @@ export class LandlordsService {
           start_date: payload.start_date || new Date().toISOString().slice(0, 10),
           end_date: payload.end_date || null,
           status: payload.status || 'ACTIVE',
+          tenant_residence: tenantResidence,
         },
       ])
       .select('*')

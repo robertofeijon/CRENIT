@@ -1,7 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Building2,
-  ClipboardList,
   FileCheck,
   FileText,
   FolderOpen,
@@ -30,6 +29,5 @@ export const landlordNavItems: LandlordNavItem[] = [
   { label: 'Reports', href: '/landlord/reports', icon: FolderOpen, section: 'Insights' },
   { label: 'Market data', href: '/landlord/market-data', icon: LineChart },
   { label: 'Lease & docs', href: '/landlord/attachments', icon: FileCheck, section: 'Partner' },
-  { label: 'Onboarding', href: '/landlord/onboarding', icon: ClipboardList },
   { label: 'Settings', href: '/landlord/settings', icon: Settings },
 ];

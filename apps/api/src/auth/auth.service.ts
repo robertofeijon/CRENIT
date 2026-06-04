@@ -90,10 +90,10 @@ export class AuthService {
       id: user.id,
       full_name: payload.full_name.trim(),
       role,
-      kyc_status: role === 'TENANT' ? 'NOT_SUBMITTED' : 'APPROVED',
+      kyc_status: role === 'TENANT' ? 'NOT_SUBMITTED' : 'NOT_SUBMITTED',
     };
     if (role === 'LANDLORD') {
-      profilePayload.partner_approval_status = 'PENDING_APPROVAL';
+      profilePayload.partner_approval_status = 'UNVERIFIED';
     }
 
     const profileRes = await client.from('profiles').upsert([profilePayload], { onConflict: 'id' });

@@ -11,15 +11,29 @@ import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import DocumentInlinePreview from '../../components/kyc/DocumentInlinePreview';
 
-const REJECT_DOC_OPTIONS: Array<{ api: string; label: string }> = [
+const TENANT_REJECT_DOC_OPTIONS: Array<{ api: string; label: string }> = [
   { api: 'government_id', label: 'Government ID' },
   { api: 'selfie', label: 'Selfie' },
   { api: 'income_proof', label: 'Proof of income' },
-  { api: 'signed_lease', label: 'Signed lease agreement' },
+  { api: 'proof_of_address', label: 'Proof of address' },
 ];
+
+const LANDLORD_REJECT_DOC_OPTIONS: Array<{ api: string; label: string }> = [
+  { api: 'government_id', label: 'Government ID' },
+  { api: 'company_registration', label: 'Company registration' },
+  { api: 'proof_of_address', label: 'Proof of address' },
+  { api: 'proof_of_property_ownership', label: 'Proof of property ownership' },
+  { api: 'selfie', label: 'Selfie' },
+];
+
+function formatResidence(res?: Record<string, string | undefined> | null) {
+  if (!res) return '—';
+  return [res.street_address, res.city, res.region, res.country, res.postal_code].filter(Boolean).join(', ') || '—';
+}
 export default function AdminKycPage() {
   const { user, role, loading } = useAuth();
   const router = useRouter();
+  const [applicantTab, setApplicantTab] = useState<'TENANT' | 'LANDLORD'>('TENANT');
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,12 +41,9 @@ export default function AdminKycPage() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [rejectingUserId, setRejectingUserId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [rejectedDocTypes, setRejectedDocTypes] = useState<string[]>([
-    'government_id',
-    'selfie',
-    'income_proof',
-    'signed_lease',
-  ]);
+  const [rejectedDocTypes, setRejectedDocTypes] = useState<string[]>(
+    TENANT_REJECT_DOC_OPTIONS.map((d) => d.api),
+  );
   const [auditByUser, setAuditByUser] = useState<Record<string, any[]>>({});
   const [auditLoadingUserId, setAuditLoadingUserId] = useState<string | null>(null);
   const [detailLoadingUserId, setDetailLoadingUserId] = useState<string | null>(null);
@@ -43,18 +54,22 @@ export default function AdminKycPage() {
     if (!loading && user && role !== 'ADMIN') router.replace('/auth');
   }, [loading, user, role, router]);
 
+  const rejectDocOptions = applicantTab === 'LANDLORD' ? LANDLORD_REJECT_DOC_OPTIONS : TENANT_REJECT_DOC_OPTIONS;
+
   const loadQueue = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
     if (!silent) setError(null);
     try {
-      const res = await api.get('/admin/kyc/pending?status=PENDING&limit=20');
+      const res = await api.get(
+        `/admin/kyc/pending?status=PENDING&limit=20&applicant_role=${applicantTab}`,
+      );
       setSubmissions(res.data.data.submissions || []);
     } catch (err: any) {
       if (!silent) setError(err?.response?.data?.message || err?.message || 'Unable to load KYC submissions.');
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, []);
+  }, [applicantTab]);
 
   useEffect(() => {
     if (user && role === 'ADMIN') {
@@ -91,7 +106,7 @@ export default function AdminKycPage() {
       setActionMessage(action === 'approve' ? 'KYC approved. Tenant notified by email.' : 'KYC rejected. Tenant notified by email.');
       setRejectingUserId(null);
       setRejectionReason('');
-      setRejectedDocTypes(REJECT_DOC_OPTIONS.map((d) => d.api));
+      setRejectedDocTypes(rejectDocOptions.map((d) => d.api));
       await loadQueue();
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to update KYC status.');
@@ -133,7 +148,7 @@ export default function AdminKycPage() {
       <AdminPageHeader
         badge="Compliance"
         title="KYC review queue"
-        subtitle="Pending tenant verifications — auto-refreshes every 5 seconds. Approve, reject with reason, or preview documents inline."
+        subtitle="Pending tenant and landlord verifications — auto-refreshes every 5 seconds."
         actions={
           <button
             type="button"
@@ -147,6 +162,26 @@ export default function AdminKycPage() {
         }
       />
 
+      <div className="flex gap-2 rounded-full border border-slate-200 bg-white p-1 w-fit">
+        {(['TENANT', 'LANDLORD'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => {
+              setApplicantTab(tab);
+              setRejectedDocTypes(
+                (tab === 'LANDLORD' ? LANDLORD_REJECT_DOC_OPTIONS : TENANT_REJECT_DOC_OPTIONS).map((d) => d.api),
+              );
+            }}
+            className={`rounded-full px-4 py-2 text-sm font-semibold ${
+              applicantTab === tab ? 'bg-[#1A1A1A] text-white' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {tab === 'TENANT' ? 'Tenants' : 'Landlords'}
+          </button>
+        ))}
+      </div>
+
       {error ? <ErrorStateCard message={error} onRetry={loadQueue} /> : null}
       {actionMessage ? <p className="text-sm font-medium text-emerald-700">{actionMessage}</p> : null}
 
@@ -158,7 +193,9 @@ export default function AdminKycPage() {
             submissions.map((submission) => (
               <article
                 key={submission.user_id}
-                className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+                className={`rounded-[1.5rem] border bg-white p-5 shadow-sm sm:p-6 ${
+                  submission.location_mismatch ? 'border-red-400 ring-2 ring-red-200' : 'border-slate-200'
+                }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -169,6 +206,82 @@ export default function AdminKycPage() {
                     {submission.status}
                   </span>
                 </div>
+
+                {submission.location_mismatch ? (
+                  <div className="mt-4 flex gap-3 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900">
+                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+                    <div>
+                      <p className="font-semibold">LOCATION_MISMATCH</p>
+                      <p className="mt-1">Tenant and landlord residence records do not meet the similarity threshold.</p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {submission.personal ? (
+                  <div className="mt-4 rounded-xl border border-slate-200 bg-[#F3F4F6] p-4 text-sm text-slate-700">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Personal information</p>
+                    <p className="mt-2">
+                      {submission.personal.first_name} {submission.personal.surname} · DOB{' '}
+                      {submission.personal.date_of_birth || '—'} · {submission.personal.gender || '—'}
+                    </p>
+                    <p className="mt-1">
+                      {submission.personal.nationality || '—'} · {submission.personal.phone || '—'}
+                    </p>
+                  </div>
+                ) : null}
+
+                {submission.landlord_details ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+                      <p className="font-semibold text-[#1A1A1A]">Account</p>
+                      <p className="mt-2 text-slate-600">
+                        {submission.landlord_details.account_type === 'COMPANY' ? 'Property management company' : 'Individual landlord'}
+                      </p>
+                      {submission.landlord_details.company_name ? (
+                        <p className="mt-1 text-slate-600">{submission.landlord_details.company_name}</p>
+                      ) : null}
+                      {submission.landlord_details.registration_number ? (
+                        <p className="mt-1 text-slate-500">Reg: {submission.landlord_details.registration_number}</p>
+                      ) : null}
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+                      <p className="font-semibold text-[#1A1A1A]">Property portfolio</p>
+                      <p className="mt-2 text-slate-600">
+                        {submission.landlord_details.properties_managed_count ?? '—'} properties ·{' '}
+                        {submission.landlord_details.ownership_status || '—'}
+                      </p>
+                      <p className="mt-2 text-slate-600">
+                        {formatResidence(submission.landlord_details.property)}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {submission.location_comparison ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+                      <p className="font-semibold text-[#1A1A1A]">Tenant entered</p>
+                      <p className="mt-2 text-slate-600">{formatResidence(submission.location_comparison.tenant)}</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+                      <p className="font-semibold text-[#1A1A1A]">
+                        {submission.location_comparison.landlord_reference_label || 'Landlord reference'}
+                      </p>
+                      <p className="mt-2 text-slate-600">{formatResidence(submission.location_comparison.landlord)}</p>
+                      {submission.location_comparison.landlord_reference_source ? (
+                        <p className="mt-2 text-xs text-slate-500">
+                          Source: {submission.location_comparison.landlord_reference_source}
+                        </p>
+                      ) : null}
+                    </div>
+                    <p className="sm:col-span-2 text-xs text-slate-500">
+                      Match score:{' '}
+                      {submission.location_comparison.compared
+                        ? `${Math.round((submission.location_comparison.score || 0) * 100)}%`
+                        : 'No landlord reference on file'}
+                    </p>
+                  </div>
+                ) : null}
 
                 {submission.quality_flags?.length ? (
                   <div className="mt-4 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -267,7 +380,7 @@ export default function AdminKycPage() {
                     <div>
                       <p className="text-sm font-medium text-slate-700">Documents requiring re-upload</p>
                       <div className="mt-2 flex flex-wrap gap-3">
-                        {REJECT_DOC_OPTIONS.map((opt) => (
+                        {rejectDocOptions.map((opt) => (
                           <label key={opt.api} className="flex items-center gap-2 text-sm text-slate-700">
                             <input
                               type="checkbox"
@@ -321,7 +434,7 @@ export default function AdminKycPage() {
                       onClick={() => {
                         setRejectingUserId(submission.user_id);
                         setRejectionReason('');
-                        setRejectedDocTypes(REJECT_DOC_OPTIONS.map((d) => d.api));
+                        setRejectedDocTypes(rejectDocOptions.map((d) => d.api));
                       }}
                       disabled={actionLoadingId === submission.user_id}
                       className="inline-flex items-center gap-2 rounded-full border border-[#C0392B]/40 bg-white px-4 py-2.5 text-sm font-semibold text-[#C0392B]"

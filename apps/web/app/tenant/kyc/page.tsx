@@ -2,28 +2,33 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, CheckCircle2, FileCheck, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ChevronLeft, ShieldCheck } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { statusPillClass } from '../../components/tenant/tenantUi';
 import KycDocumentUploadField from '../../components/kyc/KycDocumentUploadField';
+import KycWizardProgress from '../../components/kyc/KycWizardProgress';
 
-type KycDocType = 'government_id' | 'selfie' | 'income_proof' | 'signed_lease';
+type KycDocType = 'government_id' | 'selfie' | 'income_proof' | 'proof_of_address';
 
-type KycDocumentRow = {
+const DOC_CONFIG: Array<{
   type: KycDocType;
-  file_name: string;
-  uploaded_at: string;
-  status: string;
-  needs_reupload: boolean;
-};
-
-const REQUIRED_DOCS: Array<{ type: KycDocType; label: string; hint: string; selfie?: boolean; idPhoto?: boolean }> = [
+  label: string;
+  hint: string;
+  selfie?: boolean;
+  idPhoto?: boolean;
+}> = [
   { type: 'government_id', label: 'Government ID', hint: 'National ID or passport (front)', idPhoto: true },
   { type: 'selfie', label: 'Selfie', hint: 'Clear photo of your face', selfie: true },
   { type: 'income_proof', label: 'Proof of income', hint: 'Payslip, employer letter, or bank statement' },
-  { type: 'signed_lease', label: 'Signed lease agreement', hint: 'Fully signed copy of your current lease' },
+  {
+    type: 'proof_of_address',
+    label: 'Proof of address',
+    hint: 'Utility bill or bank statement (last 3 months)',
+  },
 ];
+
+const RESIDENTIAL_OPTIONS = ['RENTING', 'OWNING', 'LIVING_WITH_FAMILY', 'OTHER'];
 
 const readFileAsBase64 = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -37,48 +42,63 @@ const readFileAsBase64 = (file: File) =>
   });
 
 const isKycApproved = (status?: string) => status === 'APPROVED' || status === 'VERIFIED';
+const isPendingReview = (status?: string) => status === 'PENDING' || status === 'PENDING_REVIEW';
 
 export default function TenantKycPage() {
   const { user, role, loading, roleReady } = useAuth();
   const router = useRouter();
-  const [statusData, setStatusData] = useState<{
-    profile?: {
-      kyc_status?: string;
-      kyc_rejection_reason?: string;
-      national_id_number?: string;
-      first_name?: string;
-      surname?: string;
-      account_flagged?: boolean;
-      account_flag_note?: string;
-    };
-    documents?: KycDocumentRow[];
-    rejected_doc_types?: KycDocType[];
-  } | null>(null);
-  const [pendingFiles, setPendingFiles] = useState<Partial<Record<KycDocType, File>>>({});
-  const [uploadingType, setUploadingType] = useState<KycDocType | null>(null);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [statusData, setStatusData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [marketDataConsent, setMarketDataConsent] = useState(false);
-  const [idNumber, setIdNumber] = useState('');
+
   const [firstName, setFirstName] = useState('');
   const [surname, setSurname] = useState('');
-  const [savingIdentity, setSavingIdentity] = useState(false);
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [gender, setGender] = useState('');
+  const [nationality, setNationality] = useState('Namibian');
+  const [phone, setPhone] = useState('');
+  const [idNumber, setIdNumber] = useState('');
+  const [email, setEmail] = useState('');
+
+  const [country, setCountry] = useState('Namibia');
+  const [region, setRegion] = useState('');
+  const [city, setCity] = useState('');
+  const [streetAddress, setStreetAddress] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [residentialStatus, setResidentialStatus] = useState('RENTING');
+
+  const [docFiles, setDocFiles] = useState<Partial<Record<KycDocType, File>>>({});
 
   const loadStatus = useCallback(async () => {
     try {
       const response = await api.get('/kyc/status');
       const data = response.data.data;
       setStatusData(data);
-      if (data?.profile) {
-        setIdNumber(data.profile.national_id_number || '');
-        setFirstName(data.profile.first_name || '');
-        setSurname(data.profile.surname || '');
+      const p = data?.profile;
+      if (p) {
+        setFirstName(p.first_name || '');
+        setSurname(p.surname || '');
+        setIdNumber(p.national_id_number || '');
+        setDateOfBirth(p.date_of_birth || '');
+        setGender(p.gender || '');
+        setNationality(p.nationality || 'Namibian');
+        setPhone(p.phone || '');
+        setEmail(p.email || user?.email || '');
+        setCountry(p.address_country || 'Namibia');
+        setRegion(p.address_region || '');
+        setCity(p.address_city || '');
+        setStreetAddress(p.address_street || '');
+        setPostalCode(p.address_postcode || '');
+        setResidentialStatus(p.residential_status || 'RENTING');
       }
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
       setError(apiErr?.response?.data?.message || apiErr?.message || 'Unable to load KYC status.');
     }
-  }, []);
+  }, [user?.email]);
 
   useEffect(() => {
     if (!loading && roleReady && !user) router.replace('/auth');
@@ -89,97 +109,144 @@ export default function TenantKycPage() {
     if (user && role !== 'LANDLORD') void loadStatus();
   }, [user, role, loadStatus]);
 
+  useEffect(() => {
+    if (user?.email && !email) setEmail(user.email);
+  }, [user?.email, email]);
+
   const kycStatus = statusData?.profile?.kyc_status ?? 'NOT_SUBMITTED';
+  const rejectedDocTypes: KycDocType[] = statusData?.rejected_doc_types ?? [];
+
+  useEffect(() => {
+    if (kycStatus === 'REJECTED') setStep(3);
+  }, [kycStatus]);
 
   useEffect(() => {
     if (!user || role === 'LANDLORD' || isKycApproved(kycStatus)) return;
-    const interval = setInterval(() => {
-      void loadStatus();
-    }, 8000);
+    if (!isPendingReview(kycStatus)) return;
+    const interval = setInterval(() => void loadStatus(), 8000);
     return () => clearInterval(interval);
   }, [user, role, kycStatus, loadStatus]);
 
-  const docByType = useMemo(() => {
-    const map = new Map<KycDocType, KycDocumentRow>();
-    for (const doc of statusData?.documents ?? []) {
-      map.set(doc.type, doc);
+  const docsToUpload = useMemo(() => {
+    if (kycStatus === 'REJECTED' && rejectedDocTypes.length) {
+      return DOC_CONFIG.filter((d) => rejectedDocTypes.includes(d.type));
     }
-    return map;
-  }, [statusData?.documents]);
+    return DOC_CONFIG;
+  }, [kycStatus, rejectedDocTypes]);
 
-  const identityComplete = Boolean(idNumber.trim() && firstName.trim() && surname.trim());
+  const step1Valid =
+    firstName.trim() &&
+    surname.trim() &&
+    dateOfBirth &&
+    gender.trim() &&
+    nationality.trim() &&
+    phone.trim();
 
-  const saveIdentity = async () => {
-    if (!identityComplete) {
-      setError('Enter your ID number, name, and surname before uploading documents.');
+  const step2Valid = country.trim() && region.trim() && city.trim() && streetAddress.trim() && residentialStatus;
+
+  const step3Valid =
+    marketDataConsent &&
+    docsToUpload.every((d) => docFiles[d.type]) &&
+    (kycStatus !== 'REJECTED' || docsToUpload.length > 0);
+
+  const goNext = async () => {
+    setError(null);
+    setSuccess(null);
+    if (step === 1) {
+      if (!step1Valid) {
+        setError('Complete all personal information fields.');
+        return;
+      }
+      try {
+        await api.put('/kyc/wizard/personal', {
+          first_name: firstName.trim(),
+          surname: surname.trim(),
+          date_of_birth: dateOfBirth,
+          gender: gender.trim(),
+          nationality: nationality.trim(),
+          phone: phone.trim(),
+          national_id_number: idNumber.trim() || undefined,
+        });
+        setStep(2);
+      } catch (err: unknown) {
+        const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
+        setError(apiErr?.response?.data?.message || apiErr?.message || 'Unable to save personal information.');
+      }
       return;
     }
-    setSavingIdentity(true);
-    setError(null);
-    try {
-      await api.put('/kyc/identity', {
-        national_id_number: idNumber.trim(),
-        first_name: firstName.trim(),
-        surname: surname.trim(),
-      });
-      setSuccess('Your details were saved.');
-      await loadStatus();
-    } catch (err: unknown) {
-      const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
-      setError(apiErr?.response?.data?.message || apiErr?.message || 'Unable to save your details.');
-    } finally {
-      setSavingIdentity(false);
+
+    if (step === 2) {
+      if (!step2Valid) {
+        setError('Complete all location fields.');
+        return;
+      }
+      try {
+        await api.put('/kyc/wizard/residence', {
+          country: country.trim(),
+          region: region.trim(),
+          city: city.trim(),
+          street_address: streetAddress.trim(),
+          postal_code: postalCode.trim() || undefined,
+          residential_status: residentialStatus,
+        });
+        setStep(3);
+      } catch (err: unknown) {
+        const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
+        setError(apiErr?.response?.data?.message || apiErr?.message || 'Unable to save residence details.');
+      }
     }
   };
 
-  const uploadOne = async (docType: KycDocType, file: File) => {
-    if (!user) return;
-    if (!identityComplete) {
-      setError('Save your ID number, name, and surname first.');
+  const submitAll = async () => {
+    if (!step3Valid) {
+      setError('Upload all required documents and accept market data consent.');
       return;
     }
-    if (!marketDataConsent) {
-      setError('Please agree to anonymised market analysis data use before uploading.');
-      return;
-    }
-    if (file.size > 8 * 1024 * 1024) {
-      setError('Each file must be 8 MB or smaller.');
-      return;
-    }
-
-    setUploadingType(docType);
+    setSubmitting(true);
     setError(null);
     setSuccess(null);
-
     try {
-      const base64 = await readFileAsBase64(file);
+      const documents: Record<KycDocType, { filename: string; fileBase64: string }> = {} as any;
+      for (const doc of docsToUpload) {
+        const file = docFiles[doc.type];
+        if (!file) throw new Error(`Missing ${doc.label}`);
+        if (file.size > 8 * 1024 * 1024) throw new Error(`${doc.label} must be 8 MB or smaller.`);
+        documents[doc.type] = { filename: file.name, fileBase64: await readFileAsBase64(file) };
+      }
+
       await api.post('/consent/market-intelligence', { consent_type: 'TENANT_MARKET_DATA' });
-      await api.post('/kyc/upload', {
-        tenantId: user.id,
-        doc_type: docType,
-        filename: file.name,
-        fileBase64: base64,
+      await api.post('/kyc/wizard/submit', {
+        personal: {
+          first_name: firstName.trim(),
+          surname: surname.trim(),
+          date_of_birth: dateOfBirth,
+          gender: gender.trim(),
+          nationality: nationality.trim(),
+          phone: phone.trim(),
+          national_id_number: idNumber.trim() || undefined,
+        },
+        residence: {
+          country: country.trim(),
+          region: region.trim(),
+          city: city.trim(),
+          street_address: streetAddress.trim(),
+          postal_code: postalCode.trim() || undefined,
+          residential_status: residentialStatus,
+        },
+        documents,
+        market_data_consent: marketDataConsent,
       });
-      setSuccess(`${REQUIRED_DOCS.find((d) => d.type === docType)?.label}: ${file.name}`);
-      setPendingFiles((prev) => {
-        const next = { ...prev };
-        delete next[docType];
-        return next;
-      });
+
+      setSuccess('Verification submitted. An admin will review your documents shortly.');
+      setStep(1);
+      setDocFiles({});
       await loadStatus();
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
-      setError(apiErr?.response?.data?.message || apiErr?.message || 'Unable to upload document.');
+      setError(apiErr?.response?.data?.message || apiErr?.message || 'Unable to submit verification.');
     } finally {
-      setUploadingType(null);
+      setSubmitting(false);
     }
-  };
-
-  const handleFileSelect = (docType: KycDocType, file: File) => {
-    setError(null);
-    setSuccess(null);
-    setPendingFiles((prev) => ({ ...prev, [docType]: file }));
-    void uploadOne(docType, file);
   };
 
   if (loading || !roleReady || !user) {
@@ -190,41 +257,27 @@ export default function TenantKycPage() {
     );
   }
 
+  const showWizard = !isKycApproved(kycStatus) && !isPendingReview(kycStatus);
+
   return (
     <main className="min-h-screen bg-[#F3F4F6]">
       <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6">
-        <div className="tenant-panel">
+        <div className="tenant-panel space-y-4">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#C0392B]/90">Verification</p>
-          <h1 className="mt-3 text-3xl font-semibold text-[#1A1A1A]">Verify your tenant account</h1>
-          <p className="mt-2 text-sm leading-7 text-slate-600">
-            Enter your details, then upload each document. The file name is shown after you choose a file. An admin
-            reviews everything before payments and reports unlock.
+          <h1 className="text-3xl font-semibold text-[#1A1A1A]">Verify your tenant account</h1>
+          <p className="text-sm leading-7 text-slate-600">
+            Complete three steps. Your location is checked against your landlord&apos;s records on final submission.
           </p>
-          <p className="mt-4">
-            <span className={`rounded-full px-3 py-1 text-sm font-semibold ${statusPillClass(kycStatus)}`}>
-              Status: {kycStatus}
-            </span>
-          </p>
-
-          {statusData?.profile?.account_flagged ? (
-            <div className="mt-4 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              <AlertCircle className="h-5 w-5 shrink-0" aria-hidden />
-              <div>
-                <p className="font-semibold">Account flagged for review</p>
-                <p className="mt-1">{statusData.profile.account_flag_note || 'Please contact support if you have questions.'}</p>
-              </div>
-            </div>
-          ) : null}
+          <span className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${statusPillClass(kycStatus)}`}>
+            Status: {kycStatus === 'PENDING' ? 'PENDING_REVIEW' : kycStatus}
+          </span>
 
           {isKycApproved(kycStatus) ? (
-            <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
               <div className="flex gap-3">
                 <ShieldCheck className="h-6 w-6 shrink-0 text-emerald-600" aria-hidden />
                 <div>
                   <p className="font-semibold text-emerald-900">You are verified</p>
-                  <p className="mt-1 text-sm text-emerald-800">
-                    Full access is unlocked — payments, credit score, and reports.
-                  </p>
                   <button type="button" onClick={() => router.push('/tenant/home')} className="tenant-btn-primary mt-4">
                     Go to dashboard
                   </button>
@@ -234,18 +287,18 @@ export default function TenantKycPage() {
           ) : null}
 
           {kycStatus === 'REJECTED' && statusData?.profile?.kyc_rejection_reason ? (
-            <div className="mt-4 flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+            <div className="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
               <AlertCircle className="h-5 w-5 shrink-0" aria-hidden />
               <div>
                 <p className="font-semibold">Submission rejected</p>
                 <p className="mt-1">{statusData.profile.kyc_rejection_reason}</p>
-                <p className="mt-2 text-red-800">Re-upload the documents marked below.</p>
+                <p className="mt-2">Re-upload only the documents marked below, then submit again.</p>
               </div>
             </div>
           ) : null}
 
-          {kycStatus === 'PENDING' ? (
-            <p className="mt-4 text-sm text-amber-800">
+          {isPendingReview(kycStatus) ? (
+            <p className="text-sm text-amber-800">
               Under admin review — this page refreshes automatically. You will receive an email when a decision is made.
             </p>
           ) : null}
@@ -256,107 +309,145 @@ export default function TenantKycPage() {
           <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{success}</p>
         ) : null}
 
-        {!isKycApproved(kycStatus) ? (
-          <>
-            <section className="tenant-panel space-y-4">
-              <h2 className="text-lg font-semibold text-[#1A1A1A]">My info</h2>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block text-sm sm:col-span-2">
-                  <span className="font-medium text-slate-700">ID number</span>
-                  <input
-                    value={idNumber}
-                    onChange={(e) => setIdNumber(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
-                    placeholder="National ID number"
-                  />
-                </label>
-                <label className="block text-sm">
-                  <span className="font-medium text-slate-700">Name</span>
-                  <input
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
-                    placeholder="First name"
-                  />
-                </label>
-                <label className="block text-sm">
-                  <span className="font-medium text-slate-700">Surname</span>
-                  <input
-                    value={surname}
-                    onChange={(e) => setSurname(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
-                    placeholder="Surname"
-                  />
-                </label>
+        {showWizard ? (
+          <div className="tenant-panel space-y-6">
+            <KycWizardProgress step={step} />
+
+            {step === 1 ? (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold">Personal information</h2>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block text-sm sm:col-span-1">
+                    <span className="font-medium text-slate-700">First name</span>
+                    <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm" />
+                  </label>
+                  <label className="block text-sm sm:col-span-1">
+                    <span className="font-medium text-slate-700">Last name</span>
+                    <input value={surname} onChange={(e) => setSurname(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm" />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="font-medium text-slate-700">Date of birth</span>
+                    <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm" />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="font-medium text-slate-700">Gender</span>
+                    <select value={gender} onChange={(e) => setGender(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm">
+                      <option value="">Select</option>
+                      <option value="Female">Female</option>
+                      <option value="Male">Male</option>
+                      <option value="Non-binary">Non-binary</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                  </label>
+                  <label className="block text-sm">
+                    <span className="font-medium text-slate-700">Nationality</span>
+                    <input value={nationality} onChange={(e) => setNationality(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm" />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="font-medium text-slate-700">Phone number</span>
+                    <input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm" />
+                  </label>
+                  <label className="block text-sm sm:col-span-2">
+                    <span className="font-medium text-slate-700">Email</span>
+                    <input value={email || user.email || ''} readOnly className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-600" />
+                  </label>
+                  <label className="block text-sm sm:col-span-2">
+                    <span className="font-medium text-slate-700">National ID (optional)</span>
+                    <input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm" />
+                  </label>
+                </div>
               </div>
-              <button
-                type="button"
-                disabled={savingIdentity || !identityComplete}
-                onClick={() => void saveIdentity()}
-                className="tenant-btn-primary disabled:opacity-50"
-              >
-                {savingIdentity ? 'Saving…' : 'Save my details'}
-              </button>
-            </section>
+            ) : null}
 
-            <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-              <input type="checkbox" checked={marketDataConsent} onChange={(e) => setMarketDataConsent(e.target.checked)} className="mt-1" />
-              <span>
-                I agree that anonymised income and payment behaviour data may be used for aggregate rental market
-                analysis.
-              </span>
-            </label>
-          </>
-        ) : null}
+            {step === 2 ? (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold">Location & residence</h2>
+                <p className="text-sm text-slate-600">
+                  Enter your current residence independently. Your landlord&apos;s address is not shown here; we compare
+                  both on submission.
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block text-sm">
+                    <span className="font-medium text-slate-700">Country</span>
+                    <input value={country} onChange={(e) => setCountry(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm" />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="font-medium text-slate-700">Region / Province</span>
+                    <input value={region} onChange={(e) => setRegion(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm" />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="font-medium text-slate-700">City / Town</span>
+                    <input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm" />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="font-medium text-slate-700">Postal code</span>
+                    <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm" />
+                  </label>
+                  <label className="block text-sm sm:col-span-2">
+                    <span className="font-medium text-slate-700">Street address</span>
+                    <input value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm" />
+                  </label>
+                  <label className="block text-sm sm:col-span-2">
+                    <span className="font-medium text-slate-700">Residential status</span>
+                    <select value={residentialStatus} onChange={(e) => setResidentialStatus(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm">
+                      {RESIDENTIAL_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt.replace(/_/g, ' ')}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            ) : null}
 
-        <div className="space-y-4">
-          {REQUIRED_DOCS.map((doc) => {
-            const existing = docByType.get(doc.type);
-            const approved =
-              isKycApproved(kycStatus) || (existing?.status === 'APPROVED' && kycStatus !== 'REJECTED');
-            const needsReupload = Boolean(existing?.needs_reupload) || (kycStatus === 'REJECTED' && !approved);
-            const uploaded = Boolean(existing) && !needsReupload && kycStatus !== 'REJECTED';
-            const locked = isKycApproved(kycStatus) || (kycStatus === 'PENDING' && uploaded && !needsReupload);
-            const displayFileName = pendingFiles[doc.type]?.name ?? existing?.file_name;
-
-            return (
-              <section key={doc.type} className="tenant-panel">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <FileCheck className="h-5 w-5 text-[#C0392B]" aria-hidden />
-                      <h2 className="text-lg font-semibold text-[#1A1A1A]">{doc.label}</h2>
-                      {uploaded ? <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden /> : null}
-                      {needsReupload ? (
-                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
-                          Re-upload required
-                        </span>
-                      ) : null}
-                    </div>
+            {step === 3 ? (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold">Document uploads</h2>
+                <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                  <input type="checkbox" checked={marketDataConsent} onChange={(e) => setMarketDataConsent(e.target.checked)} className="mt-1" />
+                  <span>I agree that anonymised income and payment behaviour data may be used for aggregate rental market analysis.</span>
+                </label>
+                {docsToUpload.map((doc) => (
+                  <div key={doc.type} className="rounded-xl border border-slate-200 p-4">
+                    <p className="font-semibold text-[#1A1A1A]">{doc.label}</p>
                     <p className="mt-1 text-sm text-slate-500">{doc.hint}</p>
-                    {displayFileName ? (
-                      <p className="mt-2 text-sm font-medium text-[#1A1A1A]">File: {displayFileName}</p>
-                    ) : null}
-                  </div>
-                  {!locked ? (
-                    <div className="sm:w-72">
+                    <div className="mt-3">
                       <KycDocumentUploadField
                         label={doc.label}
                         hint={doc.hint}
-                        disabled={!marketDataConsent || !identityComplete}
-                        uploading={uploadingType === doc.type}
-                        fileName={displayFileName}
+                        disabled={!marketDataConsent}
+                        uploading={false}
+                        fileName={docFiles[doc.type]?.name}
                         selfieMode={doc.selfie}
                         documentCameraMode={doc.idPhoto}
-                        onFileSelect={(file) => handleFileSelect(doc.type, file)}
+                        onFileSelect={(file) => setDocFiles((prev) => ({ ...prev, [doc.type]: file }))}
                       />
                     </div>
-                  ) : null}
-                </div>
-              </section>
-            );
-          })}
-        </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-3 pt-2">
+              {step > 1 ? (
+                <button type="button" onClick={() => setStep((step - 1) as 1 | 2 | 3)} className="tenant-btn-secondary inline-flex items-center gap-2">
+                  <ChevronLeft className="h-4 w-4" aria-hidden />
+                  Back
+                </button>
+              ) : null}
+              {step < 3 ? (
+                <button type="button" onClick={() => void goNext()} className="tenant-btn-primary">
+                  Continue
+                </button>
+              ) : (
+                <button type="button" disabled={submitting || !step3Valid} onClick={() => void submitAll()} className="tenant-btn-primary disabled:opacity-50">
+                  {submitting ? 'Submitting…' : 'Submit for review'}
+                </button>
+              )}
+            </div>
+          </div>
+        ) : null}
       </div>
     </main>
   );

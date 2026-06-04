@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { buildAuthEmailMap, buildAuthUserMap } from '../supabase/supabase.utils';
-import { DOC_TYPE_TO_DB, type KycDocumentType } from '../kyc/kyc.service';
+import { DOC_TYPE_TO_DB, KycService, REQUIRED_KYC_DOCUMENT_TYPES, type KycDocumentType } from '../kyc/kyc.service';
 import { createSignedStorageUrl } from '../supabase/storage.utils';
 
 const KYC_BUCKET = 'kyc-documents';
@@ -11,6 +11,7 @@ interface PendingKycOptions {
   page: number;
   limit: number;
   status: string;
+  applicant_role?: 'TENANT' | 'LANDLORD';
 }
 
 interface ListUsersOptions {
@@ -28,16 +29,36 @@ export class AdminService {
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly notificationsService: NotificationsService,
+    private readonly kycService: KycService,
   ) {}
 
   async getPendingKycSubmissions(options: PendingKycOptions) {
     const client = this.supabaseService.getClient();
     const offset = (options.page - 1) * options.limit;
 
-    let query = client.from('profiles').select('id, full_name, role, kyc_status, kyc_rejection_reason, kyc_submitted_at, kyc_approved_at, is_suspended, suspension_reason, created_at', { count: 'exact' });
+    let query = client
+      .from('profiles')
+      .select(
+        'id, full_name, first_name, surname, phone, date_of_birth, gender, nationality, national_id_number, role, kyc_status, kyc_rejection_reason, kyc_submitted_at, kyc_approved_at, partner_approval_status, address_street, address_region, address_city, address_postcode, address_country, residential_status, is_suspended, suspension_reason, created_at',
+        { count: 'exact' },
+      );
+
+    if (options.applicant_role === 'TENANT') {
+      query = query.eq('role', 'TENANT');
+    } else if (options.applicant_role === 'LANDLORD') {
+      query = query.eq('role', 'LANDLORD');
+    }
 
     if (options.status && options.status !== 'ALL') {
-      query = query.eq('kyc_status', options.status);
+      if (options.status === 'PENDING') {
+        if (options.applicant_role === 'LANDLORD') {
+          query = query.in('partner_approval_status', ['PENDING_REVIEW', 'PENDING_APPROVAL']);
+        } else {
+          query = query.in('kyc_status', ['PENDING', 'PENDING_REVIEW']);
+        }
+      } else {
+        query = query.eq('kyc_status', options.status);
+      }
     }
 
     const rangeQuery = query.order('kyc_submitted_at', { ascending: false }).range(offset, offset + options.limit - 1);
@@ -102,6 +123,27 @@ export class AdminService {
 
     const emailMap = await buildAuthEmailMap(client);
 
+    const landlordIds = (data || []).filter((p: any) => p.role === 'LANDLORD').map((p: any) => p.id);
+    let landlordProfileMap = new Map<string, any>();
+    if (landlordIds.length) {
+      const lpRes = await client
+        .from('landlord_profiles')
+        .select('user_id, business_name, account_type, vat_number, properties_managed_count, ownership_status')
+        .in('user_id', landlordIds);
+      if (!lpRes.error) {
+        landlordProfileMap = new Map((lpRes.data || []).map((row: any) => [row.user_id, row]));
+      }
+    }
+
+    const verificationIds = (data || []).map((p: any) => p.id);
+    let verificationMap = new Map<string, any>();
+    if (verificationIds.length) {
+      const vRes = await client.from('kyc_verifications').select('profile_id, metadata').in('profile_id', verificationIds);
+      if (!vRes.error) {
+        verificationMap = new Map((vRes.data || []).map((row: any) => [row.profile_id, row.metadata]));
+      }
+    }
+
     const submissions = await Promise.all(
       (data || []).map(async (profile: any) => {
         const email = emailMap.get(profile.id) ?? 'Unknown';
@@ -114,15 +156,49 @@ export class AdminService {
             status: doc.status ?? 'PENDING',
           })),
         );
+        const location_comparison =
+          profile.role === 'TENANT' ? await this.kycService.getAdminLocationComparison(profile.id) : null;
+        const hasLocationMismatch =
+          profile.role === 'TENANT' &&
+          ((flagMap.get(profile.id) || []).some((f: any) => f.flag_type === 'LOCATION_MISMATCH') ||
+            (location_comparison && !location_comparison.match && location_comparison.compared));
+
+        const landlordMeta = (verificationMap.get(profile.id) as Record<string, unknown>) || {};
+        const landlordProfile = landlordProfileMap.get(profile.id);
+
         return {
           user_id: profile.id,
+          applicant_role: profile.role,
           user_name: profile.full_name,
           user_email: email,
-          status: profile.kyc_status,
+          status: profile.role === 'LANDLORD' ? profile.partner_approval_status || profile.kyc_status : profile.kyc_status,
+          personal: {
+            first_name: profile.first_name,
+            surname: profile.surname,
+            phone: profile.phone,
+            date_of_birth: profile.date_of_birth,
+            gender: profile.gender,
+            nationality: profile.nationality,
+            national_id_number: profile.national_id_number,
+          },
           rejection_reason: profile.kyc_rejection_reason,
           submitted_at: profile.kyc_submitted_at,
           approved_at: profile.kyc_approved_at,
           quality_flags: flagMap.get(profile.id) || [],
+          location_mismatch: hasLocationMismatch,
+          location_comparison,
+          landlord_details:
+            profile.role === 'LANDLORD'
+              ? {
+                  account_type: landlordMeta.account_type || landlordProfile?.account_type,
+                  company_name: landlordMeta.company_name || landlordProfile?.business_name,
+                  registration_number: landlordMeta.registration_number,
+                  vat_number: landlordProfile?.vat_number,
+                  properties_managed_count: landlordProfile?.properties_managed_count,
+                  ownership_status: landlordProfile?.ownership_status,
+                  property: landlordMeta.property,
+                }
+              : null,
           documents,
         };
       }),
@@ -141,17 +217,44 @@ export class AdminService {
     userId: string,
     action: 'approve' | 'reject',
     reason: string | null,
-    rejectedDocTypes?: KycDocumentType[],
+    rejectedDocTypes?: string[],
   ) {
     const client = this.supabaseService.getClient();
     const now = new Date().toISOString();
-    const status = action === 'approve' ? 'APPROVED' : 'REJECTED';
-    const allDocTypes: KycDocumentType[] = ['government_id', 'selfie', 'income_proof', 'signed_lease'];
-    const rejectedTypes =
-      action === 'reject' ? (rejectedDocTypes?.length ? rejectedDocTypes : allDocTypes) : [];
-    const rejectedDbTypes = rejectedTypes.map((t) => DOC_TYPE_TO_DB[t]);
 
-    const { data: before } = await client.from('profiles').select('kyc_status, full_name').eq('id', userId).maybeSingle();
+    const { data: before } = await client
+      .from('profiles')
+      .select('kyc_status, full_name, role, partner_approval_status')
+      .eq('id', userId)
+      .maybeSingle();
+    const isLandlord = before?.role === 'LANDLORD';
+    const status = action === 'approve' ? 'VERIFIED' : 'REJECTED';
+    const allDocTypes: KycDocumentType[] = [...REQUIRED_KYC_DOCUMENT_TYPES];
+    const landlordDocTypes = [
+      'government_id',
+      'company_registration',
+      'proof_of_address',
+      'proof_of_property_ownership',
+      'selfie',
+    ];
+    const rejectedTypes =
+      action === 'reject'
+        ? rejectedDocTypes?.length
+          ? rejectedDocTypes
+          : isLandlord
+            ? landlordDocTypes
+            : allDocTypes
+        : [];
+    const landlordDocToDb: Record<string, string> = {
+      government_id: 'NATIONAL_ID_FRONT',
+      company_registration: 'EMPLOYER_LETTER',
+      proof_of_address: 'PROOF_OF_ADDRESS',
+      proof_of_property_ownership: 'BANK_STATEMENT',
+      selfie: 'SELFIE',
+    };
+    const rejectedDbTypes = rejectedTypes
+      .map((t) => (isLandlord ? landlordDocToDb[t] : DOC_TYPE_TO_DB[t as KycDocumentType]))
+      .filter(Boolean);
     const updatePayload: any = {
       kyc_status: status,
       kyc_approved_at: action === 'approve' ? now : null,
@@ -160,8 +263,22 @@ export class AdminService {
       kyc_reviewer_id: adminProfile.id,
     };
 
+    if (isLandlord) {
+      updatePayload.partner_approval_status = action === 'approve' ? 'APPROVED' : 'REJECTED';
+      if (action === 'approve') {
+        updatePayload.kyc_status = 'VERIFIED';
+      }
+    }
+
     const { error } = await client.from('profiles').update(updatePayload).eq('id', userId);
     if (error) throw error;
+
+    if (isLandlord) {
+      await client
+        .from('landlord_profiles')
+        .update({ partner_status: action === 'approve' ? 'APPROVED' : 'REJECTED' })
+        .eq('user_id', userId);
+    }
 
     const { data: userDocs } = await client
       .from('kyc_documents')
@@ -203,6 +320,7 @@ export class AdminService {
           metadata: {
             ...((existingVerification?.metadata as object) || {}),
             rejected_doc_types: action === 'reject' ? rejectedTypes : [],
+            rejected_steps: action === 'reject' ? this.inferRejectedSteps(rejectedTypes, isLandlord) : [],
           },
           updated_at: now,
         },
@@ -235,16 +353,28 @@ export class AdminService {
 
     await this.notificationsService.createNotification({
       user_id: userId,
-      type: status === 'APPROVED' ? 'KYC_APPROVED' : 'KYC_REJECTED',
-      title: status === 'APPROVED' ? 'KYC approved' : 'KYC requires action',
+      type: status === 'VERIFIED' ? 'KYC_APPROVED' : 'KYC_REJECTED',
+      title: status === 'VERIFIED' ? 'KYC approved' : 'KYC requires action',
       message:
-        status === 'APPROVED'
+        status === 'VERIFIED'
           ? 'Your identity has been verified — your CRENIT Score is now active.'
           : `Action required: your KYC submission needs attention.${reason ? ` Reason: ${reason}` : ''}`,
       metadata: { status, reason: reason ?? null, rejected_doc_types: rejectedTypes },
     });
 
-    if (status === 'APPROVED') {
+    if (isLandlord) {
+      if (action === 'approve') {
+        await this.notificationsService.sendPartnerApprovedEmail(userId, before?.full_name || 'there');
+      } else {
+        const rejectedSteps = this.inferRejectedSteps(rejectedTypes, true);
+        await this.notificationsService.sendPartnerRejectedEmail(
+          userId,
+          before?.full_name || 'there',
+          reason || 'Please review your documents and resubmit.',
+          rejectedSteps[0] ?? 3,
+        );
+      }
+    } else if (status === 'VERIFIED') {
       await this.notificationsService.sendKycApprovedEmail(userId, before?.full_name || 'there');
     } else {
       await this.notificationsService.sendKycRejectedEmail(
@@ -261,6 +391,20 @@ export class AdminService {
       reason,
       rejected_doc_types: rejectedTypes,
     };
+  }
+
+  private inferRejectedSteps(rejectedDocTypes: string[], isLandlord: boolean): number[] {
+    if (!isLandlord) return rejectedDocTypes.length ? [3] : [];
+    const docStep3 = new Set([
+      'government_id',
+      'company_registration',
+      'proof_of_address',
+      'proof_of_property_ownership',
+      'selfie',
+    ]);
+    const steps = new Set<number>();
+    if (rejectedDocTypes.some((t) => docStep3.has(t))) steps.add(3);
+    return steps.size ? Array.from(steps) : [3];
   }
 
   async getKycAuditLog(userId: string, limit = 30) {
@@ -1044,7 +1188,9 @@ export class AdminService {
     const [profileRes, verificationRes, docsRes, flagsRes, auditRes] = await Promise.all([
       client
         .from('profiles')
-        .select('id, full_name, role, kyc_status, kyc_submitted_at, kyc_reviewed_at, kyc_reviewer_id, kyc_rejection_reason')
+        .select(
+          'id, full_name, first_name, surname, phone, date_of_birth, gender, nationality, national_id_number, role, kyc_status, kyc_submitted_at, kyc_reviewed_at, kyc_reviewer_id, kyc_rejection_reason, address_street, address_region, address_city, address_postcode, address_country, residential_status',
+        )
         .eq('id', userId)
         .maybeSingle(),
       client.from('kyc_verifications').select('*').eq('profile_id', userId).maybeSingle(),
@@ -1070,6 +1216,8 @@ export class AdminService {
       reviewerName = reviewerRes.data?.full_name || null;
     }
 
+    const location_comparison = await this.kycService.getAdminLocationComparison(userId);
+
     return {
       profile: profileRes.data || null,
       verification: verificationRes.data
@@ -1078,6 +1226,7 @@ export class AdminService {
             reviewer_name: reviewerName,
           }
         : null,
+      location_comparison,
       documents: await Promise.all(
         (docsRes.data || []).map(async (doc: any) => ({
           ...doc,

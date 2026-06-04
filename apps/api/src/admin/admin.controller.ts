@@ -37,14 +37,22 @@ export class AdminController {
     @Query('page') page = '1',
     @Query('limit') limit = '20',
     @Query('status') status = 'PENDING',
+    @Query('applicant_role') applicantRole?: string,
   ) {
     try {
       const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
       assertRole(profile, 'ADMIN');
+      const roleFilter =
+        applicantRole?.toUpperCase() === 'LANDLORD'
+          ? 'LANDLORD'
+          : applicantRole?.toUpperCase() === 'TENANT'
+            ? 'TENANT'
+            : undefined;
       const result = await this.adminService.getPendingKycSubmissions({
         page: Number(page) || 1,
         limit: Number(limit) || 20,
         status: status.toUpperCase(),
+        applicant_role: roleFilter,
       });
       return { success: true, data: result, error: null };
     } catch (error: any) {
@@ -63,7 +71,14 @@ export class AdminController {
     body: {
       action: 'approve' | 'reject';
       reason?: string;
-      rejected_doc_types?: Array<'government_id' | 'selfie' | 'income_proof' | 'signed_lease'>;
+      rejected_doc_types?: Array<
+        | 'government_id'
+        | 'selfie'
+        | 'income_proof'
+        | 'proof_of_address'
+        | 'company_registration'
+        | 'proof_of_property_ownership'
+      >;
     },
   ) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
