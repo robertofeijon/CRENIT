@@ -1,8 +1,18 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { authenticator } from 'otplib';
+import * as QRCode from 'qrcode';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ConsentService } from '../market-intelligence/consent.service';
-import { ensureUserProfile, resolveProfileRole } from '../supabase/supabase.utils';
+import {
+  ensureUserProfile,
+  getAuthEmailByUserId,
+  isTwoFactorSessionActive,
+  requiresTwoFactorVerification,
+  resolveProfileRole,
+} from '../supabase/supabase.utils';
 import { NotificationsService } from '../notifications/notifications.service';
+
+authenticator.options = { window: 1 };
 
 @Injectable()
 export class AuthService {
@@ -90,10 +100,10 @@ export class AuthService {
       id: user.id,
       full_name: payload.full_name.trim(),
       role,
-      kyc_status: role === 'TENANT' ? 'NOT_SUBMITTED' : 'APPROVED',
+      kyc_status: role === 'TENANT' ? 'NOT_SUBMITTED' : 'NOT_SUBMITTED',
     };
     if (role === 'LANDLORD') {
-      profilePayload.partner_approval_status = 'PENDING_APPROVAL';
+      profilePayload.partner_approval_status = 'UNVERIFIED';
     }
 
     const profileRes = await client.from('profiles').upsert([profilePayload], { onConflict: 'id' });
@@ -162,17 +172,76 @@ export class AuthService {
     const user = authData.user;
     const profile = await ensureUserProfile(client, user);
     const role = resolveProfileRole(profile, user.email);
+    const enriched = { ...profile, role };
+    const two_factor_required =
+      requiresTwoFactorVerification(enriched) && !isTwoFactorSessionActive(enriched);
 
-    return { user, profile: { ...profile, role } };
+    return {
+      user,
+      profile: enriched,
+      two_factor_required,
+      two_factor_enforced: requiresTwoFactorVerification(enriched),
+    };
+  }
+
+  private twoFactorSessionHours(): number {
+    const hours = Number(process.env.TWO_FACTOR_SESSION_HOURS || 12);
+    return Number.isFinite(hours) && hours > 0 ? hours : 12;
+  }
+
+  private twoFactorVerifiedUntilIso(): string {
+    const until = new Date();
+    until.setHours(until.getHours() + this.twoFactorSessionHours());
+    return until.toISOString();
+  }
+
+  private isLegacyDemoSecret(secret: string | null | undefined): boolean {
+    return Boolean(secret && /^\d{6}$/.test(secret));
+  }
+
+  private verifyTotpCode(secret: string, code: string): boolean {
+    const normalized = code.replace(/\s/g, '');
+    if (this.isLegacyDemoSecret(secret)) {
+      return secret === normalized;
+    }
+    return authenticator.check(normalized, secret);
+  }
+
+  async getLoginTwoFactorHint(userId: string, email?: string | null) {
+    const client = this.supabase.getClient();
+    const { data, error } = await client
+      .from('profiles')
+      .select('role, two_factor_enabled, two_factor_verified_until, partner_approval_status')
+      .eq('id', userId)
+      .single();
+    if (error || !data) {
+      return { requires_two_factor: false, two_factor_enforced: false };
+    }
+    const role = resolveProfileRole(data, email);
+    const profile = { ...data, role };
+    const enforced = requiresTwoFactorVerification(profile);
+    return {
+      requires_two_factor: enforced && !isTwoFactorSessionActive(profile),
+      two_factor_enforced: enforced,
+    };
   }
 
   async getTwoFactorStatus(userId: string) {
     const client = this.supabase.getClient();
-    const { data, error } = await client.from('profiles').select('two_factor_enabled, two_factor_secret').eq('id', userId).single();
+    const { data, error } = await client
+      .from('profiles')
+      .select('two_factor_enabled, two_factor_secret, two_factor_verified_until')
+      .eq('id', userId)
+      .single();
     if (error) throw error;
     return {
       enabled: Boolean(data?.two_factor_enabled),
       pending_setup: Boolean(data?.two_factor_secret && !data?.two_factor_enabled),
+      session_active: isTwoFactorSessionActive({
+        two_factor_enabled: data?.two_factor_enabled,
+        two_factor_verified_until: data?.two_factor_verified_until,
+      }),
+      method: data?.two_factor_secret && !this.isLegacyDemoSecret(data.two_factor_secret) ? 'totp' : 'legacy',
     };
   }
 
@@ -423,15 +492,25 @@ export class AuthService {
 
   async setupTwoFactor(userId: string) {
     const client = this.supabase.getClient();
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const email = (await getAuthEmailByUserId(client, userId)) || userId;
+    const secret = authenticator.generateSecret();
+    const otpauth_url = authenticator.keyuri(email, 'CRENIT', secret);
+    const qr_data_url = await QRCode.toDataURL(otpauth_url);
     const { error } = await client
       .from('profiles')
-      .update({ two_factor_secret: code, two_factor_enabled: false, updated_at: new Date().toISOString() })
+      .update({
+        two_factor_secret: secret,
+        two_factor_enabled: false,
+        two_factor_verified_until: null,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', userId);
     if (error) throw error;
     return {
-      message: 'Enter this one-time code to confirm 2FA setup. In production this would be sent via SMS or authenticator app.',
-      verification_code: code,
+      message: 'Scan the QR code with your authenticator app, then enter the 6-digit code to enable 2FA.',
+      otpauth_url,
+      qr_data_url,
+      manual_entry_key: secret,
       pending_setup: true,
     };
   }
@@ -439,28 +518,38 @@ export class AuthService {
   async confirmTwoFactor(userId: string, code: string) {
     const client = this.supabase.getClient();
     const { data, error } = await client.from('profiles').select('two_factor_secret').eq('id', userId).single();
-    if (error || !data) throw error || new Error('Profile not found');
-    if (!data.two_factor_secret || data.two_factor_secret !== code) {
+    if (error || !data?.two_factor_secret) throw error || new Error('Profile not found');
+    if (!this.verifyTotpCode(data.two_factor_secret, code)) {
       throw new Error('Invalid verification code');
     }
+    const verifiedUntil = this.twoFactorVerifiedUntilIso();
     const { error: updateError } = await client
       .from('profiles')
-      .update({ two_factor_enabled: true, updated_at: new Date().toISOString() })
+      .update({
+        two_factor_enabled: true,
+        two_factor_verified_until: verifiedUntil,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', userId);
     if (updateError) throw updateError;
-    return { enabled: true };
+    return { enabled: true, verified_until: verifiedUntil };
   }
 
   async disableTwoFactor(userId: string, code: string) {
     const client = this.supabase.getClient();
     const { data, error } = await client.from('profiles').select('two_factor_secret, two_factor_enabled').eq('id', userId).single();
     if (error || !data) throw error || new Error('Profile not found');
-    if (data.two_factor_enabled && data.two_factor_secret !== code) {
+    if (data.two_factor_enabled && data.two_factor_secret && !this.verifyTotpCode(data.two_factor_secret, code)) {
       throw new Error('Invalid verification code');
     }
     const { error: updateError } = await client
       .from('profiles')
-      .update({ two_factor_enabled: false, two_factor_secret: null, updated_at: new Date().toISOString() })
+      .update({
+        two_factor_enabled: false,
+        two_factor_secret: null,
+        two_factor_verified_until: null,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', userId);
     if (updateError) throw updateError;
     return { enabled: false };
@@ -471,7 +560,21 @@ export class AuthService {
     const { data, error } = await client.from('profiles').select('two_factor_enabled, two_factor_secret').eq('id', userId).single();
     if (error || !data) throw error || new Error('Profile not found');
     if (!data.two_factor_enabled) return { verified: true };
-    if (data.two_factor_secret === code) return { verified: true };
+    if (data.two_factor_secret && this.verifyTotpCode(data.two_factor_secret, code)) {
+      return { verified: true };
+    }
     throw new Error('Invalid 2FA code');
+  }
+
+  async verifyTwoFactorSession(userId: string, code: string) {
+    await this.verifyTwoFactorCode(userId, code);
+    const client = this.supabase.getClient();
+    const verifiedUntil = this.twoFactorVerifiedUntilIso();
+    const { error } = await client
+      .from('profiles')
+      .update({ two_factor_verified_until: verifiedUntil, updated_at: new Date().toISOString() })
+      .eq('id', userId);
+    if (error) throw error;
+    return { verified: true, verified_until: verifiedUntil };
   }
 }

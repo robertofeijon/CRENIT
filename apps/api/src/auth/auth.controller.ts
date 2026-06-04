@@ -36,7 +36,11 @@ export class AuthController {
         throw new BadRequestException('Email and password are required');
       }
       const res = await this.authService.login(body);
-      return { success: true, data: res, error: null };
+      const userId = res.data?.user?.id;
+      const hint = userId
+        ? await this.authService.getLoginTwoFactorHint(userId, res.data?.user?.email)
+        : { requires_two_factor: false, two_factor_enforced: false };
+      return { success: true, data: { ...res, ...hint }, error: null };
     } catch (error: any) {
       const message = error?.message || 'Login failed.';
       throw new BadRequestException(message);
@@ -90,7 +94,9 @@ export class AuthController {
   @Get('2fa/status')
   async twoFactorStatus(@Headers('authorization') authHeader: string) {
     try {
-      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader, {
+        skipTwoFactor: true,
+      });
       const data = await this.authService.getTwoFactorStatus(profile.id);
       return { success: true, data, error: null };
     } catch (error: any) {
@@ -101,7 +107,9 @@ export class AuthController {
   @Post('2fa/setup')
   async setupTwoFactor(@Headers('authorization') authHeader: string) {
     try {
-      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader, {
+        skipTwoFactor: true,
+      });
       const data = await this.authService.setupTwoFactor(profile.id);
       return { success: true, data, error: null };
     } catch (error: any) {
@@ -112,7 +120,9 @@ export class AuthController {
   @Post('2fa/confirm')
   async confirmTwoFactor(@Headers('authorization') authHeader: string, @Body() body: { code: string }) {
     try {
-      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader, {
+        skipTwoFactor: true,
+      });
       if (!body?.code) throw new BadRequestException('code is required');
       const data = await this.authService.confirmTwoFactor(profile.id, body.code.trim());
       return { success: true, data, error: null };
@@ -124,7 +134,9 @@ export class AuthController {
   @Post('2fa/disable')
   async disableTwoFactor(@Headers('authorization') authHeader: string, @Body() body: { code: string }) {
     try {
-      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader, {
+        skipTwoFactor: true,
+      });
       if (!body?.code) throw new BadRequestException('code is required');
       const data = await this.authService.disableTwoFactor(profile.id, body.code.trim());
       return { success: true, data, error: null };
@@ -136,9 +148,25 @@ export class AuthController {
   @Post('2fa/verify')
   async verifyTwoFactor(@Headers('authorization') authHeader: string, @Body() body: { code: string }) {
     try {
-      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader, {
+        skipTwoFactor: true,
+      });
       if (!body?.code) throw new BadRequestException('code is required');
       const data = await this.authService.verifyTwoFactorCode(profile.id, body.code.trim());
+      return { success: true, data, error: null };
+    } catch (error: any) {
+      throw new BadRequestException(error?.message || 'Invalid 2FA code');
+    }
+  }
+
+  @Post('2fa/verify-session')
+  async verifyTwoFactorSession(@Headers('authorization') authHeader: string, @Body() body: { code: string }) {
+    try {
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader, {
+        skipTwoFactor: true,
+      });
+      if (!body?.code) throw new BadRequestException('code is required');
+      const data = await this.authService.verifyTwoFactorSession(profile.id, body.code.trim());
       return { success: true, data, error: null };
     } catch (error: any) {
       throw new BadRequestException(error?.message || 'Invalid 2FA code');

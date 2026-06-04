@@ -195,6 +195,7 @@ export class NotificationsService {
       government_id: 'Government ID',
       selfie: 'Selfie',
       income_proof: 'Proof of income',
+      proof_of_address: 'Proof of address',
       signed_lease: 'Signed lease agreement',
     };
     const documentsList = rejectedDocTypes.length
@@ -228,17 +229,17 @@ export class NotificationsService {
     return { sent: true };
   }
 
-  async sendPartnerRejectedEmail(userId: string, name: string, reason: string) {
+  async sendPartnerRejectedEmail(userId: string, name: string, reason: string, resumeStep = 3) {
     const email = await this.resolveUserEmail(userId);
     if (!email) return { sent: false };
-    const onboardingUrl = `${this.appBaseUrl()}/landlord/onboarding`;
+    const verifyUrl = `${this.appBaseUrl()}/landlord/overview?verify=1&step=${resumeStep}`;
     const html =
       this.loadEmailTemplate('partner-rejected.html', {
         name,
         reason,
-        onboarding_url: onboardingUrl,
+        onboarding_url: verifyUrl,
       }) ||
-      this.buildEmailHtml('Partner verification needs updates', `${reason} Update at ${onboardingUrl}`, name);
+      this.buildEmailHtml('Partner verification needs updates', `${reason} Update at ${verifyUrl}`, name);
     await this.sendHtmlEmail(email, 'Action required: partner verification', html);
     return { sent: true };
   }

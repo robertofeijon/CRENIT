@@ -1,6 +1,6 @@
 # CRENIT Platform Updates — Summary
 
-This document summarizes major product, API, database, and UI changes delivered across the marketing site, tenant KYC, landlord partner verification, admin review, and compliance tooling.
+This document summarizes major product, API, database, and UI changes delivered across the marketing site, tenant KYC, landlord partner verification, admin review, market intelligence, and compliance tooling.
 
 **Stack:** Supabase (migrations + storage) · NestJS API (`apps/api`, port 3001) · Next.js web (`apps/web`, port 3002) · Nodemailer SMTP for transactional email.
 
@@ -20,21 +20,24 @@ This document summarizes major product, API, database, and UI changes delivered 
 
 ## 2. Database migrations
 
-Apply in order in Supabase SQL (or CLI):
+Apply in order in Supabase SQL (or CLI). See **`docs/MIGRATION_RUNBOOK.md`** for the full integrated list.
 
-### `0026_kyc_wizard_residence.sql`
+### KYC & landlord verification
 
-- `profiles.kyc_status` extended with `PENDING_REVIEW`
-- Profile fields: `first_name`, `surname`, address columns, `residential_status`, `kyc_wizard_draft` (jsonb)
-- `kyc_documents` doc type `PROOF_OF_ADDRESS`
-- `leases.tenant_residence` (jsonb) — landlord-reported tenant address for lease registration
-- Used by **tenant** 3-step KYC wizard
+- **`0026_kyc_wizard_residence.sql`** — tenant 3-step KYC wizard, `leases.tenant_residence`
+- **`0027_landlord_verification_wizard.sql`** — landlord partner verification, `partner_approval_status`
 
-### `0027_landlord_verification_wizard.sql`
+### Market intelligence (branch `feat/market-intelligence-compliance`)
 
-- `profiles.partner_approval_status` values: `UNVERIFIED`, `PENDING_REVIEW`, `APPROVED`, `REJECTED`, etc.
-- `landlord_profiles`: `account_type`, `vat_number`, `properties_managed_count`, `ownership_status`, `landlord_kyc_draft` (jsonb)
-- Used by **landlord** dashboard KYC panel
+- **`0028`** — sale comps pilot, webhooks, licensable watch
+- **`0029`** — webhook delivery retries
+- **`0030`** — landlord licensable notify log
+- **`0031`** — capture suburb snapshot QA
+- **`0032`** — `market_intelligence_alerts` notification preference
+
+### Platform trust
+
+- **`0033_two_factor_totp.sql`** — `two_factor_verified_until` for admin/landlord session enforcement
 
 ---
 
@@ -49,259 +52,87 @@ Apply in order in Supabase SQL (or CLI):
 - Progress indicator, validation per step, back navigation on steps 2–3  
 - Partial progress saved via `PUT /kyc/wizard/personal`, `PUT /kyc/wizard/residence`  
 - Submit: `POST /kyc/wizard/submit` → status `PENDING_REVIEW`  
-- Rejected tenants jump to step 3 with per-document re-upload hints  
 
-### API (`apps/api/src/kyc/`)
+### Location cross-check
 
-- `kyc.service.ts` — wizard save/submit, document storage (`kyc-documents` bucket)  
-- `kyc.controller.ts` — tenant-facing routes  
-- `kyc-location.util.ts` — normalized address comparison (72% weighted threshold)  
+Compares tenant residence to landlord reference (KYC step 2 → profile address → `tenant_residence` → leased property). Below-threshold match inserts `LOCATION_MISMATCH` in `kyc_flags`.
 
-### Location cross-check (tenant vs landlord)
+### Web & admin
 
-When a tenant submits KYC, the API compares the tenant’s declared residence to a **landlord reference address** using `resolveLandlordReferenceForTenantCheck()` in `kyc-location.util.ts`.
-
-**Priority (highest first):**
-
-1. **Landlord KYC step 2** — `kyc_verifications.metadata.property` on the landlord’s profile (primary property from verification wizard)  
-2. **Landlord profile address** — same fields persisted on `profiles` (`address_street`, `address_region`, `address_city`, etc.)  
-3. **Lease `tenant_residence`** — address the landlord entered when registering the lease  
-4. **Leased property** — unit → property address  
-
-If comparison runs and similarity is below threshold, a `LOCATION_MISMATCH` row is inserted into `kyc_flags` and metadata stores `landlord_reference_source`, `landlord_reference_label`, match score, etc.
-
-### Web
-
-- `app/tenant/kyc/page.tsx` — full wizard UI  
-- `components/kyc/KycWizardProgress.tsx`, `KycDocumentUploadField.tsx`  
-
-### Admin
-
-- `app/admin/kyc/page.tsx` — queue with tenant/landlord tabs (landlords separate), location side-by-side, `LOCATION_MISMATCH` highlight  
-- `GET /admin/kyc/pending?applicant_role=TENANT`  
-- `POST /admin/kyc/review/:userId` — approve → `VERIFIED`; reject with reason + optional per-document types  
-- Emails: `sendKycApprovedEmail`, `sendKycRejectedEmail` (deep link `/tenant/kyc`)  
+- `app/tenant/kyc/page.tsx` — wizard UI  
+- `app/admin/kyc/page.tsx` — tenant/landlord tabs, location compare  
 
 ---
 
-## 4. Landlord lease registration (tenant residence)
+## 4. Landlord partner verification
 
-Landlords must capture **expected tenant residence** when registering a lease (not only property auto-fill).
-
-| File | Role |
-|------|------|
-| `app/landlord/attachments/page.tsx` | Editable `tenant_residence` on lease form |
-| `landlords.service.ts` / `landlords.controller.ts` | Persist `tenant_residence` on lease create |
-
-This feeds fallback #3 in the tenant location cross-check when landlord KYC step-2 data is not yet available.
+- `/landlord/onboarding` redirects to overview with verify panel  
+- 3-step slide-over: identity, property (reference for tenant cross-check), documents  
+- Nav + route guard until `partner_approval_status === APPROVED`  
+- API: `GET/PUT/POST /landlords/kyc/*`  
 
 ---
 
-## 5. Landlord partner verification (dashboard-integrated)
-
-Replaces standalone onboarding as the primary UX. Old route `/landlord/onboarding` redirects to `/landlord/overview?verify=1`.
-
-### Status model
-
-| Display badge | `partner_approval_status` / behaviour |
-|---------------|--------------------------------------|
-| `UNVERIFIED` | New signup; no submission |
-| `PENDING_REVIEW` | Submitted; awaiting admin |
-| `VERIFIED` | `APPROVED` — full dashboard unlock |
-| `REJECTED` | Resubmit failed steps/documents only |
-
-New landlords: `kyc_status: NOT_SUBMITTED`, `partner_approval_status: UNVERIFIED` (no longer auto-`APPROVED`).
-
-### Wizard (slide-in panel)
-
-| Step | Fields |
-|------|--------|
-| 1 — Identity | First/last name, DOB, gender, nationality, phone, email (read-only), account type (individual / company), company name, reg number, VAT optional |
-| 2 — Property | Country, region, city, primary property address, property count, ownership status (owner / managing agent) — **stored as landlord reference for tenant cross-check** |
-| 3 — Documents | Government ID or company registration, proof of address, proof of property ownership, selfie |
-
-- Dismissible banner on overview when unverified/rejected  
-- Header status badge  
-- `LandlordKycPanel.tsx` slide-over; dashboard remains usable in background  
-- Draft auto-save: `PUT /landlords/kyc/wizard/draft` (steps 1–2)  
-- Submit: `POST /landlords/kyc/wizard/submit`  
-
-### API
-
-| Route | Purpose |
-|-------|---------|
-| `GET /landlords/kyc/status` | Status, draft, documents, rejection hints |
-| `PUT /landlords/kyc/wizard/draft` | Auto-save steps 1–2 |
-| `POST /landlords/kyc/wizard/submit` | Full submit + document upload |
-
-Service: `apps/api/src/landlords/landlord-kyc.service.ts`
-
-### Feature gating
-
-**Nav lock** (greyed + tooltip): Properties, Tenants, Leases, Deposits, Payments, Reports, Market data, Lease & docs — until `VERIFIED`.
-
-**Page-level guard** (direct URL cannot bypass):
-
-- `landlord/layout.tsx` checks `isLandlordVerificationLockedPath(pathname)`  
-- Unverified landlords see `LandlordLockedRouteGuard` instead of page content  
-- Locked path list: `components/landlord/landlordVerificationPaths.ts`  
-- `ADMIN` role bypasses guard (can view landlord shell for support)  
-
-**API gating** (unchanged pattern): `assertPartnerApproved()` on properties, leases, payments, deposits, invites — requires `partner_approval_status === APPROVED`.
-
-### Admin review (landlords)
-
-- Same queue as tenants with **Landlords** tab: `GET /admin/kyc/pending?applicant_role=LANDLORD`  
-- Approve/reject via `POST /admin/kyc/review/:userId` — updates `partner_approval_status`, `landlord_profiles.partner_status`, `kyc_status`  
-- Emails: `sendPartnerApprovedEmail`, `sendPartnerRejectedEmail` with deep link `/landlord/overview?verify=1&step=3`  
-
-### Web components (landlord)
-
-| Component | Purpose |
-|-----------|---------|
-| `LandlordVerificationBanner.tsx` | Prompt to verify |
-| `LandlordVerificationBadge.tsx` | Header status |
-| `LandlordKycPanel.tsx` | 3-step slide-over |
-| `LandlordLockedRouteGuard.tsx` | Blocked route full-page message |
-| `landlordVerificationPaths.ts` | Shared locked route list |
-
----
-
-## 6. Auth & profiles
-
-- `auth.service.ts` — landlord signup sets `UNVERIFIED` / `NOT_SUBMITTED`  
-- `supabase.utils.ts` — `assertPartnerApproved` defaults to locked unless `APPROVED`  
-- `landlords.service.ts` — `buildOverview` uses `profiles.partner_approval_status`; new `landlord_profiles` default `partner_status: PENDING`  
-
----
-
-## 7. Email notifications (Nodemailer)
-
-| Event | Template / method | Recipient action |
-|-------|-------------------|------------------|
-| Tenant KYC approved | `sendKycApprovedEmail` | Log in |
-| Tenant KYC rejected | `sendKycRejectedEmail` | `/tenant/kyc` |
-| Landlord approved | `sendPartnerApprovedEmail` | `/landlord/overview` |
-| Landlord rejected | `sendPartnerRejectedEmail` | `/landlord/overview?verify=1&step={n}` |
-
-In-app notifications created via `NotificationsService.createNotification` on admin review.
-
----
-
-## 8. File map (quick reference)
-
-### API
-
-```
-apps/api/src/kyc/
-  kyc.service.ts          # Tenant wizard + location resolve
-  kyc.controller.ts
-  kyc-location.util.ts    # compareResidence + landlord reference priority
-
-apps/api/src/landlords/
-  landlord-kyc.service.ts # Landlord wizard
-  landlords.controller.ts # /landlords/kyc/*
-  landlords.service.ts    # Overview, leases, tenant_residence
-
-apps/api/src/admin/
-  admin.service.ts        # KYC queue (tenant/landlord), review
-  admin.controller.ts
-
-apps/api/src/auth/auth.service.ts
-apps/api/src/notifications/notifications.service.ts
-```
-
-### Web
-
-```
-apps/web/app/tenant/kyc/page.tsx
-apps/web/app/landlord/layout.tsx          # Banner, badge, panel, route guard
-apps/web/app/landlord/onboarding/page.tsx # Redirect only
-apps/web/app/admin/kyc/page.tsx
-apps/web/app/components/landlord/         # Verification UI
-apps/web/app/components/kyc/              # Shared upload + progress
-```
-
-### Migrations
-
-```
-supabase/migrations/0026_kyc_wizard_residence.sql
-supabase/migrations/0027_landlord_verification_wizard.sql
-```
-
----
-
-## 9. B2B licensed reports API (market intelligence)
-
-Shipped on branch `feat/market-intelligence-compliance` (merge before using in production).
-
-### Endpoints (`X-CRENIT-Key` header)
+## 5. B2B market intelligence
 
 | Method | Path | Notes |
 |--------|------|--------|
-| GET | `/api/v1/reports` | Catalog: `suburb_report`, `city_overview`, `lender_risk_pack`, `development_feasibility` |
-| GET | `/api/v1/reports/:reportType/preview?suburb=` | JSON preview (same payload as PDF) |
-| GET | `/api/v1/reports/:reportType/pdf?suburb=` | PDF download; **400** if suburb sample &lt; 5 |
+| GET | `/api/v1/reports` | Licensed report catalog |
+| GET | `/api/v1/reports/:type/preview?suburb=` | JSON preview |
+| GET | `/api/v1/reports/:type/pdf?suburb=` | PDF; 400 if n&lt;5 |
+| GET | `/api/v1/catalog` | Routes, compliance fields, thresholds |
 
-Suburb query param required for all types except `city_overview`. Pulls are logged on `report_generations.client_id` and increment `b2b_clients.reports_pulled_this_month`.
+**Admin → Data Intelligence:** API keys, integrator exports (OpenAPI/Postman), licensable webhooks, B2B playground, sale comps ingest/CSV, geocode QA, licensable watch.
 
-### Catalog endpoint
+**Landlord → Market intelligence:** rent vs suburb median, sale comps on suburb detail, licensable alerts banner.
 
-```http
-GET /api/v1/catalog
-```
-
-Returns routes, compliance field names, report types, and sample thresholds (no suburb data).
-
-### Admin console
-
-**Data Intelligence → Clients & API** tab:
-
-1. Generate an API key for a B2B client (one-time reveal).
-2. **Integrator exports** — download OpenAPI 3.0 and Postman collection (also `GET /api/v1/openapi.json` with API key).
-3. **Licensable suburb webhooks** — register per-client URLs; **Sync licensable suburbs now** or wait for rollup/cron.
-4. **B2B API playground** — catalog, OpenAPI, suburb, trends, sale-comps pilot, city-overview, lender-risk, webhooks, reports.
-5. **B2B report API sample** — **Preview JSON** or **Download PDF** via `/api/v1/reports/...`; **Copy curl**.
-6. **Licensed products** tab links to the report sample; admin PDF still uses session auth.
-
-**Sale comps roadmap** tab: pilot ingest UI when records exist (`POST /admin/data-intelligence/sale-comps/ingest`).
-
-**Landlord portal → Market intelligence:** **Your rent vs suburb median** — pick a unit or enter suburb + rent; `GET /market-data/compare`.
-
-Full integrator reference: **`docs/B2B_INTEGRATOR_GUIDE.md`**.
-
-### Example
-
-```bash
-curl -sS -H "X-CRENIT-Key: YOUR_KEY" \
-  "http://localhost:3001/api/v1/reports/suburb_report/pdf?suburb=Klein%20Windhoek" \
-  -o crenit-suburb_report.pdf
-```
-
-See also `docs/MARKET_INTELLIGENCE.md` and `docs/pull-requests/feat-market-intelligence-compliance.md`.
+Full reference: **`docs/B2B_INTEGRATOR_GUIDE.md`**, **`docs/MARKET_INTELLIGENCE.md`**.
 
 ---
 
-## 10. Deployment checklist
+## 6. Auth, 2FA, and profiles
 
-1. Run migrations `0026`–`0032` on Supabase (`0031` capture suburb snapshot, `0032` market alert pref).  
-2. Ensure `kyc-documents` storage bucket exists and API service role can upload.  
-3. Configure SMTP env vars for Nodemailer.  
-4. Restart API + web after deploy.  
-5. Smoke test:  
-   - New landlord signup → `UNVERIFIED`, locked routes show guard  
-   - Complete landlord panel → `PENDING_REVIEW`  
-   - Admin approve → nav unlock, `VERIFIED` badge  
-   - Tenant with active lease submits KYC → admin sees location compare using **Landlord KYC step 2** when present  
+- Landlord signup: `UNVERIFIED` / `NOT_SUBMITTED` (not auto-approved)  
+- **TOTP 2FA** (authenticator app): setup returns QR + `otpauth` URL; confirm with 6-digit code  
+- **Enforcement:** `ADMIN` and `LANDLORD` with 2FA enabled must call `POST /auth/2fa/verify-session` after login (12h window via `two_factor_verified_until`)  
+- Tenants: 2FA optional (same API, not enforced on routes)  
 
 ---
 
-## 11. Known follow-ups (optional)
+## 7. Tenant payment metrics
 
-- Align legacy `landlord_onboarding_submissions` / `/admin/partner-approvals` with unified KYC queue if still in use  
-- Page-level API 403 messages already enforce partner approval; keep in sync with UI guard  
-- Apply `0026`/`0027` on production if not yet applied  
+`GET /tenants/me` includes `paymentMetrics`:
+
+- **`consecutive_on_time_streak`** — consecutive paid, on-time rent cycles (newest due date first)  
+- **`on_time_rate_pct`** — % on-time among settled payments (last 12 months)  
+- Shown on `/tenant/home` and `/tenant/credit-score`  
 
 ---
 
-*Last updated: June 2026 — marketing refresh, tenant KYC wizard, landlord verification, admin location review, and B2B report API (see §9 + `feat/market-intelligence-compliance`).*
+## 8. Email notifications (Nodemailer)
+
+KYC/partner approve/reject, rent reminders, payment confirmed/overdue, lease renewal, deposit/dispute events — see `notifications.service.ts`.
+
+---
+
+## 9. Deployment checklist
+
+1. Run migrations **`0026`–`0033`** on Supabase (see runbook).  
+2. Ensure `kyc-documents` storage bucket exists.  
+3. Configure SMTP env vars.  
+4. Set `ADMIN_EMAILS`, optional `TWO_FACTOR_SESSION_HOURS` (default 12).  
+5. Restart API + web.  
+6. Smoke test: `POST /admin/system-health/smoke` (admin session).  
+7. End-to-end: landlord verify → tenant KYC → payment streak on tenant home.  
+
+---
+
+## 10. Known follow-ups
+
+- Production payment gateway (merchant not yet selected — initiate stays simulated)  
+- Align legacy `/admin/partner-approvals` with unified KYC queue if still needed  
+- Real-time Supabase subscriptions on dashboards  
+
+---
+
+*Last updated: June 2026 — integrated KYC + market intelligence + TOTP 2FA + tenant payment metrics.*

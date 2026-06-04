@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreditScoreService } from '../credit-score/credit-score.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { buildPaymentMetrics } from '../payments/payment-metrics.util';
 
 @Injectable()
 export class TenantsService {
@@ -124,6 +125,17 @@ export class TenantsService {
     return data;
   }
 
+  async getPaymentMetrics(userId: string, monthsBack = 12) {
+    const client = this.supabase.getClient();
+    const { data, error } = await client
+      .from('payments')
+      .select('status, due_date, paid_date, days_overdue')
+      .eq('tenant_id', userId)
+      .order('due_date', { ascending: false });
+    if (error) throw error;
+    return buildPaymentMetrics(data || [], monthsBack);
+  }
+
   async getRecentPayments(userId: string) {
     const client = this.supabase.getClient();
     const { data, error } = await client
@@ -194,7 +206,8 @@ export class TenantsService {
   }
 
   async buildDashboard(userId: string) {
-    const [profile, activeLease, currentScore, latestReport, recentPayments, upcomingPayments, deposit, paymentMethods, kycDocs] = await Promise.all([
+    const [profile, activeLease, currentScore, latestReport, recentPayments, upcomingPayments, deposit, paymentMethods, kycDocs, paymentMetrics] =
+      await Promise.all([
       this.getTenantProfile(userId),
       this.getActiveLease(userId),
       this.getCurrentScore(userId),
@@ -204,6 +217,7 @@ export class TenantsService {
       this.getDepositStatus(userId),
       this.supabase.getClient().from('payment_methods').select('id').eq('user_id', userId),
       this.supabase.getClient().from('kyc_documents').select('doc_type').eq('user_id', userId),
+      this.getPaymentMetrics(userId),
     ]);
 
     const score = currentScore || (await this.creditScoreService.calculateScore(userId));
@@ -261,6 +275,7 @@ export class TenantsService {
         completed: onboardingComplete,
         steps: checklist,
       },
+      paymentMetrics,
     };
   }
 

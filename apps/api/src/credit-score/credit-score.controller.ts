@@ -2,6 +2,7 @@ import { Controller, Get, Post, Headers, UnauthorizedException } from '@nestjs/c
 import { CreditScoreService } from './credit-score.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { getUserProfileFromAuthHeader, assertRole } from '../supabase/supabase.utils';
+import { buildPaymentMetrics } from '../payments/payment-metrics.util';
 
 @Controller('credit-score')
 export class CreditScoreController {
@@ -20,9 +21,16 @@ export class CreditScoreController {
     try {
       const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
       assertRole(profile, 'TENANT');
+      const client = this.supabaseService.getClient();
+      const { data: payments } = await client
+        .from('payments')
+        .select('status, due_date, paid_date, days_overdue')
+        .eq('tenant_id', profile.id)
+        .order('due_date', { ascending: false });
+      const paymentMetrics = buildPaymentMetrics(payments || []);
       const result = await this.creditScoreService.getCurrentScoreDetails(profile.id);
       const milestone = this.creditScoreService.getMilestoneGuidance(result.score);
-      return { success: true, data: { ...result, milestone }, error: null };
+      return { success: true, data: { ...result, milestone, paymentMetrics }, error: null };
     } catch (error: any) {
       throw new UnauthorizedException(error?.message || 'Unable to load credit score');
     }

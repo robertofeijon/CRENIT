@@ -70,6 +70,7 @@ export default function TenantCreditScorePage() {
   const riskTier = scoreData?.risk_tier ?? 'MODERATE';
   const gaugePercent = useMemo(() => Math.min(100, Math.max(0, score100)), [score100]);
   const breakdown = scoreData?.breakdown;
+  const paymentMetrics = scoreData?.paymentMetrics;
 
   const factors = useMemo(() => {
     const list = scoreData?.factors || [];
@@ -105,6 +106,24 @@ export default function TenantCreditScorePage() {
         <SkeletonBlocks rows={5} />
       ) : (
         <>
+          {paymentMetrics ? (
+            <section className="tenant-panel grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl bg-[#F3F4F6] p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">On-time streak</p>
+                <p className="mt-2 text-3xl font-semibold text-[#1A1A1A]">{paymentMetrics.consecutive_on_time_streak} months</p>
+                <p className="mt-1 text-sm text-slate-600">Consecutive rent cycles paid on or before due date.</p>
+              </div>
+              <div className="rounded-xl bg-[#F3F4F6] p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">On-time rate</p>
+                <p className="mt-2 text-3xl font-semibold text-[#1A1A1A]">{paymentMetrics.on_time_rate_pct}%</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {paymentMetrics.on_time_payments_in_window} of {paymentMetrics.payments_in_window} payments in the last{' '}
+                  {paymentMetrics.window_months} months.
+                </p>
+              </div>
+            </section>
+          ) : null}
+
           <RentalCreditModelCard
             breakdown={{
               score100,

@@ -12,7 +12,7 @@ export function statusPillClass(status: string) {
   if (['PAID', 'VERIFIED', 'APPROVED', 'COMPLETED', 'ACTIVE', 'ACCEPTED'].includes(s)) {
     return 'bg-emerald-100 text-emerald-900';
   }
-  if (['PENDING', 'PROCESSING', 'UNDER_REVIEW', 'IN_PROGRESS'].includes(s)) {
+  if (['PENDING', 'PENDING_REVIEW', 'PROCESSING', 'UNDER_REVIEW', 'IN_PROGRESS'].includes(s)) {
     return 'bg-amber-100 text-amber-900';
   }
   if (['OVERDUE', 'REJECTED', 'FAILED', 'DISPUTED', 'TERMINATED'].includes(s)) {

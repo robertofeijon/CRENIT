@@ -1,7 +1,8 @@
-import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Res, UnauthorizedException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Put, Res, UnauthorizedException, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { LandlordsService } from './landlords.service';
+import { LandlordKycService, type LandlordKycDocType } from './landlord-kyc.service';
 import { LeaseDocumentService, LeaseDocumentInput } from './lease-document.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { getUserFromAuthHeader, getUserProfileFromAuthHeader, assertRole, assertPartnerApproved } from '../supabase/supabase.utils';
@@ -10,6 +11,7 @@ import { getUserFromAuthHeader, getUserProfileFromAuthHeader, assertRole, assert
 export class LandlordsController {
   constructor(
     private readonly landlordsService: LandlordsService,
+    private readonly landlordKycService: LandlordKycService,
     private readonly leaseDocumentService: LeaseDocumentService,
     private readonly supabaseService: SupabaseService,
   ) {}
@@ -275,6 +277,53 @@ export class LandlordsController {
     assertRole(profile, 'LANDLORD');
     const result = await this.landlordsService.listLeasePaymentMethodSwitchRequests(profile.id);
     return { success: true, data: result, error: null };
+  }
+
+  @Get('kyc/status')
+  async landlordKycStatus(@Headers('authorization') authHeader: string) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    const result = await this.landlordKycService.getStatus(profile.id);
+    return { success: true, data: result, error: null };
+  }
+
+  @Put('kyc/wizard/draft')
+  async saveLandlordKycDraft(
+    @Headers('authorization') authHeader: string,
+    @Body() body: { step: 1 | 2; step1?: Record<string, unknown>; step2?: Record<string, unknown> },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    if (!body.step || ![1, 2].includes(body.step)) {
+      throw new BadRequestException('step must be 1 or 2');
+    }
+    const result = await this.landlordKycService.saveDraft(profile.id, body.step, {
+      step1: body.step1 as any,
+      step2: body.step2 as any,
+    });
+    return { success: true, data: result, error: null };
+  }
+
+  @Post('kyc/wizard/submit')
+  async submitLandlordKyc(
+    @Headers('authorization') authHeader: string,
+    @Body()
+    body: {
+      step1: Record<string, unknown>;
+      step2: Record<string, unknown>;
+      documents: Partial<Record<LandlordKycDocType, { filename: string; fileBase64: string }>>;
+      consent_text_version?: string;
+    },
+  ) {
+    try {
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+      assertRole(profile, 'LANDLORD');
+      const result = await this.landlordKycService.submitWizard(profile.id, body as any);
+      return { success: true, data: result, error: null };
+    } catch (error: any) {
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException(error?.message || 'Unable to submit verification.');
+    }
   }
 
   @Get('onboarding/status')

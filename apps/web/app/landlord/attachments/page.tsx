@@ -26,6 +26,12 @@ type LeaseForm = {
   tenant_email: string;
   tenant_phone: string;
   tenant_id_number: string;
+  residence_country: string;
+  residence_region: string;
+  residence_city: string;
+  residence_street: string;
+  residence_postal: string;
+  residence_status: string;
   monthly_rent: string;
   deposit_amount: string;
   start_date: string;
@@ -34,18 +40,41 @@ type LeaseForm = {
   additional_terms: string;
 };
 
+const RESIDENCE_STATUS_OPTIONS = ['RENTING', 'OWNING', 'LIVING_WITH_FAMILY', 'OTHER'];
+
 const emptyLeaseForm = (): LeaseForm => ({
   unit_id: '',
   tenant_full_name: '',
   tenant_email: '',
   tenant_phone: '',
   tenant_id_number: '',
+  residence_country: 'Namibia',
+  residence_region: '',
+  residence_city: '',
+  residence_street: '',
+  residence_postal: '',
+  residence_status: 'RENTING',
   monthly_rent: '',
   deposit_amount: '',
   start_date: '',
   end_date: '',
   payment_method: 'PLATFORM',
   additional_terms: '',
+});
+
+const residenceFromUnit = (unit?: {
+  address_country?: string;
+  address_suburb?: string;
+  address_city?: string;
+  address_street?: string;
+  address_postcode?: string;
+}) => ({
+  residence_country: unit?.address_country || 'Namibia',
+  residence_region: unit?.address_suburb || '',
+  residence_city: unit?.address_city || '',
+  residence_street: unit?.address_street || '',
+  residence_postal: unit?.address_postcode || '',
+  residence_status: 'RENTING',
 });
 
 const downloadPdf = (blob: Blob, filename: string) => {
@@ -101,7 +130,13 @@ export default function AttachmentsPage() {
       const allUnits = list.flatMap((property: any) =>
         (property.units || []).map((unit: any) => ({
           ...unit,
+          property_id: property.id,
           property_name: property.property_name,
+          address_street: property.address_street,
+          address_suburb: property.address_suburb,
+          address_city: property.address_city,
+          address_postcode: property.address_postcode,
+          address_country: property.address_country,
         })),
       );
       setUnits(allUnits);
@@ -149,12 +184,22 @@ export default function AttachmentsPage() {
     }
   };
 
+  const buildTenantResidence = () => ({
+    country: leaseForm.residence_country.trim(),
+    region: leaseForm.residence_region.trim(),
+    city: leaseForm.residence_city.trim(),
+    street_address: leaseForm.residence_street.trim(),
+    postal_code: leaseForm.residence_postal.trim() || undefined,
+    residential_status: leaseForm.residence_status,
+  });
+
   const buildLeasePayload = () => ({
     unit_id: leaseForm.unit_id,
     tenant_full_name: leaseForm.tenant_full_name.trim(),
     tenant_email: leaseForm.tenant_email.trim() || undefined,
     tenant_phone: leaseForm.tenant_phone.trim() || undefined,
     tenant_id_number: leaseForm.tenant_id_number.trim() || undefined,
+    tenant_residence: buildTenantResidence(),
     monthly_rent: Number(leaseForm.monthly_rent),
     deposit_amount: leaseForm.deposit_amount ? Number(leaseForm.deposit_amount) : undefined,
     start_date: leaseForm.start_date,
@@ -204,6 +249,7 @@ export default function AttachmentsPage() {
       await api.post('/landlords/leases', {
         unit_id: payload.unit_id,
         tenant_email: payload.tenant_email,
+        tenant_residence: payload.tenant_residence,
         monthly_rent: payload.monthly_rent,
         payment_method: payload.payment_method,
         start_date: payload.start_date,
@@ -221,12 +267,14 @@ export default function AttachmentsPage() {
 
   const onUnitChange = (unitId: string) => {
     const unit = units.find((u) => u.id === unitId);
+    const residenceDefaults = residenceFromUnit(unit);
     setLeaseForm((prev) => ({
       ...prev,
       unit_id: unitId,
       monthly_rent: unit?.monthly_rent != null ? String(unit.monthly_rent) : prev.monthly_rent,
       deposit_amount:
         prev.deposit_amount || (unit?.monthly_rent != null ? String(unit.monthly_rent) : prev.deposit_amount),
+      ...residenceDefaults,
     }));
   };
 
@@ -235,11 +283,19 @@ export default function AttachmentsPage() {
     void loadProperties();
   };
 
+  const residenceValid =
+    leaseForm.residence_country.trim() &&
+    leaseForm.residence_region.trim() &&
+    leaseForm.residence_city.trim() &&
+    leaseForm.residence_street.trim() &&
+    leaseForm.residence_status;
+
   const leaseFormValid =
     leaseForm.unit_id &&
     leaseForm.tenant_full_name.trim().length >= 2 &&
     leaseForm.start_date &&
-    Number(leaseForm.monthly_rent) > 0;
+    Number(leaseForm.monthly_rent) > 0 &&
+    residenceValid;
 
   if (loading || !user) {
     return <p className="text-sm text-slate-500">Loading partner workspace…</p>;
@@ -435,6 +491,84 @@ export default function AttachmentsPage() {
               />
             </div>
 
+            <div className="sm:col-span-2 mt-2 border-t border-slate-100 pt-4">
+              <h3 className="text-sm font-semibold text-[#1A1A1A]">Tenant residence (for KYC verification)</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Where the tenant will live under this lease. Pre-filled from the property — edit if needed. Used to cross-check
+                the tenant&apos;s KYC submission (they do not see these values).
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Country <span className="text-[#C0392B]">*</span>
+              </label>
+              <input
+                className={landlordInputClass}
+                value={leaseForm.residence_country}
+                onChange={(e) => setLeaseForm((f) => ({ ...f, residence_country: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Region / Province <span className="text-[#C0392B]">*</span>
+              </label>
+              <input
+                className={landlordInputClass}
+                value={leaseForm.residence_region}
+                onChange={(e) => setLeaseForm((f) => ({ ...f, residence_region: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                City / Town <span className="text-[#C0392B]">*</span>
+              </label>
+              <input
+                className={landlordInputClass}
+                value={leaseForm.residence_city}
+                onChange={(e) => setLeaseForm((f) => ({ ...f, residence_city: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Postal code</label>
+              <input
+                className={landlordInputClass}
+                value={leaseForm.residence_postal}
+                onChange={(e) => setLeaseForm((f) => ({ ...f, residence_postal: e.target.value }))}
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Street address <span className="text-[#C0392B]">*</span>
+              </label>
+              <input
+                className={landlordInputClass}
+                value={leaseForm.residence_street}
+                onChange={(e) => setLeaseForm((f) => ({ ...f, residence_street: e.target.value }))}
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Residential status <span className="text-[#C0392B]">*</span>
+              </label>
+              <select
+                className={landlordSelectClass}
+                value={leaseForm.residence_status}
+                onChange={(e) => setLeaseForm((f) => ({ ...f, residence_status: e.target.value }))}
+              >
+                {RESIDENCE_STATUS_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt.replace(/_/g, ' ')}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Monthly rent (N$) <span className="text-[#C0392B]">*</span>
@@ -530,7 +664,7 @@ export default function AttachmentsPage() {
           </div>
 
           <p className="mt-4 text-xs text-slate-500">
-            Required for a valid document: unit, tenant legal name, monthly rent, and start date. This template is for convenience only;
+            Required: unit, tenant legal name, tenant residence, monthly rent, and start date. This template is for convenience only;
             seek legal advice before signing. Registering on CRENIT links rent tracking and credit reporting when the tenant accepts.
           </p>
         </section>

@@ -10,7 +10,14 @@ import { useAuth } from '../../../src/contexts/AuthContext';
 import MarketingNav from './MarketingNav';
 import Logo from '../ui/Logo';
 
-export type NavItem = { label: string; href: string; icon?: string | LucideIcon; section?: string };
+export type NavItem = {
+  label: string;
+  href: string;
+  icon?: string | LucideIcon;
+  section?: string;
+  locked?: boolean;
+  lockReason?: string;
+};
 
 /** Lucide icons can be functions or forward-ref objects ({ $$typeof, render }) */
 function resolveNavIcon(icon: NavItem['icon']): LucideIcon | null {
@@ -26,6 +33,7 @@ export type DashboardShellProps = {
   navItems: NavItem[];
   children: ReactNode;
   banner?: ReactNode;
+  headerBadge?: ReactNode;
 };
 
 function dashboardPill(role: DashboardShellProps['role']) {
@@ -47,6 +55,7 @@ export default function DashboardShell({
   navItems,
   children,
   banner,
+  headerBadge,
 }: DashboardShellProps) {
   const pathname = usePathname();
   const { logout } = useAuth();
@@ -119,27 +128,37 @@ export default function DashboardShell({
                   {item.section}
                 </p>
               ) : null}
-            <Link
-              href={item.href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                active
-                  ? isPolishedShell
-                    ? 'bg-[#C0392B] text-white shadow-md shadow-[#C0392B]/20'
-                    : 'bg-[#1A1A2E] text-white'
-                  : isPolishedShell
-                    ? 'text-slate-700 hover:bg-[#FDEDEC]'
-                    : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              {NavIcon ? (
-                <NavIcon className="h-4 w-4 shrink-0" aria-hidden />
-              ) : typeof item.icon === 'string' ? (
-                <span className="text-base" aria-hidden>
-                  {item.icon}
-                </span>
-              ) : null}
-              {item.label}
-            </Link>
+            {item.locked ? (
+              <span
+                title={item.lockReason || 'Complete verification to unlock'}
+                className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400"
+              >
+                {NavIcon ? <NavIcon className="h-4 w-4 shrink-0 opacity-50" aria-hidden /> : null}
+                {item.label}
+              </span>
+            ) : (
+              <Link
+                href={item.href}
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  active
+                    ? isPolishedShell
+                      ? 'bg-[#C0392B] text-white shadow-md shadow-[#C0392B]/20'
+                      : 'bg-[#1A1A2E] text-white'
+                    : isPolishedShell
+                      ? 'text-slate-700 hover:bg-[#FDEDEC]'
+                      : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {NavIcon ? (
+                  <NavIcon className="h-4 w-4 shrink-0" aria-hidden />
+                ) : typeof item.icon === 'string' ? (
+                  <span className="text-base" aria-hidden>
+                    {item.icon}
+                  </span>
+                ) : null}
+                {item.label}
+              </Link>
+            )}
             </div>
           );
         })}
@@ -170,6 +189,7 @@ export default function DashboardShell({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {headerBadge}
             <Link href={pill.href} className={`rounded-full px-4 py-2 text-sm font-semibold ${pill.className}`}>
               {pill.label}
             </Link>

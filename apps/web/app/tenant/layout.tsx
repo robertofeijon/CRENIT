@@ -60,7 +60,7 @@ export default function TenantLayout({ children }: { children: ReactNode }) {
   const banner =
     !isKycApproved(kycStatus) && pathname !== '/tenant/kyc' ? (
       <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-        {kycStatus === 'PENDING'
+        {kycStatus === 'PENDING' || kycStatus === 'PENDING_REVIEW'
           ? 'Your verification is under review. Payments and downloadable reports stay locked until approval.'
           : kycStatus === 'REJECTED'
             ? 'Verification was rejected — open KYC to see the reason and re-upload documents.'

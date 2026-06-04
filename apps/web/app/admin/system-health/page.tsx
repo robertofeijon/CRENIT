@@ -20,11 +20,22 @@ export default function AdminSystemHealthPage() {
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingSnapshot, setLoadingSnapshot] = useState(false);
+  const [smokeResult, setSmokeResult] = useState<any>(null);
+  const [loadingSmoke, setLoadingSmoke] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/auth');
     if (!loading && user && role !== 'ADMIN') router.replace('/auth');
   }, [loading, user, role, router]);
+
+  const runSmoke = useCallback(() => {
+    setLoadingSmoke(true);
+    api
+      .post('/admin/system-health/smoke')
+      .then((res) => setSmokeResult(res.data?.data || null))
+      .catch((err: any) => setError(err?.response?.data?.message || 'Smoke test failed.'))
+      .finally(() => setLoadingSmoke(false));
+  }, []);
 
   const loadHealth = useCallback(() => {
     setLoadingSnapshot(true);
@@ -59,15 +70,25 @@ export default function AdminSystemHealthPage() {
         title="System health"
         subtitle="Live probes against Supabase tables and admin audit activity — refreshed on demand."
         actions={
-          <button
-            type="button"
-            onClick={loadHealth}
-            disabled={loadingSnapshot}
-            className="inline-flex items-center gap-2 rounded-full bg-[#C0392B] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#C0392B]/20 disabled:opacity-60"
-          >
-            <RefreshCw className={`h-4 w-4 ${loadingSnapshot ? 'animate-spin' : ''}`} aria-hidden />
-            Run health check
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={loadHealth}
+              disabled={loadingSnapshot}
+              className="inline-flex items-center gap-2 rounded-full bg-[#C0392B] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#C0392B]/20 disabled:opacity-60"
+            >
+              <RefreshCw className={`h-4 w-4 ${loadingSnapshot ? 'animate-spin' : ''}`} aria-hidden />
+              Run health check
+            </button>
+            <button
+              type="button"
+              onClick={runSmoke}
+              disabled={loadingSmoke}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-[#1A1A1A] disabled:opacity-60"
+            >
+              {loadingSmoke ? 'Running smoke…' : 'Run smoke tests'}
+            </button>
+          </div>
         }
       />
 
@@ -87,6 +108,24 @@ export default function AdminSystemHealthPage() {
       </p>
 
       {error ? <ErrorStateCard message={error} onRetry={loadHealth} /> : null}
+
+      {smokeResult ? (
+        <section
+          className={`rounded-[1.5rem] border p-5 ${smokeResult.passed ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}
+        >
+          <p className="font-semibold text-[#1A1A1A]">
+            Smoke tests: {smokeResult.pass_count}/{smokeResult.total}{' '}
+            {smokeResult.passed ? 'passed' : '— review failures'}
+          </p>
+          <ul className="mt-3 space-y-1 text-sm">
+            {(smokeResult.checks || []).map((c: any) => (
+              <li key={c.name} className={c.pass ? 'text-emerald-800' : 'text-amber-900'}>
+                {c.pass ? '✓' : '✗'} {c.name}: {c.detail}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <p className="text-sm text-slate-600">
         Related:{' '}
@@ -124,13 +163,44 @@ export default function AdminSystemHealthPage() {
               accent="dark"
             />
             <AdminStatCard
-              label="Error signals"
-              value={snapshot.recent_errors?.length ?? 0}
-              sub="From admin audit (7d view)"
+              label="Open alerts"
+              value={snapshot.summary?.open_alerts ?? 0}
+              sub="Schedulers, SMTP, probes"
               icon={AlertTriangle}
-              accent={(snapshot.recent_errors?.length ?? 0) > 0 ? 'warning' : 'default'}
+              accent={(snapshot.summary?.open_alerts ?? 0) > 0 ? 'warning' : 'default'}
             />
           </section>
+
+          {(snapshot.alerts || []).length > 0 ? (
+            <section className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5">
+              <h2 className="font-semibold text-[#1A1A1A]">Active alerts</h2>
+              <ul className="mt-3 space-y-2 text-sm text-amber-900">
+                {snapshot.alerts.map((a: any) => (
+                  <li key={a.code}>
+                    <span className="font-semibold uppercase text-xs">{a.severity}</span> — {a.message}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {(snapshot.schedulers || []).length > 0 ? (
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="font-semibold text-[#1A1A1A]">Scheduler heartbeats</h2>
+              <p className="mt-1 text-xs text-slate-500">Last run since API process started (Namibia cron jobs).</p>
+              <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                {snapshot.schedulers.map((job: any) => (
+                  <li key={job.job} className="rounded-lg bg-[#F3F4F6] px-3 py-2 text-xs">
+                    <span className="font-semibold text-[#1A1A1A]">{job.job}</span>
+                    <span className={job.ok ? ' text-emerald-700' : ' text-rose-700'}>
+                      {' '}
+                      · {job.ok ? 'OK' : 'Failed'} · {new Date(job.last_run_at).toLocaleString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {(snapshot.services || []).map((svc: any) => (

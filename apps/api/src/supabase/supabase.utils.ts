@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 
 export async function getUserFromAuthHeader(client: SupabaseClient, authHeader?: string) {
   if (!authHeader || typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
@@ -102,7 +102,7 @@ export async function ensureUserProfile(client: SupabaseClient, user: any) {
         full_name,
         role,
         kyc_status: role === 'TENANT' ? 'NOT_SUBMITTED' : 'APPROVED',
-        partner_approval_status: role === 'LANDLORD' ? 'PENDING_APPROVAL' : 'APPROVED',
+        partner_approval_status: role === 'LANDLORD' ? 'UNVERIFIED' : 'APPROVED',
       },
     ], { onConflict: 'id' })
     .select()
@@ -115,11 +115,47 @@ export async function ensureUserProfile(client: SupabaseClient, user: any) {
   return created;
 }
 
-export async function getUserProfileFromAuthHeader(client: SupabaseClient, authHeader?: string) {
+export function isTwoFactorSessionActive(profile: {
+  two_factor_enabled?: boolean;
+  two_factor_verified_until?: string | null;
+}): boolean {
+  if (!profile?.two_factor_enabled) return true;
+  const until = profile.two_factor_verified_until;
+  if (!until) return false;
+  return new Date(until).getTime() > Date.now();
+}
+
+export function requiresTwoFactorVerification(profile: { role?: string; two_factor_enabled?: boolean }) {
+  if (process.env.TWO_FACTOR_ENFORCEMENT === 'false') return false;
+  const role = profile?.role?.toString().toUpperCase();
+  if (role !== 'ADMIN' && role !== 'LANDLORD') return false;
+  return Boolean(profile?.two_factor_enabled);
+}
+
+export function assertTwoFactorVerified(
+  profile: { role?: string; two_factor_enabled?: boolean; two_factor_verified_until?: string | null },
+) {
+  if (!requiresTwoFactorVerification(profile)) return;
+  if (isTwoFactorSessionActive(profile)) return;
+  throw new ForbiddenException({
+    message: 'Two-factor authentication required. Verify your authenticator code to continue.',
+    code: 'TWO_FACTOR_REQUIRED',
+  });
+}
+
+export async function getUserProfileFromAuthHeader(
+  client: SupabaseClient,
+  authHeader?: string,
+  options?: { skipTwoFactor?: boolean },
+) {
   const user = await getUserFromAuthHeader(client, authHeader);
   const profile = await ensureUserProfile(client, user);
   const role = resolveProfileRole(profile, user.email);
-  return { user, profile: { ...profile, role } };
+  const enriched = { ...profile, role };
+  if (!options?.skipTwoFactor) {
+    assertTwoFactorVerified(enriched);
+  }
+  return { user, profile: enriched };
 }
 
 export function assertRole(profile: { role?: string }, requiredRole: string) {
@@ -134,7 +170,7 @@ export function assertRole(profile: { role?: string }, requiredRole: string) {
 export function assertPartnerApproved(profile: { role?: string; partner_approval_status?: string }, message?: string) {
   const role = profile?.role?.toString().toUpperCase();
   if (role !== 'LANDLORD') return;
-  const status = profile?.partner_approval_status?.toString().toUpperCase() || 'APPROVED';
+  const status = profile?.partner_approval_status?.toString().toUpperCase() || 'UNVERIFIED';
   if (status !== 'APPROVED') {
     throw new UnauthorizedException(
       message || 'Your landlord account is under review. You can continue once partner approval is complete.',

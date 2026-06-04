@@ -19,6 +19,7 @@ import { SupabaseModule } from './supabase/supabase.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { SettingsModule } from './settings/settings.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { OpsModule } from './ops/ops.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { NotificationsModule } from './notifications/notifications.module';
       envFilePath: [join(process.cwd(), '.env'), join(process.cwd(), '../../.env')],
     }),
     ScheduleModule.forRoot(),
+    OpsModule,
     SupabaseModule,
     AuthModule,
     KycModule,

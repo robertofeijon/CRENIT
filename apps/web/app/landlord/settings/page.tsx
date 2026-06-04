@@ -20,7 +20,8 @@ export default function LandlordSettingsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [setupCode, setSetupCode] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [manualKey, setManualKey] = useState<string | null>(null);
   const [confirmCode, setConfirmCode] = useState('');
   const [notificationPrefs, setNotificationPrefs] = useState<any>(null);
 
@@ -67,7 +68,8 @@ export default function LandlordSettingsPage() {
     setIsLoading(true);
     try {
       const res = await api.post('/auth/2fa/setup');
-      setSetupCode(res.data.data.verification_code);
+      setQrDataUrl(res.data.data.qr_data_url || null);
+      setManualKey(res.data.data.manual_entry_key || null);
       setMessage(res.data.data.message);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to start 2FA setup.');
@@ -80,7 +82,8 @@ export default function LandlordSettingsPage() {
     setIsLoading(true);
     try {
       await api.post('/auth/2fa/confirm', { code: confirmCode });
-      setSetupCode(null);
+      setQrDataUrl(null);
+      setManualKey(null);
       setConfirmCode('');
       setMessage('2FA enabled.');
       await loadSettings();
@@ -190,10 +193,16 @@ export default function LandlordSettingsPage() {
             {twoFactor?.enabled ? 'Enabled' : 'Disabled'}
           </span>
         </p>
-        {setupCode ? (
-          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            Setup code: <strong>{setupCode}</strong>
-          </p>
+        {qrDataUrl ? (
+          <div className="mt-4 flex flex-col items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrDataUrl} alt="Authenticator QR code" className="h-36 w-36 rounded-lg bg-white p-2" />
+            {manualKey ? (
+              <p className="text-sm text-amber-900">
+                Or enter manually: <strong className="font-mono text-xs">{manualKey}</strong>
+              </p>
+            ) : null}
+          </div>
         ) : null}
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <input value={confirmCode} onChange={(e) => setConfirmCode(e.target.value)} placeholder="6-digit code" className={`${landlordInputClass} w-40`} maxLength={6} />

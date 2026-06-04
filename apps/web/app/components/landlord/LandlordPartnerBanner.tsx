@@ -9,11 +9,23 @@ export type PartnerBannerState = {
   businessName?: string;
 };
 
-export default function LandlordPartnerBanner({ state }: { state: PartnerBannerState | null }) {
+import type { VerificationDisplayStatus } from './LandlordVerificationBadge';
+
+export default function LandlordPartnerBanner({
+  state,
+  verificationStatus,
+}: {
+  state: PartnerBannerState | null;
+  verificationStatus?: VerificationDisplayStatus;
+}) {
   if (!state) return null;
 
   const status = (state.partnerStatus || '').toUpperCase();
-  const pendingApproval = status === 'PENDING_APPROVAL' || status === 'PENDING';
+  const pendingApproval =
+    verificationStatus === 'PENDING_REVIEW' ||
+    status === 'PENDING_REVIEW' ||
+    status === 'PENDING_APPROVAL' ||
+    status === 'PENDING';
   const suspended = status === 'SUSPENDED';
   const awaitingDirect = Number(state.awaitingDirectConfirmations || 0) > 0;
 
@@ -30,9 +42,7 @@ export default function LandlordPartnerBanner({ state }: { state: PartnerBannerS
               {state.businessName ? `${state.businessName} is` : 'Your account is'} being verified by CRENIT. Some
               features may be limited until approval.
             </p>
-            <Link href="/landlord/onboarding" className="mt-2 inline-block font-semibold text-[#C0392B] hover:underline">
-              View onboarding status →
-            </Link>
+            <p className="mt-2 text-xs text-amber-800/80">Use the verification panel from your overview banner to check status.</p>
           </div>
         </div>
       ) : null}

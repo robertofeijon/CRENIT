@@ -11,6 +11,8 @@ interface AuthContextValue {
   session: Session | null;
   loading: boolean;
   roleReady: boolean;
+  twoFactorRequired: boolean;
+  refreshAuthProfile: () => Promise<void>;
   login: (email: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
   register: (email: string, password: string, full_name: string, role: string, marketDataConsent?: boolean) => Promise<any>;
@@ -30,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [apiRole, setApiRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [roleReady, setRoleReady] = useState(false);
+  const [twoFactorRequired, setTwoFactorRequired] = useState(false);
   const hydrateGeneration = useRef(0);
 
   const hydrateFromSession = useCallback(async (nextSession: Session | null) => {
@@ -40,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!nextSession?.access_token) {
       setApiRole(null);
+      setTwoFactorRequired(false);
       setRoleReady(true);
       setLoading(false);
       return;
@@ -54,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (generation !== hydrateGeneration.current) return;
 
       const profile = me.data?.data?.profile;
+      setTwoFactorRequired(Boolean(me.data?.data?.two_factor_required));
       if (profile?.role) {
         setApiRole(profile.role.toString().toUpperCase());
       } else {
@@ -61,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch {
       if (generation !== hydrateGeneration.current) return;
+      setTwoFactorRequired(false);
       setApiRole(roleFromUserMetadata(nextSession.user));
     } finally {
       if (generation === hydrateGeneration.current) {
@@ -123,9 +129,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return roleFromUserMetadata(user);
   }, [user, apiRole]);
 
+  const refreshAuthProfile = useCallback(async () => {
+    const {
+      data: { session: currentSession },
+    } = await supabase.auth.getSession();
+    await hydrateFromSession(currentSession);
+  }, [hydrateFromSession]);
+
   const value = useMemo(
-    () => ({ user, role, session, loading, roleReady, login, logout, register }),
-    [user, role, session, loading, roleReady],
+    () => ({
+      user,
+      role,
+      session,
+      loading,
+      roleReady,
+      twoFactorRequired,
+      refreshAuthProfile,
+      login,
+      logout,
+      register,
+    }),
+    [user, role, session, loading, roleReady, twoFactorRequired, refreshAuthProfile],
   );
 
   async function register(

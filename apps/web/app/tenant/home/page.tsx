@@ -111,14 +111,9 @@ export default function TenantHomePage() {
   const name = data?.profile?.full_name ?? user.email?.split('@')[0] ?? 'there';
   const score = data?.score?.score ?? '—';
   const tier = data?.score?.tier ?? 'BUILDING';
-  const streak = data?.recentPayments?.filter((p: { status: string }) => p.status === 'PAID').length ?? 0;
-  const onTime =
-    data?.recentPayments?.length > 0
-      ? Math.round(
-          (data.recentPayments.filter((p: { status: string }) => p.status === 'PAID').length / data.recentPayments.length) *
-            100,
-        )
-      : 0;
+  const paymentMetrics = data?.paymentMetrics;
+  const streak = paymentMetrics?.consecutive_on_time_streak ?? 0;
+  const onTime = paymentMetrics?.on_time_rate_pct ?? 0;
   const next = upcoming?.next_payment;
   const daysUntil = next?.days_until_due ?? null;
   const showAlert = daysUntil != null && daysUntil <= 3;
@@ -267,8 +262,12 @@ export default function TenantHomePage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <LandlordStatCard label="Current score" value={score} icon={TrendingUp} />
         <LandlordStatCard label="Score tier" value={tier} />
-        <LandlordStatCard label="Paid streak" value={streak} icon={CreditCard} />
-        <LandlordStatCard label="On-time rate" value={`${onTime}%`} accent={onTime >= 80 ? 'success' : 'default'} />
+        <LandlordStatCard label="On-time streak" value={`${streak} mo`} icon={CreditCard} />
+        <LandlordStatCard
+          label="On-time rate (12 mo)"
+          value={`${onTime}%`}
+          accent={onTime >= 80 ? 'success' : 'default'}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
