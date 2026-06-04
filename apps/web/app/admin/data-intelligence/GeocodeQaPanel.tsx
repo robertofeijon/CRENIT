@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import api from '../../../src/lib/api';
 
 type QaReport = {
@@ -9,7 +10,10 @@ type QaReport = {
   summary: Record<string, number>;
   flags: Array<{
     payment_id: string;
+    property_id: string | null;
+    property_name: string | null;
     record_suburb: string;
+    captured_property_suburb: string | null;
     property_suburb: string | null;
     tenant_suburb: string | null;
     issues: string[];
@@ -20,11 +24,50 @@ type QaReport = {
 
 const ISSUE_LABELS: Record<string, string> = {
   property_suburb_mismatch: 'Record suburb ≠ property',
+  property_suburb_changed_since_capture: 'Property suburb edited after capture',
   tenant_property_suburb_mismatch: 'Tenant profile ≠ property',
   missing_property_geo: 'Property missing lat/lng',
   geo_drift: 'Record vs property geo > 1.5km',
   missing_property_link: 'Payment not linked to property',
 };
+
+function exportFlagsCsv(flags: QaReport['flags']) {
+  const header = [
+    'payment_id',
+    'property_id',
+    'property_name',
+    'record_suburb',
+    'captured_property_suburb',
+    'property_suburb',
+    'tenant_suburb',
+    'issues',
+    'distance_m',
+    'captured_at',
+  ];
+  const rows = flags.map((f) =>
+    [
+      f.payment_id,
+      f.property_id ?? '',
+      f.property_name ?? '',
+      f.record_suburb,
+      f.captured_property_suburb ?? '',
+      f.property_suburb ?? '',
+      f.tenant_suburb ?? '',
+      f.issues.join('|'),
+      f.distance_m ?? '',
+      f.captured_at,
+    ]
+      .map((c) => `"${String(c).replace(/"/g, '""')}"`)
+      .join(','),
+  );
+  const blob = new Blob([[header.join(','), ...rows].join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `crenit-geocode-qa-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function GeocodeQaPanel({ onError }: { onError: (message: string) => void }) {
   const [report, setReport] = useState<QaReport | null>(null);
@@ -57,20 +100,31 @@ export default function GeocodeQaPanel({ onError }: { onError: (message: string)
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-slate-600">
-          Compares each captured payment&apos;s <strong>record suburb</strong> to the linked <strong>property</strong> and{' '}
-          <strong>tenant profile</strong> suburbs, plus geo drift when coordinates exist.
+          Compares captured <strong>record suburb</strong> to the linked <strong>property</strong> (current and at capture),{' '}
+          <strong>tenant profile</strong> suburb, and geo when coordinates exist.
         </p>
-        <button
-          type="button"
-          onClick={() => void load()}
-          disabled={loading}
-          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-50"
-        >
-          {loading ? 'Scanning…' : 'Rescan'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {report.flags.length ? (
+            <button
+              type="button"
+              onClick={() => exportFlagsCsv(report.flags)}
+              className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold"
+            >
+              Export CSV
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={loading}
+            className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-50"
+          >
+            {loading ? 'Scanning…' : 'Rescan'}
+          </button>
+        </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <p className="text-xs uppercase text-slate-500">Scanned</p>
           <p className="text-2xl font-semibold">{report.scanned}</p>
@@ -94,8 +148,10 @@ export default function GeocodeQaPanel({ onError }: { onError: (message: string)
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-3 py-2">Record suburb</th>
                 <th className="px-3 py-2">Property</th>
+                <th className="px-3 py-2">Record</th>
+                <th className="px-3 py-2">At capture</th>
+                <th className="px-3 py-2">Current</th>
                 <th className="px-3 py-2">Tenant</th>
                 <th className="px-3 py-2">Issues</th>
                 <th className="px-3 py-2">Geo Δ</th>
@@ -104,7 +160,20 @@ export default function GeocodeQaPanel({ onError }: { onError: (message: string)
             <tbody>
               {report.flags.map((f) => (
                 <tr key={f.payment_id} className="border-t border-slate-100">
+                  <td className="px-3 py-2">
+                    {f.property_name ? (
+                      <span className="font-medium">{f.property_name}</span>
+                    ) : (
+                      '—'
+                    )}
+                    {f.property_id ? (
+                      <Link href="/landlord/properties" className="mt-1 block text-xs text-[#C0392B] hover:underline">
+                        Review properties
+                      </Link>
+                    ) : null}
+                  </td>
                   <td className="px-3 py-2 font-medium">{f.record_suburb}</td>
+                  <td className="px-3 py-2 text-slate-600">{f.captured_property_suburb ?? '—'}</td>
                   <td className="px-3 py-2 text-slate-600">{f.property_suburb ?? '—'}</td>
                   <td className="px-3 py-2 text-slate-600">{f.tenant_suburb ?? '—'}</td>
                   <td className="px-3 py-2">

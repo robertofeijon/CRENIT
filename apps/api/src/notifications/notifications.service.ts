@@ -110,7 +110,10 @@ export class NotificationsService {
 
     const userName = profile?.full_name || 'CRENIT user';
     const preferenceKey = this.resolvePreferenceKey(type);
-    const eventAllowed = preferenceKey ? prefs?.[preferenceKey] !== false : true;
+    let eventAllowed = preferenceKey ? prefs?.[preferenceKey] !== false : true;
+    if (type.includes('MARKET')) {
+      eventAllowed = prefs?.market_intelligence_alerts !== false;
+    }
 
     const emailContent = this.getEmailSubjectAndMessage(type, title, message, metadata);
     if (prefs?.email_enabled !== false && eventAllowed) {

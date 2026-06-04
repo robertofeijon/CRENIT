@@ -83,6 +83,7 @@ export class SettingsController {
       kyc_updates?: boolean;
       lease_events?: boolean;
       deposit_events?: boolean;
+      market_intelligence_alerts?: boolean;
     },
   ) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);

@@ -36,4 +36,8 @@ export class MarketDataService {
   async getSaleCompsForSuburb(suburb: string) {
     return this.marketIntelligence.getSaleCompsForSuburb(suburb);
   }
+
+  async getLicensableAlerts(landlordUserId: string) {
+    return this.marketIntelligence.getPortalLandlordLicensableAlerts(landlordUserId);
+  }
 }

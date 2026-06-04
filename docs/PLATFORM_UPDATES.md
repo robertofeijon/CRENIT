@@ -284,7 +284,7 @@ See also `docs/MARKET_INTELLIGENCE.md` and `docs/pull-requests/feat-market-intel
 
 ## 10. Deployment checklist
 
-1. Run migrations `0026`–`0030` on Supabase (`0030` = landlord licensable email dedupe log).  
+1. Run migrations `0026`–`0032` on Supabase (`0031` capture suburb snapshot, `0032` market alert pref).  
 2. Ensure `kyc-documents` storage bucket exists and API service role can upload.  
 3. Configure SMTP env vars for Nodemailer.  
 4. Restart API + web after deploy.  

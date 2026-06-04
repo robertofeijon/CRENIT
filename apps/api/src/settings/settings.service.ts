@@ -190,6 +190,7 @@ export class SettingsService {
       kyc_updates?: boolean;
       lease_events?: boolean;
       deposit_events?: boolean;
+      market_intelligence_alerts?: boolean;
     },
   ) {
     const client = this.getClient();
@@ -203,6 +204,7 @@ export class SettingsService {
       'kyc_updates',
       'lease_events',
       'deposit_events',
+      'market_intelligence_alerts',
     ]) {
       if (body[key as keyof typeof body] !== undefined) {
         patch[key] = body[key as keyof typeof body] as unknown;

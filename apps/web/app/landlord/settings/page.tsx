@@ -231,6 +231,7 @@ export default function LandlordSettingsPage() {
               ['kyc_updates', 'KYC updates'],
               ['lease_events', 'Lease events'],
               ['deposit_events', 'Deposit events'],
+              ['market_intelligence_alerts', 'Market intelligence (licensable suburbs)'],
             ].map(([key, label]) => (
               <label key={key} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-[#F3F4F6] p-3 text-sm">
                 <input

@@ -255,6 +255,9 @@ Recommended wording:
 - Sale comps **CSV upload** (`POST /admin/data-intelligence/sale-comps/csv-ingest`).
 - Webhook delivery filters: failed only / pending retry.
 - Landlord **email + in-app** alert when their suburb becomes licensable (migration `0030`).
+- Capture-time suburb snapshot on records (`0031`) + **property edited after capture** QA flag.
+- Landlord portal **licensable alerts** banner (`GET /market-data/licensable-alerts`).
+- Notification pref `market_intelligence_alerts` (`0032`) to opt out of licensable emails.
 
 ### Backlog
 

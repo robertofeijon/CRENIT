@@ -53,6 +53,7 @@ export default function LandlordMarketDataPage() {
   const [compareRent, setCompareRent] = useState('');
   const [compareResult, setCompareResult] = useState<any>(null);
   const [saleComps, setSaleComps] = useState<any>(null);
+  const [licensableAlerts, setLicensableAlerts] = useState<any[]>([]);
   const [compareBusy, setCompareBusy] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +76,12 @@ export default function LandlordMarketDataPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [summaryRes, suburbsRes] = await Promise.all([api.get('/market-data/summary'), api.get('/market-data/suburbs')]);
+      const [summaryRes, suburbsRes, alertsRes] = await Promise.all([
+        api.get('/market-data/summary'),
+        api.get('/market-data/suburbs'),
+        api.get('/market-data/licensable-alerts'),
+      ]);
+      setLicensableAlerts(alertsRes.data.data?.alerts ?? []);
       setSummary(summaryRes.data.data);
       setDataSource(summaryRes.data.data?.data_source ?? suburbsRes.data.meta?.data_source);
       setDataSourceLabel(summaryRes.data.data?.data_source_label ?? suburbsRes.data.meta?.data_source_label);
@@ -171,6 +177,24 @@ export default function LandlordMarketDataPage() {
           </div>
         }
       />
+
+      {licensableAlerts.length ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+          <p className="font-semibold text-emerald-950">Your portfolio includes commercially licensable suburbs</p>
+          <ul className="mt-3 space-y-2 text-sm text-emerald-900">
+            {licensableAlerts.map((a: any) => (
+              <li key={`${a.suburb}-${a.city}`}>
+                <strong>{a.suburb}</strong> ({a.city}) — {a.transaction_count} verified samples
+                {a.median_rent != null ? ` · median ${formatN$(a.median_rent)}` : ''}
+                {a.properties?.length ? ` · ${a.properties.map((p: { name: string }) => p.name).join(', ')}` : ''}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-xs text-emerald-800">
+            B2B-grade benchmarks are available for these areas. Compare your units below or review suburb detail in the explorer.
+          </p>
+        </div>
+      ) : null}
 
       {dataSourceLabel ? (
         <p className="text-sm text-slate-600">

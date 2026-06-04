@@ -62,6 +62,17 @@ export class LandlordLicensableNotifyService {
           continue;
         }
 
+        const { data: prefs } = await client
+          .from('notification_preferences')
+          .select('email_enabled, market_intelligence_alerts')
+          .eq('profile_id', landlord.user_id)
+          .maybeSingle();
+        if (prefs?.market_intelligence_alerts === false) {
+          skipped += 1;
+          continue;
+        }
+        const emailAllowed = prefs?.email_enabled !== false;
+
         const { data: already } = await this.mi()
           .from('landlord_licensable_notify_log')
           .select('landlord_user_id')
@@ -100,7 +111,7 @@ export class LandlordLicensableNotifyService {
         ]);
         inApp += 1;
 
-        if (email) {
+        if (email && emailAllowed) {
           const html = `
             <p>Hi ${name},</p>
             <p><strong>${ev.suburb}</strong> (${ev.city}) now has <strong>${ev.transaction_count}</strong> verified CRENIT payment samples and is <strong>commercially licensable</strong> for market intelligence.</p>

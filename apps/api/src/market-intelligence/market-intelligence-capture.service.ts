@@ -91,6 +91,8 @@ export class MarketIntelligenceCaptureService {
         payment_id: payment.id,
         suburb: context.suburb,
         city: context.city,
+        captured_property_suburb: context.suburb,
+        captured_property_city: context.city,
         property_type: context.property_type,
         bedrooms: context.bedrooms,
         geo_lat: context.geo_lat,

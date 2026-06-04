@@ -1023,11 +1023,72 @@ export class MarketIntelligenceService {
     return this.ingestSaleCompsPilot(partnerClientId, records);
   }
 
+  async getPortalLandlordLicensableAlerts(landlordUserId: string) {
+    const client = this.supabase.getClient();
+    const { data: landlord } = await client.from('landlord_profiles').select('id').eq('user_id', landlordUserId).maybeSingle();
+    if (!landlord?.id) return { alerts: [] as Array<Record<string, unknown>> };
+
+    const { data: properties } = await client
+      .from('properties')
+      .select('id, property_name, address_suburb, address_city')
+      .eq('landlord_id', landlord.id);
+    if (!properties?.length) return { alerts: [] };
+
+    type SuburbBucket = { suburb: string; city: string; properties: { id: string; name: string }[] };
+    type WatchRow = { suburb: string; city: string; transaction_count: number; median_rent: number | null };
+
+    const bySuburb = new Map<string, SuburbBucket>();
+    for (const p of properties) {
+      if (!p.address_suburb) continue;
+      const city = p.address_city || 'Windhoek';
+      const key = `${p.address_suburb.toLowerCase()}::${city.toLowerCase()}`;
+      const entry: SuburbBucket = bySuburb.get(key) ?? { suburb: p.address_suburb, city, properties: [] };
+      entry.properties.push({ id: p.id, name: p.property_name || 'Property' });
+      bySuburb.set(key, entry);
+    }
+
+    const { data: watchRows } = await this.mi()
+      .from('licensable_suburb_watch')
+      .select('suburb, city, transaction_count, median_rent, commercially_licensable')
+      .eq('commercially_licensable', true);
+
+    const watchMap = new Map<string, WatchRow>(
+      (watchRows ?? []).map((w: WatchRow) => [
+        `${w.suburb.toLowerCase()}::${(w.city || 'Windhoek').toLowerCase()}`,
+        w,
+      ]),
+    );
+
+    const alerts: Array<{
+      suburb: string;
+      city: string;
+      transaction_count: number;
+      median_rent: number | null;
+      properties: { id: string; name: string }[];
+      message: string;
+    }> = [];
+    for (const [key, meta] of bySuburb) {
+      const w = watchMap.get(key);
+      if (!w) continue;
+      alerts.push({
+        suburb: meta.suburb,
+        city: meta.city,
+        transaction_count: w.transaction_count,
+        median_rent: w.median_rent,
+        properties: meta.properties,
+        message: `${meta.suburb} has enough verified payments for full market intelligence benchmarks.`,
+      });
+    }
+    return { alerts };
+  }
+
   async getGeocodeQaReport(limit = 120) {
     const client = this.supabase.getClient();
     const { data: records, error } = await this.mi()
       .from('market_data_records')
-      .select('id, payment_id, suburb, city, geo_lat, geo_lng, captured_at')
+      .select(
+        'id, payment_id, suburb, city, geo_lat, geo_lng, captured_at, captured_property_suburb, captured_property_city',
+      )
       .order('captured_at', { ascending: false })
       .limit(limit);
     if (error) throw error;
@@ -1035,6 +1096,7 @@ export class MarketIntelligenceService {
     const paymentIds = rows.map((r: { payment_id: string }) => r.payment_id).filter(Boolean);
 
     type PaymentCtx = {
+      property_id: string | null;
       property_suburb: string | null;
       property_city: string | null;
       property_name: string | null;
@@ -1069,6 +1131,7 @@ export class MarketIntelligenceService {
           const prop = (u as { properties?: Record<string, unknown> | Record<string, unknown>[] }).properties;
           const p = Array.isArray(prop) ? prop[0] : prop;
           propertyByUnit.set(u.id, {
+            property_id: (u as { property_id?: string }).property_id ?? null,
             property_suburb: (p?.address_suburb as string) ?? null,
             property_city: (p?.address_city as string) ?? null,
             property_name: (p?.property_name as string) ?? null,
@@ -1089,6 +1152,7 @@ export class MarketIntelligenceService {
         const lease = pay.lease_id ? leaseMap.get(pay.lease_id) : null;
         const propCtx = lease?.unit_id ? propertyByUnit.get(lease.unit_id) : undefined;
         ctxByPayment.set(pay.id, {
+          property_id: propCtx?.property_id ?? null,
           property_suburb: propCtx?.property_suburb ?? null,
           property_city: propCtx?.property_city ?? null,
           property_name: propCtx?.property_name ?? null,
@@ -1102,7 +1166,10 @@ export class MarketIntelligenceService {
     const GEO_DRIFT_METERS = 1500;
     const flags: Array<{
       payment_id: string;
+      property_id: string | null;
+      property_name: string | null;
       record_suburb: string;
+      captured_property_suburb: string | null;
       property_suburb: string | null;
       tenant_suburb: string | null;
       issues: string[];
@@ -1114,11 +1181,20 @@ export class MarketIntelligenceService {
       const ctx = ctxByPayment.get(rec.payment_id);
       const issues: string[] = [];
       let distance_m: number | null = null;
+      const capturedSuburb = (rec as { captured_property_suburb?: string }).captured_property_suburb ?? null;
 
       if (!ctx?.property_suburb) {
         issues.push('missing_property_link');
       } else if (!suburbsMatch(rec.suburb, ctx.property_suburb)) {
         issues.push('property_suburb_mismatch');
+      }
+
+      if (
+        capturedSuburb &&
+        ctx?.property_suburb &&
+        !suburbsMatch(capturedSuburb, ctx.property_suburb)
+      ) {
+        issues.push('property_suburb_changed_since_capture');
       }
 
       if (ctx?.tenant_suburb && ctx.property_suburb && !suburbsMatch(ctx.tenant_suburb, ctx.property_suburb)) {
@@ -1144,7 +1220,10 @@ export class MarketIntelligenceService {
       if (issues.length) {
         flags.push({
           payment_id: rec.payment_id,
+          property_id: ctx?.property_id ?? null,
+          property_name: ctx?.property_name ?? null,
           record_suburb: rec.suburb,
+          captured_property_suburb: capturedSuburb,
           property_suburb: ctx?.property_suburb ?? null,
           tenant_suburb: ctx?.tenant_suburb ?? null,
           issues,
@@ -1159,6 +1238,9 @@ export class MarketIntelligenceService {
       flagged_count: flags.length,
       summary: {
         property_suburb_mismatch: flags.filter((f) => f.issues.includes('property_suburb_mismatch')).length,
+        property_suburb_changed_since_capture: flags.filter((f) =>
+          f.issues.includes('property_suburb_changed_since_capture'),
+        ).length,
         tenant_property_suburb_mismatch: flags.filter((f) => f.issues.includes('tenant_property_suburb_mismatch')).length,
         missing_property_geo: flags.filter((f) => f.issues.includes('missing_property_geo')).length,
         geo_drift: flags.filter((f) => f.issues.includes('geo_drift')).length,

@@ -60,6 +60,13 @@ export class MarketDataController {
     return { success: true, data, error: null };
   }
 
+  @Get('licensable-alerts')
+  async getLicensableAlerts(@Headers('authorization') authHeader: string) {
+    const profile = await this.assertLandlordOrAdmin(authHeader);
+    const data = await this.marketDataService.getLicensableAlerts(profile.id);
+    return { success: true, data, error: null };
+  }
+
   @Get('compare')
   async compareRent(
     @Headers('authorization') authHeader: string,
