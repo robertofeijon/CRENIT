@@ -12,6 +12,7 @@ interface AuthContextValue {
   loading: boolean;
   roleReady: boolean;
   twoFactorRequired: boolean;
+  twoFactorSetupRequired: boolean;
   refreshAuthProfile: () => Promise<void>;
   login: (email: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [roleReady, setRoleReady] = useState(false);
   const [twoFactorRequired, setTwoFactorRequired] = useState(false);
+  const [twoFactorSetupRequired, setTwoFactorSetupRequired] = useState(false);
   const hydrateGeneration = useRef(0);
 
   const hydrateFromSession = useCallback(async (nextSession: Session | null) => {
@@ -44,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!nextSession?.access_token) {
       setApiRole(null);
       setTwoFactorRequired(false);
+      setTwoFactorSetupRequired(false);
       setRoleReady(true);
       setLoading(false);
       return;
@@ -59,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const profile = me.data?.data?.profile;
       setTwoFactorRequired(Boolean(me.data?.data?.two_factor_required));
+      setTwoFactorSetupRequired(Boolean(me.data?.data?.two_factor_setup_required));
       if (profile?.role) {
         setApiRole(profile.role.toString().toUpperCase());
       } else {
@@ -67,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       if (generation !== hydrateGeneration.current) return;
       setTwoFactorRequired(false);
+      setTwoFactorSetupRequired(false);
       setApiRole(roleFromUserMetadata(nextSession.user));
     } finally {
       if (generation === hydrateGeneration.current) {
@@ -144,12 +149,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       roleReady,
       twoFactorRequired,
+      twoFactorSetupRequired,
       refreshAuthProfile,
       login,
       logout,
       register,
     }),
-    [user, role, session, loading, roleReady, twoFactorRequired, refreshAuthProfile],
+    [user, role, session, loading, roleReady, twoFactorRequired, twoFactorSetupRequired, refreshAuthProfile],
   );
 
   async function register(

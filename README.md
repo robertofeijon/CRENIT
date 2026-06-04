@@ -68,7 +68,22 @@ RentCredit is a fintech monorepo scaffold for Namibia. The platform turns rent p
 4. Run `npm install` at the repository root
 5. Start development:
    - `npm run dev:api` — backend on port 3001
-   - `npm run dev:web` — frontend on port 3000
+   - `npm run dev:web` — frontend on port 3002
+
+## Staging validation
+
+After applying Supabase migrations (`docs/MIGRATION_RUNBOOK.md`):
+
+```bash
+npm run seed:demo          # demo users
+npm run dev              # API + web
+npm run staging:checklist # RLS + API E2E smoke
+npm run email:test you@example.com
+npm run test:metrics
+npm run test:e2e
+```
+
+Full manual steps: `docs/STAGING_RELEASE_CHECKLIST.md`. Gap audit: `docs/CRITICAL_GAPS.md`.
 
 ## Technology Stack
 

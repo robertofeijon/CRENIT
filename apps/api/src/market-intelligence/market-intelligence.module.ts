@@ -21,6 +21,11 @@ import { MarketIntelligenceService } from './market-intelligence.service';
     LandlordLicensableNotifyService,
     ConsentService,
   ],
-  exports: [MarketIntelligenceCaptureService, ConsentService, MarketIntelligenceService],
+  exports: [
+    MarketIntelligenceCaptureService,
+    ConsentService,
+    MarketIntelligenceService,
+    MarketIntelligenceSchedulerService,
+  ],
 })
 export class MarketIntelligenceModule {}

@@ -129,6 +129,26 @@ async function main() {
     if (!body?.data?.stats) throw new Error('Missing overview stats');
   });
 
+  await run('Landlord confirm pending payment (if any)', async () => {
+    const listRes = await jsonFetch(`${API}/landlords/payments?status=PENDING&limit=5`, {
+      headers: { Authorization: `Bearer ${landlordToken}` },
+    });
+    if (!listRes.res.ok) throw new Error(listRes.body?.message || 'payments list failed');
+    const payments = listRes.body?.data?.payments ?? listRes.body?.data ?? [];
+    const pending = Array.isArray(payments) ? payments : payments.items || [];
+    const first = pending.find((p) => p.status === 'PENDING' || p.status === 'PROCESSING');
+    if (!first?.id) {
+      console.log('  (no pending payment to confirm — OK for empty seed)');
+      return;
+    }
+    const confirmRes = await jsonFetch(`${API}/landlords/payments/${first.id}/confirm`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${landlordToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ received_date: new Date().toISOString().slice(0, 10) }),
+    });
+    if (!confirmRes.res.ok) throw new Error(confirmRes.body?.message || 'confirm failed');
+  });
+
   await run('Admin 2FA status endpoint', async () => {
     const { res, body } = await jsonFetch(`${API}/auth/2fa/status`, {
       headers: { Authorization: `Bearer ${adminToken}` },

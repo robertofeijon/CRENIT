@@ -7,6 +7,7 @@ import {
   ensureUserProfile,
   getAuthEmailByUserId,
   isTwoFactorSessionActive,
+  mustSetupTwoFactor,
   requiresTwoFactorVerification,
   resolveProfileRole,
 } from '../supabase/supabase.utils';
@@ -173,14 +174,18 @@ export class AuthService {
     const profile = await ensureUserProfile(client, user);
     const role = resolveProfileRole(profile, user.email);
     const enriched = { ...profile, role };
+    const two_factor_setup_required = mustSetupTwoFactor(enriched);
     const two_factor_required =
-      requiresTwoFactorVerification(enriched) && !isTwoFactorSessionActive(enriched);
+      !two_factor_setup_required &&
+      requiresTwoFactorVerification(enriched) &&
+      !isTwoFactorSessionActive(enriched);
 
     return {
       user,
       profile: enriched,
       two_factor_required,
-      two_factor_enforced: requiresTwoFactorVerification(enriched),
+      two_factor_setup_required,
+      two_factor_enforced: requiresTwoFactorVerification(enriched) || two_factor_setup_required,
     };
   }
 

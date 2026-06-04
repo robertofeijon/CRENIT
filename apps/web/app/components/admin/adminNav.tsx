@@ -37,4 +37,5 @@ export const adminNavItems: AdminNavItem[] = [
   { label: 'Audit Log', href: '/admin/audit', icon: ScrollText },
   { label: 'KYC Compliance', href: '/admin/kyc/compliance', icon: ShieldCheck },
   { label: 'System Health', href: '/admin/system-health', icon: Activity },
+  { label: 'Security (2FA)', href: '/admin/security', icon: Shield },
 ];

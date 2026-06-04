@@ -17,6 +17,7 @@
     "smoke:presentation": "node scripts/smoke-presentation.mjs",
     "smoke:staging": "node scripts/smoke-staging-e2e.mjs",
     "validate:rls": "node scripts/validate-rls.mjs",
+    "staging:checklist": "node scripts/staging-checklist.mjs",
     "test:metrics": "npm run test -w crenit-api",
     "test:e2e": "npm run test:e2e -w crenit-web",
     "email:test": "node scripts/send-test-email.mjs"

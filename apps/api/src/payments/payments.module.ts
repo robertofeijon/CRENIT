@@ -12,6 +12,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
   imports: [CreditScoreModule, MarketIntelligenceModule, NotificationsModule],
   controllers: [PaymentsController, LandlordPaymentsController],
   providers: [PaymentsService, PaymentSimulatorService, PaymentsSchedulerService],
-  exports: [PaymentsService],
+  exports: [PaymentsService, PaymentsSchedulerService],
 })
 export class PaymentsModule {}

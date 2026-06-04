@@ -132,9 +132,28 @@ export function requiresTwoFactorVerification(profile: { role?: string; two_fact
   return Boolean(profile?.two_factor_enabled);
 }
 
+/** Admin/landlord must enable 2FA before using privileged routes (when env flags are true). */
+export function mustSetupTwoFactor(profile: { role?: string; two_factor_enabled?: boolean }) {
+  if (process.env.TWO_FACTOR_ENFORCEMENT === 'false') return false;
+  const role = profile?.role?.toString().toUpperCase();
+  if (role === 'ADMIN' && process.env.ADMIN_REQUIRE_2FA === 'true') {
+    return !profile?.two_factor_enabled;
+  }
+  if (role === 'LANDLORD' && process.env.LANDLORD_REQUIRE_2FA === 'true') {
+    return !profile?.two_factor_enabled;
+  }
+  return false;
+}
+
 export function assertTwoFactorVerified(
   profile: { role?: string; two_factor_enabled?: boolean; two_factor_verified_until?: string | null },
 ) {
+  if (mustSetupTwoFactor(profile)) {
+    throw new ForbiddenException({
+      message: 'Two-factor authentication must be enabled on your account before continuing.',
+      code: 'TWO_FACTOR_SETUP_REQUIRED',
+    });
+  }
   if (!requiresTwoFactorVerification(profile)) return;
   if (isTwoFactorSessionActive(profile)) return;
   throw new ForbiddenException({

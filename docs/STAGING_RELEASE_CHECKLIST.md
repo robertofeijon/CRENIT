@@ -106,6 +106,37 @@ GitHub Actions runs the same on push/PR (`.github/workflows/ci.yml`).
 
 ---
 
+## 7. External schedulers (optional)
+
+When the API restarts often, trigger jobs via HTTP instead of in-process crons only.
+
+Set `CRON_SECRET` in API env, then:
+
+```bash
+curl -X POST -H "X-Cron-Secret: YOUR_SECRET" https://your-api/internal/cron/payments-overdue
+curl -X POST -H "X-Cron-Secret: YOUR_SECRET" https://your-api/internal/cron/notifications-rent-reminder
+```
+
+List jobs: `GET /internal/cron/jobs` with the same header.
+
+| Job key | Schedule (Namibia) |
+|---------|-------------------|
+| `payments-autopay` | 07:00 daily |
+| `notifications-rent-reminder` | 08:00 daily |
+| `payments-overdue` | 09:00 daily |
+| `credit-score-recalc` | 02:00 daily |
+| `mi-snapshot-rollup` | 03:30 daily |
+| `mi-licensable-webhooks` | 04:00 daily |
+| `mi-webhook-retry` | every 15 min |
+
+---
+
+## 8. Mandatory admin 2FA (staging)
+
+Set `ADMIN_REQUIRE_2FA=true` on the API. Admins must enable 2FA at `/admin/security` before other admin routes work.
+
+---
+
 ## Sign-off
 
 | Item | Owner | Date | Pass |

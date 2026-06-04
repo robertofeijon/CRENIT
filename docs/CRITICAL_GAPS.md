@@ -47,9 +47,9 @@ Senior full-stack review of `main` @ June 2026. Use this as the **release gate**
 | 12 | **Lease renewal E2E** | Partial | API + tenant home UI; needs staging proof |
 | 13 | **Deposit escrow + disputes** | Done | APIs + landlord/tenant/admin UIs |
 | 14 | **Credit score + payment metrics** | Done | Streak + on-time rate on home/credit-score |
-| 15 | **Schedulers (auto-pay, overdue, reminders)** | Partial | Crons in API process only — **single instance**; use one long-running API or external cron hitting endpoints |
+| 15 | **Schedulers (auto-pay, overdue, reminders)** | Partial | In-process crons + `POST /internal/cron/:job` with `CRON_SECRET` for external triggers |
 | 16 | **Privacy / Terms pages** | Partial | `/company/privacy`, `/company/terms` (summary pages; legal review still required) |
-| 17 | **Automated tests** | Missing | No `*.spec.ts` / CI test job — add API util tests + critical path e2e |
+| 17 | **Automated tests** | Done | Vitest payment-metrics + Playwright + `.github/workflows/ci.yml` |
 | 18 | **Admin operational smoke** | Done | `POST /admin/system-health/smoke` |
 | 19 | **GDPR export/anonymise** | Done | `/admin/compliance` |
 | 20 | **Rate limiting + security headers** | Done | `rate-limit.middleware`, `security-headers.middleware` |
@@ -60,7 +60,7 @@ Senior full-stack review of `main` @ June 2026. Use this as the **release gate**
 
 | # | Area | Status | Notes |
 |---|------|--------|-------|
-| 21 | **Mandatory 2FA for all admins** | Missing | Today optional until user enables; consider `ADMIN_REQUIRE_2FA=true` |
+| 21 | **Mandatory 2FA for all admins** | Done | Set `ADMIN_REQUIRE_2FA=true`; `/admin/security` setup gate |
 | 22 | **SMS 2FA** | Missing | TOTP only |
 | 23 | **Real-time notifications** | Missing | Poll/refresh only; no Supabase realtime |
 | 24 | **E2E monitoring (Sentry/Datadog)** | Missing | Logs only |

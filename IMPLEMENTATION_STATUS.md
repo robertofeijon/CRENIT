@@ -25,6 +25,8 @@
 - **TOTP 2FA** (authenticator QR); `POST /auth/2fa/verify-session` for login step-up
 - **Enforcement** on `ADMIN` and `LANDLORD` when 2FA enabled (`TWO_FACTOR_ENFORCEMENT=false` disables in dev)
 - Migration `0033_two_factor_totp.sql` — `two_factor_verified_until`
+- Optional `ADMIN_REQUIRE_2FA=true` — admins must enable 2FA at `/admin/security`
+- External cron triggers: `POST /internal/cron/:job` with `X-Cron-Secret` header
 
 ### Tenant
 - Dashboard `GET /tenants/me` with onboarding checklist

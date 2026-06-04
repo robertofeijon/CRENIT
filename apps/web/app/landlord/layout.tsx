@@ -32,7 +32,7 @@ export default function LandlordLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, role, loading, roleReady, twoFactorRequired } = useAuth();
+  const { user, role, loading, roleReady, twoFactorRequired, twoFactorSetupRequired } = useAuth();
   const [partnerState, setPartnerState] = useState<PartnerBannerState | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<VerificationDisplayStatus>('UNVERIFIED');
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
@@ -59,10 +59,16 @@ export default function LandlordLayout({ children }: { children: ReactNode }) {
     if (!loading && roleReady && user && role && role !== 'LANDLORD' && role !== 'ADMIN') {
       router.replace('/tenant/home');
     }
-    if (!loading && roleReady && twoFactorRequired && role === 'LANDLORD') {
-      router.replace('/auth/verify-2fa');
+    if (!loading && roleReady && role === 'LANDLORD') {
+      if (twoFactorSetupRequired && !pathname?.startsWith('/landlord/settings')) {
+        router.replace('/landlord/settings');
+        return;
+      }
+      if (twoFactorRequired) {
+        router.replace('/auth/verify-2fa');
+      }
     }
-  }, [loading, roleReady, user, role, router, twoFactorRequired]);
+  }, [loading, roleReady, user, role, router, twoFactorRequired, twoFactorSetupRequired, pathname]);
 
   useEffect(() => {
     if (pathname === '/landlord') {

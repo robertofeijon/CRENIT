@@ -10,6 +10,6 @@ import { MarketIntelligenceModule } from '../market-intelligence/market-intellig
   imports: [SupabaseModule, forwardRef(() => MarketIntelligenceModule)],
   controllers: [NotificationsController],
   providers: [NotificationsService, NotificationsSchedulerService, EmailDeliveryService],
-  exports: [NotificationsService, EmailDeliveryService],
+  exports: [NotificationsService, EmailDeliveryService, NotificationsSchedulerService],
 })
 export class NotificationsModule {}
