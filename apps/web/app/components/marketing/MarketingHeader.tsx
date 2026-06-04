@@ -39,7 +39,7 @@ export default function MarketingHeader({ onOpenAuth }: MarketingHeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
+      <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white">
         <div className="marketing-container flex h-[72px] items-center justify-between gap-4">
           <div className="flex items-center gap-6">
             <button

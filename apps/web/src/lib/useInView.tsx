@@ -15,18 +15,17 @@ export default function useInView(options?: Options) {
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        if (entry && entry.isIntersecting) {
+        if (entry?.isIntersecting) {
           setInView(true);
           observer.unobserve(el);
         }
       },
-      { threshold: 0.15, rootMargin: '0px 0px -10% 0px', ...options }
+      { threshold: 0.15, rootMargin: '0px 0px -10% 0px', ...options },
     );
 
     observer.observe(el);
     return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ref.current]);
+  }, [options]);
 
   return [ref, inView] as const;
 }
