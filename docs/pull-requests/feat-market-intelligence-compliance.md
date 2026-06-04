@@ -25,6 +25,7 @@
 - [ ] B2B: `GET /api/v1/suburb/:name/trends` returns `on_time_trend` + envelope
 - [ ] Landlord page: mixed badge when applicable; detail shows overall on-time (not last month only)
 - [ ] Admin: rollup + licensable suburbs + methodology PDF still work
+- [ ] Admin **Clients & API** → B2B report sample: generate key, download PDF via `/api/v1/reports/.../pdf`, copy curl
 
 ## API quick reference (B2B)
 
