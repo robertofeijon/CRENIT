@@ -35,6 +35,7 @@ export type SuburbDetailPayload = {
     sample_count: number;
   }>;
   income_to_rent_distribution?: Array<{ bracket: string; count: number }>;
+  recommended_use_cases?: string[];
 };
 
 export function buildMarketDataEnvelope<T extends Record<string, unknown>>(

@@ -33,6 +33,7 @@ import AdminStatCard from '../../components/ui/AdminStatCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
+import B2bApiPlayground from './B2bApiPlayground';
 
 type Timeframe = 'today' | '7d' | '30d' | '90d' | 'qtd' | 'ytd' | 'all';
 
@@ -1361,6 +1362,7 @@ function B2bPanel({
   const [sampleReport, setSampleReport] = useState('suburb_report');
   const [sampleSuburb, setSampleSuburb] = useState('');
   const [sampleBusy, setSampleBusy] = useState(false);
+  const [samplePreview, setSamplePreview] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
 
   const sampleSuburbParam =
@@ -1379,6 +1381,30 @@ function B2bPanel({
       setTimeout(() => setCopied(false), 2000);
     } catch {
       onError('Could not copy to clipboard.');
+    }
+  };
+
+  const runB2bPreviewSample = async () => {
+    if (!apiKeySample) {
+      onError('Generate an API key below, then run the B2B sample.');
+      return;
+    }
+    if (REPORT_TYPES_NEED_SUBURB.includes(sampleReport) && !sampleSuburb) {
+      onError('Select a suburb for this report type.');
+      return;
+    }
+    setSampleBusy(true);
+    setSamplePreview(null);
+    try {
+      const url = `${API_BASE}/api/v1/reports/${sampleReport}/preview${sampleSuburbParam}`;
+      const res = await fetch(url, { headers: { 'X-CRENIT-Key': apiKeySample } });
+      const json = await res.json();
+      if (!res.ok) throw new Error((json as { message?: string }).message || `Preview failed (${res.status})`);
+      setSamplePreview(json);
+    } catch (err: unknown) {
+      onError(err instanceof Error ? err.message : 'B2B preview failed.');
+    } finally {
+      setSampleBusy(false);
     }
   };
 
@@ -1456,10 +1482,18 @@ function B2bPanel({
           <button
             type="button"
             disabled={sampleBusy}
+            onClick={() => void runB2bPreviewSample()}
+            className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
+          >
+            Preview JSON
+          </button>
+          <button
+            type="button"
+            disabled={sampleBusy}
             onClick={() => void runB2bPdfSample()}
             className="rounded-full bg-[#1A1A1A] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
-            {sampleBusy ? 'Downloading…' : 'Download via B2B API'}
+            {sampleBusy ? 'Working…' : 'Download PDF'}
           </button>
           <button
             type="button"
@@ -1475,7 +1509,14 @@ function B2bPanel({
         {!apiKeySample ? (
           <p className="mt-2 text-xs text-amber-800">Generate a client API key in the list below to enable live download.</p>
         ) : null}
+        {samplePreview ? (
+          <pre className="mt-4 max-h-48 overflow-auto rounded-xl bg-[#1A1A1A] p-4 text-xs text-slate-100">
+            {JSON.stringify(samplePreview, null, 2)}
+          </pre>
+        ) : null}
       </div>
+
+      <B2bApiPlayground apiKey={apiKeySample} suburbOptions={suburbOptions} onError={onError} />
 
     <div className="grid gap-8 lg:grid-cols-2">
       <div>

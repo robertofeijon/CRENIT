@@ -159,11 +159,19 @@ export default function LandlordMarketDataPage() {
                       : 'border-slate-100 bg-[#F3F4F6] text-slate-800 hover:border-slate-300'
                   }`}
                 >
-                  <p className="font-semibold">{entry.suburb}</p>
+                  <p className="font-semibold">
+                    {entry.suburb}
+                    {entry.commercially_licensable ? (
+                      <span className="ml-2 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                        Licensable
+                      </span>
+                    ) : null}
+                  </p>
                   <p className="mt-1 text-xs opacity-80">
                     {entry.city} · {formatN$(entry.median_rent ?? entry.avg_rent)} median
                     {entry.on_time_rate != null ? ` · ${Math.round(Number(entry.on_time_rate))}% on-time` : ''}
                     {entry.confidence_level ? ` · ${entry.confidence_level}` : ''}
+                    {entry.sample_count ? ` · n=${entry.sample_count}` : ''}
                   </p>
                 </button>
               ))}
@@ -189,6 +197,16 @@ export default function LandlordMarketDataPage() {
                 {suburbDetails.licensing_notice ? (
                   <p className="mt-2 text-xs text-slate-500">{suburbDetails.licensing_notice}</p>
                 ) : null}
+                {suburbDetails.pricing_guidance ? (
+                  <p className="mt-2 text-xs text-slate-600">{suburbDetails.pricing_guidance}</p>
+                ) : null}
+                {Array.isArray(suburbDetails.recommended_use_cases) && suburbDetails.recommended_use_cases.length ? (
+                  <ul className="mt-3 list-inside list-disc text-xs text-slate-600">
+                    {suburbDetails.recommended_use_cases.map((use: string) => (
+                      <li key={use}>{use}</li>
+                    ))}
+                  </ul>
+                ) : null}
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <p className="text-sm">Median rent: {formatN$(suburbDetails.latest_snapshot?.median_rent)}</p>
                   <p className="text-sm">
@@ -205,6 +223,34 @@ export default function LandlordMarketDataPage() {
                     Confidence: {suburbDetails.confidence_level || '—'}
                   </p>
                 </div>
+                {suburbDetails.intelligence?.rent_distribution?.length ? (
+                  <div className="mt-5">
+                    <p className="text-sm font-semibold text-[#1A1A1A]">Rent distribution</p>
+                    <div className="mt-3 flex items-end gap-1" style={{ minHeight: 64 }}>
+                      {suburbDetails.intelligence.rent_distribution.map((bucket: { range: string; count: number }) => {
+                        const max = Math.max(
+                          ...suburbDetails.intelligence.rent_distribution.map((b: { count: number }) => b.count),
+                          1,
+                        );
+                        return (
+                          <div
+                            key={bucket.range}
+                            className="flex flex-1 flex-col items-center gap-1"
+                            title={`${bucket.range}: ${bucket.count}`}
+                          >
+                            <div
+                              className="w-full rounded-t bg-slate-600/70"
+                              style={{ height: `${Math.max(6, (bucket.count / max) * 48)}px` }}
+                            />
+                            <span className="text-[9px] text-slate-500 leading-tight text-center">
+                              {bucket.range.replace('N$', '').replace('k', 'k')}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
                 {suburbDetails.intelligence?.bedroom_breakdown?.length ? (
                   <div className="mt-5">
                     <p className="text-sm font-semibold text-[#1A1A1A]">Rent by bedroom</p>

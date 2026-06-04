@@ -921,6 +921,42 @@ export class MarketIntelligenceService {
     return data || [];
   }
 
+  getB2bApiCatalog() {
+    return {
+      version: '1.0',
+      product: 'CRENIT Data Intelligence',
+      documentation_path: 'docs/B2B_INTEGRATOR_GUIDE.md',
+      authentication: {
+        header: 'X-CRENIT-Key',
+        legacy_header: 'X-RentCredit-Key',
+      },
+      compliance_envelope: [
+        'transaction_count',
+        'sample_count',
+        'confidence_level',
+        'licensing_notice',
+        'commercially_licensable',
+        'data_source',
+        'minimum_sample_not_met',
+        'required_minimum_sample',
+        'recommended_use_cases',
+      ],
+      minimum_suburb_sample: MIN_SUBURB_SAMPLE,
+      licensable_suburb_sample: MIN_STATISTICAL_SUBURB_SAMPLE,
+      routes: [
+        { method: 'GET', path: '/api/v1/catalog', suburb_required: false },
+        { method: 'GET', path: '/api/v1/suburb/:name', suburb_required: true },
+        { method: 'GET', path: '/api/v1/suburb/:name/trends', suburb_required: true },
+        { method: 'GET', path: '/api/v1/city-overview', suburb_required: false },
+        { method: 'GET', path: '/api/v1/lender-risk/:suburb', suburb_required: true },
+        { method: 'GET', path: '/api/v1/reports', suburb_required: false },
+        { method: 'GET', path: '/api/v1/reports/:reportType/preview', suburb_required: 'conditional' },
+        { method: 'GET', path: '/api/v1/reports/:reportType/pdf', suburb_required: 'conditional', response: 'application/pdf' },
+      ],
+      report_types: ['suburb_report', 'city_overview', 'lender_risk_pack', 'development_feasibility'],
+    };
+  }
+
   async getApiConfig() {
     const clients = await this.getB2bClients();
     const logs = await this.safeDataQuery(
@@ -933,7 +969,12 @@ export class MarketIntelligenceService {
       'api_usage_logs',
     );
     return {
+      integrator_guide: 'docs/B2B_INTEGRATOR_GUIDE.md',
       endpoints: [
+        {
+          path: '/api/v1/catalog',
+          description: 'Integrator catalog: routes, compliance fields, report types.',
+        },
         {
           path: '/api/v1/suburb/{name}',
           description:
@@ -1117,6 +1158,9 @@ export class MarketIntelligenceService {
       data_source_label: this.portalDataSourceLabel(data_source),
       confidence_level: detail.confidence_level,
       licensing_notice: detail.licensing_notice,
+      commercially_licensable: detail.commercially_licensable,
+      recommended_use_cases: detail.recommended_use_cases,
+      pricing_guidance: detail.pricing_guidance,
       trend: trendRaw.toString().toLowerCase(),
       latest_snapshot: {
         avg_rent: detail.price_range?.median,

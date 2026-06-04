@@ -264,6 +264,8 @@ Recommended wording:
 | Capture on payment            | `apps/api/src/market-intelligence/market-intelligence-capture.service.ts`             |
 | Aggregations + PDF + API data | `apps/api/src/market-intelligence/market-intelligence.service.ts`                     |
 | B2B HTTP API                  | `apps/api/src/market-intelligence/data-intelligence-api.controller.ts`                |
+| B2B integrator guide          | `docs/B2B_INTEGRATOR_GUIDE.md`                                                        |
+| Admin B2B playground          | `apps/web/app/admin/data-intelligence/B2bApiPlayground.tsx`                             |
 | Commercial catalog            | `apps/api/src/market-intelligence/data-product-catalog.ts`                            |
 | Comparison utils              | `apps/api/src/kyc/kyc-location.util.ts` (tenant address; separate from MI rent comps) |
 | Consent                       | `apps/api/src/market-intelligence/consent.service.ts`                                 |

@@ -245,13 +245,24 @@ Shipped on branch `feat/market-intelligence-compliance` (merge before using in p
 
 Suburb query param required for all types except `city_overview`. Pulls are logged on `report_generations.client_id` and increment `b2b_clients.reports_pulled_this_month`.
 
-### Admin console sample
+### Catalog endpoint
+
+```http
+GET /api/v1/catalog
+```
+
+Returns routes, compliance field names, report types, and sample thresholds (no suburb data).
+
+### Admin console
 
 **Data Intelligence → Clients & API** tab:
 
 1. Generate an API key for a B2B client (one-time reveal).
-2. Use **B2B report API sample** — pick report + suburb, **Download via B2B API**, or **Copy curl**.
-3. **Licensed products** tab links to the same sample; admin **Download PDF** still uses session auth (`POST /admin/data-intelligence/reports/generate`).
+2. **B2B API playground** — call catalog, suburb, trends, city-overview, lender-risk, or report list live; envelope chips + JSON response.
+3. **B2B report API sample** — **Preview JSON** or **Download PDF** via `/api/v1/reports/...`; **Copy curl**.
+4. **Licensed products** tab links to the report sample; admin PDF still uses session auth.
+
+Full integrator reference: **`docs/B2B_INTEGRATOR_GUIDE.md`**.
 
 ### Example
 
