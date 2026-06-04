@@ -958,8 +958,12 @@ export class MarketIntelligenceService {
           suburbs.length
         : 0;
     const onTime =
-      suburbs.length > 0
-        ? suburbs.reduce((s: number, row: any) => s + Number(row.on_time_rate || 0), 0) / suburbs.length
+      totalSample > 0
+        ? suburbs.reduce(
+            (s: number, row: any) =>
+              s + Number(row.on_time_rate || 0) * Number(row.transaction_count || 0),
+            0,
+          ) / totalSample
         : 0;
     const latestCapture = records
       .map((r) => new Date(r.captured_at).getTime())
@@ -1064,18 +1068,18 @@ export class MarketIntelligenceService {
         min_rent: detail.price_range?.min,
         max_rent: detail.price_range?.max,
         median_rent: detail.price_range?.median,
-        on_time_rate: detail.on_time_trend?.length
-          ? detail.on_time_trend[detail.on_time_trend.length - 1]?.on_time_rate
-          : null,
+        on_time_rate: detail.on_time_rate ?? null,
         avg_days_to_pay: null,
         sample_count: detail.transaction_count,
         snapshot_date: rows[0]?.captured_at?.slice(0, 10) ?? null,
       },
       price_history,
+      on_time_rate: detail.on_time_rate ?? null,
       intelligence: {
         rent_distribution: detail.rent_distribution,
         on_time_trend: detail.on_time_trend,
         bedroom_breakdown: detail.bedroom_breakdown,
+        income_to_rent_distribution: detail.income_to_rent_distribution,
       },
     };
   }

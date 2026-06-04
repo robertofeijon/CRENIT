@@ -65,13 +65,15 @@ export default function LandlordMarketDataPage() {
       setDataSourceLabel(summaryRes.data.data?.data_source_label ?? suburbsRes.data.meta?.data_source_label);
       const list = suburbsRes.data.data || [];
       setSuburbs(list);
-      if (list.length && !selectedSuburb) setSelectedSuburb(list[0].suburb);
+      setSelectedSuburb((prev) =>
+        prev && list.some((s: { suburb: string }) => s.suburb === prev) ? prev : list[0]?.suburb ?? '',
+      );
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to load market data.');
     } finally {
       setIsLoading(false);
     }
-  }, [selectedSuburb]);
+  }, []);
 
   const loadSuburbDetails = useCallback(async (suburb: string) => {
     if (!suburb) return;
@@ -160,12 +162,22 @@ export default function LandlordMarketDataPage() {
                   <p className="font-semibold">{entry.suburb}</p>
                   <p className="mt-1 text-xs opacity-80">
                     {entry.city} · {formatN$(entry.median_rent ?? entry.avg_rent)} median
+                    {entry.on_time_rate != null ? ` · ${Math.round(Number(entry.on_time_rate))}% on-time` : ''}
                     {entry.confidence_level ? ` · ${entry.confidence_level}` : ''}
                   </p>
                 </button>
               ))}
             </div>
-            {suburbDetails && !suburbDetails.minimum_sample_not_met ? (
+            {suburbDetails?.minimum_sample_not_met ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
+                <p className="font-semibold">Not enough verified payments yet</p>
+                <p className="mt-2">
+                  {suburbDetails.suburb} has {suburbDetails.transaction_count ?? 0} sample
+                  {(suburbDetails.required_minimum_sample ?? 5) > 1 ? 's' : ''} — need at least{' '}
+                  {suburbDetails.required_minimum_sample ?? 5} for benchmarks.
+                </p>
+              </div>
+            ) : suburbDetails ? (
               <div className="rounded-xl border border-slate-100 bg-[#F3F4F6] p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-lg font-semibold text-[#1A1A1A]">
@@ -182,13 +194,67 @@ export default function LandlordMarketDataPage() {
                   <p className="text-sm">
                     Range: {formatN$(suburbDetails.latest_snapshot?.min_rent)} – {formatN$(suburbDetails.latest_snapshot?.max_rent)}
                   </p>
+                  <p className="text-sm">
+                    On-time payments:{' '}
+                    {suburbDetails.on_time_rate != null || suburbDetails.latest_snapshot?.on_time_rate != null
+                      ? `${Math.round(Number(suburbDetails.on_time_rate ?? suburbDetails.latest_snapshot?.on_time_rate))}%`
+                      : '—'}
+                  </p>
                   <p className="text-sm">Samples: {suburbDetails.latest_snapshot?.sample_count}</p>
                   <p className="text-sm">
                     Confidence: {suburbDetails.confidence_level || '—'}
                   </p>
                 </div>
+                {suburbDetails.intelligence?.bedroom_breakdown?.length ? (
+                  <div className="mt-5">
+                    <p className="text-sm font-semibold text-[#1A1A1A]">Rent by bedroom</p>
+                    <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+                      {suburbDetails.intelligence.bedroom_breakdown.map((row: any) => (
+                        <li key={row.bedrooms} className="flex justify-between gap-4">
+                          <span>{row.label}</span>
+                          <span className="font-medium text-[#1A1A1A]">
+                            {row.avg_rent != null ? formatN$(row.avg_rent) : '—'}
+                            {row.sample_count ? ` · n=${row.sample_count}` : ''}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {suburbDetails.intelligence?.income_to_rent_distribution?.length ? (
+                  <div className="mt-5">
+                    <p className="text-sm font-semibold text-[#1A1A1A]">Income bands (consented tenants)</p>
+                    <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+                      {suburbDetails.intelligence.income_to_rent_distribution.map((row: any) => (
+                        <li key={row.bracket} className="flex justify-between gap-4">
+                          <span>{row.bracket}</span>
+                          <span className="font-medium text-[#1A1A1A]">{row.count} payments</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {suburbDetails.intelligence?.on_time_trend?.length ? (
+                  <div className="mt-6">
+                    <p className="text-sm font-semibold text-[#1A1A1A]">On-time payments by month</p>
+                    <div className="mt-3 flex items-end gap-1" style={{ minHeight: 72 }}>
+                      {suburbDetails.intelligence.on_time_trend.slice(-8).map((point: { month: string; on_time_rate: number }) => (
+                        <div key={point.month} className="flex flex-1 flex-col items-center gap-1">
+                          <div
+                            className="w-full rounded-t bg-emerald-600/80"
+                            style={{ height: `${Math.max(6, (Number(point.on_time_rate) / 100) * 64)}px` }}
+                            title={`${point.month}: ${point.on_time_rate}%`}
+                          />
+                          <span className="text-[10px] text-slate-500">{point.month.slice(5)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 {suburbDetails.price_history?.length ? (
-                  <div className="mt-6 flex items-end gap-1" style={{ minHeight: 120 }}>
+                  <div className="mt-6">
+                    <p className="text-sm font-semibold text-[#1A1A1A]">Avg rent by month</p>
+                    <div className="mt-3 flex items-end gap-1" style={{ minHeight: 120 }}>
                     {suburbDetails.price_history.slice(-8).map((point: any, i: number) => (
                       <div key={i} className="flex flex-1 flex-col items-center gap-1">
                         <div
@@ -205,6 +271,7 @@ export default function LandlordMarketDataPage() {
                         <span className="text-[10px] text-slate-500">{point.snapshot_date?.slice(5, 7)}</span>
                       </div>
                     ))}
+                    </div>
                   </div>
                 ) : null}
               </div>

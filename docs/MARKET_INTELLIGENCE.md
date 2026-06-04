@@ -8,12 +8,14 @@ This document answers how market intelligence data is **collected**, **presented
 
 CRENIT’s data product is **verified rental intelligence**, not a general property portal scrape.
 
-| Included today | Not included today |
-|----------------|-------------------|
-| Rent actually paid through CRENIT (gross amount on `PAID` payments) | Listing / asking prices from Facebook, agents, etc. |
-| Payment behaviour (on-time, late, days to pay) | Sale deed / transfer prices (roadmap only) |
-| Suburb, property type, bedrooms, coarse geo | Street-level address or tenant/landlord identity in exports |
-| Income **bracket** (only if tenant consented) | Exact salaries in B2B outputs |
+
+| Included today                                                      | Not included today                                          |
+| ------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Rent actually paid through CRENIT (gross amount on `PAID` payments) | Listing / asking prices from Facebook, agents, etc.         |
+| Payment behaviour (on-time, late, days to pay)                      | Sale deed / transfer prices (roadmap only)                  |
+| Suburb, property type, bedrooms, coarse geo                         | Street-level address or tenant/landlord identity in exports |
+| Income **bracket** (only if tenant consented)                       | Exact salaries in B2B outputs                               |
+
 
 Positioning (from `data-product-catalog.ts`):
 
@@ -36,24 +38,21 @@ flowchart LR
   G --> H[Aggregations + B2B API / reports]
 ```
 
+
+
 1. **Users join** and optionally grant consent at onboarding:
-   - Tenants: checkbox on KYC submit → `POST /consent/market-intelligence` with `TENANT_MARKET_DATA`
-   - Landlords: checkbox when adding a property → `LANDLORD_MARKET_DATA`
-   - Signup can also pass `market_data_consent` on register (`auth.service.ts`)
-
+  - Tenants: checkbox on KYC submit → `POST /consent/market-intelligence` with `TENANT_MARKET_DATA`
+  - Landlords: checkbox when adding a property → `LANDLORD_MARKET_DATA`
+  - Signup can also pass `market_data_consent` on register (`auth.service.ts`)
 2. **Rent runs on-platform** — lease linked to unit → property (suburb, type, geo).
-
 3. **On `PAID`** — `payments.service.ts` calls `MarketIntelligenceCaptureService.captureFromPayment()` (automatic; not a user button).
-
 4. **One anonymised row per payment** is written to `market_intelligence.market_data_records` with:
-   - `verified_rent_amount`, `payment_status`, `days_to_pay`, `month_year`
-   - `suburb`, `city`, `property_type`, `bedrooms`, `geo_lat` / `geo_lng`
-   - `tenant_hash` / `landlord_hash` (SHA-256 of user id + salt prefix — not reversible to profile in API)
-   - Optional: `income_bracket`, `deposit_ratio`, `lease_start_date`
-   - **No** names, emails, phones, street addresses, or raw user IDs in the record
-
+  - `verified_rent_amount`, `payment_status`, `days_to_pay`, `month_year`
+  - `suburb`, `city`, `property_type`, `bedrooms`, `geo_lat` / `geo_lng`
+  - `tenant_hash` / `landlord_hash` (SHA-256 of user id + salt prefix — not reversible to profile in API)
+  - Optional: `income_bracket`, `deposit_ratio`, `lease_start_date`
+  - **No** names, emails, phones, street addresses, or raw user IDs in the record
 5. **Consent rule:** capture runs if **either** tenant **or** landlord has active consent (not both required).
-
 6. **PII guard:** `assertNoPiiFields()` blocks writes that include prohibited keys; can log `MARKET_DATA_PII_BLOCKED` to admin audit.
 
 ### 2.2 What gets skipped (data gaps)
@@ -72,14 +71,16 @@ So volume grows only with **real CRENIT payment volume** in consented leases —
 
 There are **two** storage layers:
 
-| Layer | Table | Used when |
-|-------|--------|-----------|
-| **Verified pipeline** | `market_intelligence.market_data_records` | Live captures from payments |
-| **Snapshots** | `public.market_data_snapshots` | Seed data + fallback when no live records |
 
-`MarketIntelligenceService.fetchMergedRecords()` merges **per suburb**: live `market_data_records` when n ≥ 5, otherwise the latest snapshot for that suburb. Overall `data_source` is `market_data_records`, `market_data_snapshots`, or `mixed`. Nightly rollup writes snapshots from **live records only**.
+| Layer                 | Table                                     | Used when                                 |
+| --------------------- | ----------------------------------------- | ----------------------------------------- |
+| **Verified pipeline** | `market_intelligence.market_data_records` | Live captures from payments               |
+| **Snapshots**         | `public.market_data_snapshots`            | Seed data + fallback when no live records |
 
-The **landlord UI** (`/landlord/market-data`) calls **`/market-data/*`** (landlord or admin session required), which delegates to the same intelligence service as B2B.
+
+`MarketIntelligenceService.fetchMergedRecords()` chooses **per suburb**: live records when n ≥ 5, else latest snapshot; city-level `data_source` may be `mixed`.
+
+The **landlord UI** (`/landlord/market-data`) calls **`/market-data/*`** (landlord/admin auth), which delegates to the same service as B2B. Detail view shows overall on-time rate (aligned with lender-risk), bedroom and income breakdowns, and monthly rent / on-time charts.
 
 ---
 
@@ -88,7 +89,7 @@ The **landlord UI** (`/landlord/market-data`) calls **`/market-data/*`** (landlo
 ### 3.1 Landlord portal (operational)
 
 - **Route:** `/landlord/market-data` (locked until partner verification)
-- **API:** `GET /market-data/summary`, `/market-data/suburbs`, `/market-data/suburbs/:name` (Authorization: landlord or admin)
+- **API:** `GET /market-data/summary`, `/market-data/suburbs`, `/market-data/suburbs/:name`
 - **Shows:** suburb list, median rent, on-time rate, trend vs previous snapshot
 - **Audience:** landlords pricing units — internal benchmark, not a licensable export
 
@@ -103,10 +104,9 @@ The **landlord UI** (`/landlord/market-data`) calls **`/market-data/*`** (landlo
 
 - **Base:** `GET /api/v1/...` with header `X-CRENIT-Key` (or legacy `X-RentCredit-Key`)
 - **Endpoints:**
-  - `GET /api/v1/suburb/:name` — rent distribution, bedroom breakdown, on-time trend, income bands, compliance envelope (`transaction_count`, `data_source`, `confidence_level`, `licensing_notice`, `commercially_licensable`)
-  - `GET /api/v1/suburb/:name/trends` — on-time payment trend only (same envelope)
-  - `GET /api/v1/city-overview` — Windhoek-wide suburb comparison (compliance envelope on response)
-  - `GET /api/v1/lender-risk/:suburb` — underwriting pack; returns envelope-only stub when `minimum_sample_not_met` (no income/bedroom arrays)
+  - `GET /api/v1/suburb/:name` — rent distribution, bedroom breakdown, on-time trend, income bands, confidence + licensing notice
+  - `GET /api/v1/city-overview` — Windhoek-wide suburb comparison
+  - `GET /api/v1/lender-risk/:suburb` — underwriting-oriented pack
 - **Controls:** API key hash, client subscription status, hourly rate limits, tier daily caps, `api_usage_logs`
 
 ### 3.4 Marketing & commercial pages
@@ -130,22 +130,26 @@ The **landlord UI** (`/landlord/market-data`) calls **`/market-data/*`** (landlo
 
 ### 4.1 Buyer personas (defined in code)
 
-| Persona | Typical use |
-|---------|-------------|
-| Developers | Feasibility rent, unit mix |
-| Estate agents / valuers | Asking rent evidence |
-| Banks | Neighbourhood payment behaviour, income-to-rent stress |
-| Contractors / PM | Suburb benchmarks |
-| Government / research | Aggregated affordability |
-| Investors | Suburb yield comparison |
+
+| Persona                 | Typical use                                            |
+| ----------------------- | ------------------------------------------------------ |
+| Developers              | Feasibility rent, unit mix                             |
+| Estate agents / valuers | Asking rent evidence                                   |
+| Banks                   | Neighbourhood payment behaviour, income-to-rent stress |
+| Contractors / PM        | Suburb benchmarks                                      |
+| Government / research   | Aggregated affordability                               |
+| Investors               | Suburb yield comparison                                |
+
 
 ### 4.2 Product shapes
 
-| Channel | Access tier (DB) | Example deliverables | Indicative NAD (seed) |
-|---------|------------------|----------------------|------------------------|
-| **One-time report** | `One-time report` | Suburb PDF + structured stats | Suburb report N$2,500; City overview N$8,500 |
-| **Monthly subscription** | `Monthly subscription` | Ongoing explorer + report quota | Client-specific |
-| **API access** | `API access` | Machine-readable suburb / city / lender-risk | Rate-limited keys |
+
+| Channel                  | Access tier (DB)       | Example deliverables                         | Indicative NAD (seed)                        |
+| ------------------------ | ---------------------- | -------------------------------------------- | -------------------------------------------- |
+| **One-time report**      | `One-time report`      | Suburb PDF + structured stats                | Suburb report N$2,500; City overview N$8,500 |
+| **Monthly subscription** | `Monthly subscription` | Ongoing explorer + report quota              | Client-specific                              |
+| **API access**           | `API access`           | Machine-readable suburb / city / lender-risk | Rate-limited keys                            |
+
 
 Report types in DB (`report_products`):
 
@@ -178,14 +182,16 @@ External licence terms (catalog): no re-identification, cite CRENIT + sample siz
 **Not valid for a broader claim:**  
 *“This is the true Windhoek market rent for all properties.”*
 
-| Validity factor | Assessment |
-|-----------------|------------|
-| **Transaction truth** | Strong **if** payment is genuinely confirmed on-platform (landlord confirm or instant methods) — amount is what was recorded as paid |
-| **Representativeness** | Weak until platform has meaningful share of rentals in a suburb — sample is **biased** to CRENIT users |
-| **Geographic accuracy** | Depends on property `address_suburb` quality; no independent geocode audit |
-| **Income bracket** | Only when tenant consented; derived from `profiles.income_monthly` if populated |
-| **Comparison to listings** | Not comparable — asking rent ≠ verified paid rent |
-| **Statistical rigour** | Min-sample gates and confidence tiers are implemented; not a full statistical model (no seasonality adjustment, no mix-weighting by property stock) |
+
+| Validity factor            | Assessment                                                                                                                                          |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Transaction truth**      | Strong **if** payment is genuinely confirmed on-platform (landlord confirm or instant methods) — amount is what was recorded as paid                |
+| **Representativeness**     | Weak until platform has meaningful share of rentals in a suburb — sample is **biased** to CRENIT users                                              |
+| **Geographic accuracy**    | Depends on property `address_suburb` quality; no independent geocode audit                                                                          |
+| **Income bracket**         | Only when tenant consented; derived from `profiles.income_monthly` if populated                                                                     |
+| **Comparison to listings** | Not comparable — asking rent ≠ verified paid rent                                                                                                   |
+| **Statistical rigour**     | Min-sample gates and confidence tiers are implemented; not a full statistical model (no seasonality adjustment, no mix-weighting by property stock) |
+
 
 **Operational validity checklist before selling a suburb:**
 
@@ -209,15 +215,17 @@ External licence terms (catalog): no re-identification, cite CRENIT + sample siz
 
 ### 6.2 Trust risks (be explicit with buyers)
 
-| Risk | Mitigation |
-|------|------------|
-| Low volume / empty suburbs | Do not license; show `insufficient` |
-| Demo snapshots mistaken for live data | Unify landlord UI on intelligence API; label `data_source` in UI |
+
+| Risk                                   | Mitigation                                                                  |
+| -------------------------------------- | --------------------------------------------------------------------------- |
+| Low volume / empty suburbs             | Do not license; show `insufficient`                                         |
+| Demo snapshots mistaken for live data  | Unify landlord UI on intelligence API; label `data_source` in UI            |
 | Selection bias (only digital adopters) | Disclose in methodology; target bank/dev clients who want *verified* cohort |
-| Consent OR not AND | Stricter policy possible: require both parties |
-| Simulated payments in dev | Production gate + exclude test tenants |
-| Income self-reported | Bracket only; never export exact income in B2B |
-| Suburb mis-labelling on property | QA on landlord property setup; optional geocode later |
+| Consent OR not AND                     | Stricter policy possible: require both parties                              |
+| Simulated payments in dev              | Production gate + exclude test tenants                                      |
+| Income self-reported                   | Bracket only; never export exact income in B2B                              |
+| Suburb mis-labelling on property       | QA on landlord property setup; optional geocode later                       |
+
 
 ### 6.3 Trust narrative for B2B sales
 
@@ -227,36 +235,42 @@ Recommended wording:
 
 ---
 
-## 7. Implemented enhancements (June 2026)
+## 7. Product improvements
 
-1. **Landlord market UI** — `/market-data/*` delegates to `MarketIntelligenceService` (same source as B2B). UI shows **Verified payments** vs **Snapshot fallback** badge.
-2. **Nightly snapshot rollup** — `MarketIntelligenceSchedulerService` at 03:30 Africa/Windhoek; manual trigger: `POST /admin/data-intelligence/snapshots/rollup`.
-3. **Consent revoke** — `POST /consent/market-intelligence/revoke`; `MarketDataConsentSection` on landlord and tenant **Settings**.
-4. **Licensable suburbs report** — `GET /admin/data-intelligence/licensable-suburbs`; admin tab **Ready to license** (≥10 records).
-5. **Methodology PDF** — `GET /admin/data-intelligence/methodology/pdf` (catalog + live pipeline footnotes).
+### Shipped
 
-## 8. Remaining backlog
+- Landlord UI unified on intelligence pipeline; `data_source` badge (verified / snapshot / mixed).
+- Per-suburb merge, B2B compliance envelope, lender-risk stub when n &lt; 5, `/api/v1/suburb/:name/trends`.
+- Nightly snapshot rollup + admin manual rollup; consent revoke in tenant/landlord settings.
+- Admin “Ready to license” report + methodology PDF download.
+- Landlord detail: overall on-time %, bedroom/income blocks, monthly on-time and rent charts; summary on-time weighted by sample count.
+
+### Backlog
 
 1. **Sale comps pilot** — partner ingest per `SALE_COMPS_ROADMAP` (separate licence).
-2. **Tenant analytics erase** — optional self-service call to `eraseTenantAnalytics` on revoke.
-3. **Show `data_source` on admin dashboard header** — currently visible on landlord portal and licensable report.
+2. **B2B report PDF** on `/api/v1` (today admin/report generation only).
+3. **Stricter consent** — optional require tenant **and** landlord consent before capture.
+4. **Geocode QA** — reduce suburb mis-labelling on properties.
 
 ---
 
-## 9. File reference
+## 8. File reference
 
-| Area | Path |
-|------|------|
-| Capture on payment | `apps/api/src/market-intelligence/market-intelligence-capture.service.ts` |
-| Aggregations + PDF + API data | `apps/api/src/market-intelligence/market-intelligence.service.ts` |
-| B2B HTTP API | `apps/api/src/market-intelligence/data-intelligence-api.controller.ts` |
-| Commercial catalog | `apps/api/src/market-intelligence/data-product-catalog.ts` |
-| Comparison utils | `apps/api/src/kyc/kyc-location.util.ts` (tenant address; separate from MI rent comps) |
-| Consent | `apps/api/src/market-intelligence/consent.service.ts` |
-| Schema | `supabase/migrations/0006_market_intelligence.sql` |
-| Landlord UI (snapshots) | `apps/web/app/landlord/market-data/page.tsx` |
-| Admin console | `apps/web/app/admin/data-intelligence/page.tsx` |
-| Legacy snapshot API | `apps/api/src/market-data/market-data.service.ts` |
+
+| Area                          | Path                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------- |
+| Capture on payment            | `apps/api/src/market-intelligence/market-intelligence-capture.service.ts`             |
+| Aggregations + PDF + API data | `apps/api/src/market-intelligence/market-intelligence.service.ts`                     |
+| B2B HTTP API                  | `apps/api/src/market-intelligence/data-intelligence-api.controller.ts`                |
+| Commercial catalog            | `apps/api/src/market-intelligence/data-product-catalog.ts`                            |
+| Comparison utils              | `apps/api/src/kyc/kyc-location.util.ts` (tenant address; separate from MI rent comps) |
+| Consent                       | `apps/api/src/market-intelligence/consent.service.ts`                                 |
+| Schema                        | `supabase/migrations/0006_market_intelligence.sql`                                    |
+| B2B compliance envelope       | `apps/api/src/market-intelligence/market-intelligence-response.util.ts`             |
+| Landlord portal API           | `apps/api/src/market-data/market-data.controller.ts`                                  |
+| Landlord UI                   | `apps/web/app/landlord/market-data/page.tsx`                                          |
+| Admin console                 | `apps/web/app/admin/data-intelligence/page.tsx`                                       |
+
 
 ---
 
