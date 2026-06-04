@@ -1010,6 +1010,27 @@ export class MarketIntelligenceService {
     return this.webhookService.deactivateWebhook(subscriptionId, clientId);
   }
 
+  listWebhookDeliveries(limit?: number) {
+    return this.webhookService.listRecentDeliveries(limit);
+  }
+
+  async sendWebhookTestDelivery(subscriptionId: string) {
+    return this.webhookService.sendTestDelivery(subscriptionId);
+  }
+
+  async getLicensableSuburbWatchState() {
+    try {
+      const { data, error } = await this.mi().from('licensable_suburb_watch').select('*').order('suburb');
+      if (error) throw error;
+      return {
+        suburbs: data ?? [],
+        licensable_count: (data ?? []).filter((r: { commercially_licensable: boolean }) => r.commercially_licensable).length,
+      };
+    } catch {
+      return { suburbs: [], licensable_count: 0 };
+    }
+  }
+
   async getApiConfig() {
     const clients = await this.getB2bClients();
     const logs = await this.safeDataQuery(

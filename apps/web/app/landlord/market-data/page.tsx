@@ -52,6 +52,7 @@ export default function LandlordMarketDataPage() {
   const [compareSuburb, setCompareSuburb] = useState('');
   const [compareRent, setCompareRent] = useState('');
   const [compareResult, setCompareResult] = useState<any>(null);
+  const [saleComps, setSaleComps] = useState<any>(null);
   const [compareBusy, setCompareBusy] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,11 +94,19 @@ export default function LandlordMarketDataPage() {
   const loadSuburbDetails = useCallback(async (suburb: string) => {
     if (!suburb) return;
     setIsLoading(true);
+    setSaleComps(null);
     try {
-      const res = await api.get(`/market-data/suburbs/${encodeURIComponent(suburb)}`);
-      setSuburbDetails(res.data.data);
-      if (res.data.data?.data_source) setDataSource(res.data.data.data_source);
-      if (res.data.data?.data_source_label) setDataSourceLabel(res.data.data.data_source_label);
+      const [detailRes, saleRes] = await Promise.all([
+        api.get(`/market-data/suburbs/${encodeURIComponent(suburb)}`),
+        api.get(`/market-data/suburbs/${encodeURIComponent(suburb)}/sale-comps`).catch(() => null),
+      ]);
+      setSuburbDetails(detailRes.data.data);
+      if (detailRes.data.data?.data_source) setDataSource(detailRes.data.data.data_source);
+      if (detailRes.data.data?.data_source_label) setDataSourceLabel(detailRes.data.data.data_source_label);
+      const saleData = saleRes?.data?.data;
+      if (saleData && saleData.status !== 'no_sale_comps' && (saleData.transfer_count ?? 0) > 0) {
+        setSaleComps(saleData);
+      }
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to load suburb details.');
     } finally {
@@ -198,11 +207,24 @@ export default function LandlordMarketDataPage() {
               <select
                 value={compareUnitId}
                 onChange={(e) => {
-                  setCompareUnitId(e.target.value);
-                  const u = unitOptions.find((o) => o.id === e.target.value);
+                  const id = e.target.value;
+                  setCompareUnitId(id);
+                  const u = unitOptions.find((o) => o.id === id);
                   if (u) {
                     setCompareSuburb(u.suburb);
                     setCompareRent(String(u.rent ?? ''));
+                    if (id) {
+                      setCompareBusy(true);
+                      api
+                        .get('/market-data/compare', { params: { unit_id: id } })
+                        .then((res) => setCompareResult(res.data.data))
+                        .catch((err: any) =>
+                          setError(err?.response?.data?.message || err?.message || 'Compare failed.'),
+                        )
+                        .finally(() => setCompareBusy(false));
+                    }
+                  } else {
+                    setCompareResult(null);
                   }
                 }}
                 className="mt-1 block min-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2"
@@ -346,6 +368,19 @@ export default function LandlordMarketDataPage() {
                       <li key={use}>{use}</li>
                     ))}
                   </ul>
+                ) : null}
+                {saleComps?.median_sale_price != null ? (
+                  <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50/80 p-3 text-sm text-sky-950">
+                    <p className="font-semibold">Sale comps pilot</p>
+                    <p className="mt-1">
+                      {saleComps.transfer_count} transfer{saleComps.transfer_count === 1 ? '' : 's'} · median{' '}
+                      {formatN$(saleComps.median_sale_price)}
+                      {saleComps.min_sale_price != null && saleComps.max_sale_price != null
+                        ? ` · ${formatN$(saleComps.min_sale_price)} – ${formatN$(saleComps.max_sale_price)}`
+                        : ''}
+                    </p>
+                    <p className="mt-1 text-xs text-sky-800/90">Separate from verified rental data — partner-sourced deeds pilot.</p>
+                  </div>
                 ) : null}
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <p className="text-sm">Median rent: {formatN$(suburbDetails.latest_snapshot?.median_rent)}</p>

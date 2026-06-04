@@ -247,12 +247,17 @@ Recommended wording:
 - Admin “Ready to license” report + methodology PDF download.
 - Landlord detail: overall on-time %, bedroom/income blocks, monthly on-time and rent charts; summary on-time weighted by sample count.
 - B2B licensed report PDF + preview on `/api/v1/reports/*` (audited via `report_generations.client_id`).
+- OpenAPI 3.0 + Postman exports; `GET /api/v1/openapi.json`.
+- Licensable suburb webhooks (`suburb.licensable`, migration `0028`); admin delivery log + test send.
+- Sale comps pilot ingest + `GET /api/v1/suburb/:name/sale-comps`; landlord `/market-data/suburbs/:name/sale-comps`.
+- Landlord rent vs suburb median: `GET /market-data/compare`.
 
 ### Backlog
 
-1. **Sale comps pilot** — partner ingest per `SALE_COMPS_ROADMAP` (separate licence).
+1. **Sale comps GA** — partner SLA, bulk ingest, separate licence SKU (pilot tables live).
 2. **Stricter consent** — optional require tenant **and** landlord consent before capture.
-4. **Geocode QA** — reduce suburb mis-labelling on properties.
+3. **Geocode QA** — reduce suburb mis-labelling on properties.
+4. **Webhook retries** — exponential backoff for failed deliveries.
 
 ---
 

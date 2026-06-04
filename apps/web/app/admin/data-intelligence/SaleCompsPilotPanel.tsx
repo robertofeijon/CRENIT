@@ -42,7 +42,7 @@ export default function SaleCompsPilotPanel({ pilotSummary, suburbOptions, clien
             city: 'Windhoek',
             sale_price: price,
             transfer_date: transferDate,
-            source_type: 'admin_pilot',
+            source_type: 'pilot_manual',
           },
         ],
       });

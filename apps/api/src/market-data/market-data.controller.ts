@@ -39,6 +39,13 @@ export class MarketDataController {
     };
   }
 
+  @Get('suburbs/:suburb/sale-comps')
+  async getSuburbSaleComps(@Headers('authorization') authHeader: string, @Param('suburb') suburb: string) {
+    await this.assertLandlordOrAdmin(authHeader);
+    const data = await this.marketDataService.getSaleCompsForSuburb(suburb);
+    return { success: true, data, error: null };
+  }
+
   @Get('suburbs/:suburb')
   async getSuburbDetails(@Headers('authorization') authHeader: string, @Param('suburb') suburb: string) {
     await this.assertLandlordOrAdmin(authHeader);

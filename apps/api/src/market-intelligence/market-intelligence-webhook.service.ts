@@ -1,5 +1,5 @@
 import { createHmac, randomBytes } from 'crypto';
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MIN_STATISTICAL_SUBURB_SAMPLE } from './market-intelligence.utils';
 
@@ -58,6 +58,67 @@ export class MarketIntelligenceWebhookService {
       .eq('client_id', clientId);
     if (error) throw error;
     return { ok: true };
+  }
+
+  async listRecentDeliveries(limit = 50) {
+    const { data, error } = await this.mi()
+      .from('webhook_deliveries')
+      .select('id, event_type, payload, response_status, created_at, subscription_id')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    const deliveries = data ?? [];
+    const subIds = [...new Set(deliveries.map((d: { subscription_id: string | null }) => d.subscription_id).filter(Boolean))];
+    let subMap = new Map<string, { url: string; client_id: string }>();
+    if (subIds.length) {
+      const { data: subs } = await this.mi()
+        .from('b2b_webhook_subscriptions')
+        .select('id, url, client_id')
+        .in('id', subIds);
+      subMap = new Map((subs ?? []).map((s: { id: string; url: string; client_id: string }) => [s.id, s]));
+    }
+    const clientIds = [...new Set([...subMap.values()].map((s) => s.client_id))];
+    let clientMap = new Map<string, string>();
+    if (clientIds.length) {
+      const { data: clients } = await this.mi().from('b2b_clients').select('id, name').in('id', clientIds);
+      clientMap = new Map((clients ?? []).map((c: { id: string; name: string }) => [c.id, c.name]));
+    }
+    return deliveries.map((d: any) => {
+      const sub = d.subscription_id ? subMap.get(d.subscription_id) : null;
+      return {
+        id: d.id,
+        event_type: d.event_type,
+        response_status: d.response_status,
+        created_at: d.created_at,
+        suburb: (d.payload as { data?: { suburbs?: { suburb: string }[] } })?.data?.suburbs?.[0]?.suburb ?? null,
+        url: sub?.url ?? null,
+        client_name: sub ? clientMap.get(sub.client_id) ?? null : null,
+      };
+    });
+  }
+
+  async sendTestDelivery(subscriptionId: string) {
+    const { data: sub, error } = await this.mi()
+      .from('b2b_webhook_subscriptions')
+      .select('*')
+      .eq('id', subscriptionId)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (error) throw error;
+    if (!sub) throw new BadRequestException('Active subscription not found');
+    const status = await this.deliverToSubscription(sub, 'suburb.licensable', {
+      test: true,
+      suburbs: [
+        {
+          suburb: 'Test Suburb',
+          city: 'Windhoek',
+          transaction_count: 10,
+          median_rent: 12000,
+          on_time_rate: 92,
+        },
+      ],
+    });
+    return { ok: true, subscription_id: subscriptionId, response_status: status };
   }
 
   /**
@@ -131,42 +192,50 @@ export class MarketIntelligenceWebhookService {
       .select('*')
       .eq('is_active', true);
     const matching = (subs ?? []).filter((s: { events: string[] }) => (s.events ?? []).includes(eventType));
+    for (const sub of matching) {
+      await this.deliverToSubscription(sub, eventType, payload);
+    }
+  }
+
+  private async deliverToSubscription(
+    sub: { id: string; url: string; secret: string },
+    eventType: string,
+    payload: Record<string, unknown>,
+  ) {
     const body = JSON.stringify({
       event: eventType,
       occurred_at: new Date().toISOString(),
       data: payload,
     });
-
-    for (const sub of matching) {
-      const signature = this.signPayload(sub.secret, body);
-      let responseStatus: number | null = null;
-      try {
-        const res = await fetch(sub.url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CRENIT-Event': eventType,
-            'X-CRENIT-Signature': `sha256=${signature}`,
-          },
-          body,
-          signal: AbortSignal.timeout(15000),
-        });
-        responseStatus = res.status;
-      } catch (err) {
-        this.logger.warn(`Webhook delivery failed ${sub.url}: ${(err as Error).message}`);
-      }
-      try {
-        await this.mi().from('webhook_deliveries').insert([
-          {
-            subscription_id: sub.id,
-            event_type: eventType,
-            payload: JSON.parse(body),
-            response_status: responseStatus,
-          },
-        ]);
-      } catch {
-        /* ignore log failure */
-      }
+    const signature = this.signPayload(sub.secret, body);
+    let responseStatus: number | null = null;
+    try {
+      const res = await fetch(sub.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CRENIT-Event': eventType,
+          'X-CRENIT-Signature': `sha256=${signature}`,
+        },
+        body,
+        signal: AbortSignal.timeout(15000),
+      });
+      responseStatus = res.status;
+    } catch (err) {
+      this.logger.warn(`Webhook delivery failed ${sub.url}: ${(err as Error).message}`);
     }
+    try {
+      await this.mi().from('webhook_deliveries').insert([
+        {
+          subscription_id: sub.id,
+          event_type: eventType,
+          payload: JSON.parse(body),
+          response_status: responseStatus,
+        },
+      ]);
+    } catch {
+      /* ignore log failure */
+    }
+    return responseStatus;
   }
 }

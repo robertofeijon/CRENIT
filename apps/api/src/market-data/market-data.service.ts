@@ -32,4 +32,8 @@ export class MarketDataService {
   ) {
     return this.marketIntelligence.getPortalLandlordRentCompare(landlordUserId, opts);
   }
+
+  async getSaleCompsForSuburb(suburb: string) {
+    return this.marketIntelligence.getSaleCompsForSuburb(suburb);
+  }
 }

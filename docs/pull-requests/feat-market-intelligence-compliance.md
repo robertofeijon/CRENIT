@@ -14,6 +14,9 @@
 - Landlord UI: data-source badge, weighted summary on-time, bedroom/income blocks, monthly rent and on-time charts.
 - Ops: nightly snapshot rollup, consent revoke UI, admin licensable suburbs + methodology PDF.
 - Reference doc: `docs/MARKET_INTELLIGENCE.md`.
+- OpenAPI/Postman integrator exports; licensable suburb webhooks (migration `0028`).
+- Sale comps pilot ingest + B2B/landlord read APIs.
+- Landlord rent vs suburb median compare.
 
 ## Test plan
 
@@ -26,15 +29,23 @@
 - [ ] Landlord page: mixed badge when applicable; detail shows overall on-time (not last month only)
 - [ ] Admin: rollup + licensable suburbs + methodology PDF still work
 - [ ] Admin **Clients & API** → B2B report sample: generate key, download PDF via `/api/v1/reports/.../pdf`, copy curl
+- [ ] Migration `0028` applied; admin webhook register shows secret once; test delivery + delivery log
+- [ ] Admin sale comps ingest (`pilot_manual`); B2B + landlord `.../sale-comps` return pilot payload
+- [ ] `GET /market-data/compare?unit_id=` — landlord unit vs suburb median
+- [ ] Admin download OpenAPI + Postman from integrator exports
 
 ## API quick reference (B2B)
 
 | Method | Path |
 |--------|------|
+| GET | `/api/v1/catalog` |
+| GET | `/api/v1/openapi.json` |
 | GET | `/api/v1/suburb/:name` |
 | GET | `/api/v1/suburb/:name/trends` |
+| GET | `/api/v1/suburb/:name/sale-comps` |
 | GET | `/api/v1/city-overview` |
 | GET | `/api/v1/lender-risk/:suburb` |
+| POST / DELETE | `/api/v1/webhooks` |
 | GET | `/api/v1/reports` |
 | GET | `/api/v1/reports/:reportType/preview?suburb=` |
 | GET | `/api/v1/reports/:reportType/pdf?suburb=` |

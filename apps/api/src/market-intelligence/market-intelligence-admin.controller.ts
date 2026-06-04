@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   Param,
@@ -260,6 +261,43 @@ export class MarketIntelligenceAdminController {
   async listClientWebhooks(@Headers('authorization') authHeader: string, @Param('clientId') clientId: string) {
     await this.assertAdmin(authHeader);
     const data = await this.marketIntelligenceService.listB2bWebhooks(clientId);
+    return { success: true, data, error: null };
+  }
+
+  @Delete('b2b-clients/:clientId/webhooks/:subscriptionId')
+  async deactivateClientWebhook(
+    @Headers('authorization') authHeader: string,
+    @Param('clientId') clientId: string,
+    @Param('subscriptionId') subscriptionId: string,
+  ) {
+    await this.assertAdmin(authHeader);
+    const data = await this.marketIntelligenceService.deactivateB2bWebhook(clientId, subscriptionId);
+    return { success: true, data, error: null };
+  }
+
+  @Post('webhooks/:subscriptionId/test')
+  async testWebhookDelivery(
+    @Headers('authorization') authHeader: string,
+    @Param('subscriptionId') subscriptionId: string,
+  ) {
+    await this.assertAdmin(authHeader);
+    const data = await this.marketIntelligenceService.sendWebhookTestDelivery(subscriptionId);
+    return { success: true, data, error: null };
+  }
+
+  @Get('webhooks/deliveries')
+  async listWebhookDeliveries(@Headers('authorization') authHeader: string, @Query('limit') limit?: string) {
+    await this.assertAdmin(authHeader);
+    const data = await this.marketIntelligenceService.listWebhookDeliveries(
+      limit ? Math.min(100, Math.max(1, Number(limit))) : 50,
+    );
+    return { success: true, data, error: null };
+  }
+
+  @Get('licensable-watch')
+  async licensableWatch(@Headers('authorization') authHeader: string) {
+    await this.assertAdmin(authHeader);
+    const data = await this.marketIntelligenceService.getLicensableSuburbWatchState();
     return { success: true, data, error: null };
   }
 
