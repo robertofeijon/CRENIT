@@ -244,12 +244,12 @@ Recommended wording:
 - Nightly snapshot rollup + admin manual rollup; consent revoke in tenant/landlord settings.
 - Admin “Ready to license” report + methodology PDF download.
 - Landlord detail: overall on-time %, bedroom/income blocks, monthly on-time and rent charts; summary on-time weighted by sample count.
+- B2B licensed report PDF + preview on `/api/v1/reports/*` (audited via `report_generations.client_id`).
 
 ### Backlog
 
 1. **Sale comps pilot** — partner ingest per `SALE_COMPS_ROADMAP` (separate licence).
-2. **B2B report PDF** on `/api/v1` (today admin/report generation only).
-3. **Stricter consent** — optional require tenant **and** landlord consent before capture.
+2. **Stricter consent** — optional require tenant **and** landlord consent before capture.
 4. **Geocode QA** — reduce suburb mis-labelling on properties.
 
 ---

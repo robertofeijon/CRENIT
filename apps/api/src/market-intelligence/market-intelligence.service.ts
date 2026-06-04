@@ -708,7 +708,10 @@ export class MarketIntelligenceService {
     if (!product) throw new NotFoundException('Report type not found');
 
     let previewData: Record<string, unknown> = {};
-    if (reportType === 'suburb_report' || reportType === 'development_feasibility' || reportType === 'lender_risk_pack') {
+    if (reportType === 'lender_risk_pack') {
+      if (!suburb) throw new BadRequestException('Suburb is required for this report type');
+      previewData = await this.getLenderRisk(suburb);
+    } else if (reportType === 'suburb_report' || reportType === 'development_feasibility') {
       if (!suburb) throw new BadRequestException('Suburb is required for this report type');
       previewData = await this.getSuburbDetail(suburb);
     } else if (reportType === 'city_overview') {
@@ -718,8 +721,30 @@ export class MarketIntelligenceService {
     return { product, preview: previewData };
   }
 
-  async generateReportPdf(reportType: string, suburb: string | undefined, generatedBy?: string): Promise<Buffer> {
+  async assertReportSampleReady(preview: { preview: Record<string, unknown> }, reportType: string) {
+    const data = preview.preview;
+    if (reportType === 'city_overview') {
+      const suburbs = (data as { suburbs?: unknown[] }).suburbs;
+      if (!suburbs?.length) {
+        throw new BadRequestException('Insufficient data for city overview report');
+      }
+      return;
+    }
+    if ((data as { minimum_sample_not_met?: boolean }).minimum_sample_not_met) {
+      throw new BadRequestException(
+        `Insufficient verified sample for this report (need at least ${(data as { required_minimum_sample?: number }).required_minimum_sample ?? MIN_SUBURB_SAMPLE} transactions)`,
+      );
+    }
+  }
+
+  async generateReportPdf(
+    reportType: string,
+    suburb: string | undefined,
+    generatedBy?: string,
+    b2bClientId?: string,
+  ): Promise<Buffer> {
     const preview = await this.getReportPreview(reportType, suburb);
+    await this.assertReportSampleReady(preview, reportType);
     const bufferChunks: Buffer[] = [];
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
     doc.on('data', (chunk: Buffer) => bufferChunks.push(chunk));
@@ -747,8 +772,16 @@ export class MarketIntelligenceService {
         ? ((preview.preview as any)?.suburbs?.length ?? 0)
         : ((preview.preview as any)?.transaction_count ?? 0);
     await this.mi().from('report_generations').insert([
-      { report_type: reportType, suburb: suburb ?? null, generated_by: generatedBy ?? null },
+      {
+        report_type: reportType,
+        suburb: suburb ?? null,
+        generated_by: generatedBy ?? null,
+        client_id: b2bClientId ?? null,
+      },
     ]);
+    if (b2bClientId) {
+      await this.incrementB2bReportsPulled(b2bClientId);
+    }
     await this.supabase.getClient().from('admin_audit_log').insert([
       {
         admin_id: generatedBy ?? null,
@@ -758,16 +791,22 @@ export class MarketIntelligenceService {
           report_type: reportType,
           suburb: suburb ?? null,
           sample_count: sampleCount,
-          generated_for_client: null,
+          generated_for_client: b2bClientId ?? null,
         },
       },
     ]);
 
-    const client = this.mi();
-    const clients = await client.from('b2b_clients').select('id, reports_pulled_this_month');
-    // increment is handled per-client in pull endpoint; admin gen logs only
-
     return pdfPromise;
+  }
+
+  private async incrementB2bReportsPulled(clientId: string) {
+    try {
+      const { data } = await this.mi().from('b2b_clients').select('reports_pulled_this_month').eq('id', clientId).maybeSingle();
+      const current = Number((data as { reports_pulled_this_month?: number })?.reports_pulled_this_month ?? 0);
+      await this.mi().from('b2b_clients').update({ reports_pulled_this_month: current + 1 }).eq('id', clientId);
+    } catch (err) {
+      console.warn('incrementB2bReportsPulled failed:', err);
+    }
   }
 
   async getB2bClients() {

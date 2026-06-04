@@ -3,6 +3,7 @@ import {
   Get,
   Headers,
   Param,
+  Query,
   Res,
   UnauthorizedException,
   BadRequestException,
@@ -89,5 +90,74 @@ export class DataIntelligenceApiController {
     const data = await this.marketIntelligenceService.getLenderRisk(suburb);
     await this.marketIntelligenceService.logApiUsage(client.id, `/api/v1/lender-risk/${suburb}`, 200, (keyRecord as any)?.id);
     return { success: true, data, error: null };
+  }
+
+  @Get('reports')
+  async listReports(@Headers('x-crenit-key') crenitApiKey: string, @Headers('x-rentcredit-key') legacyApiKey: string) {
+    const { client, keyRecord } = await this.resolveClient(crenitApiKey || legacyApiKey);
+    const products = await this.marketIntelligenceService.getReportProducts();
+    await this.marketIntelligenceService.logApiUsage(client.id, '/api/v1/reports', 200, (keyRecord as any)?.id);
+    return {
+      success: true,
+      data: products.map((p) => ({
+        report_type: p.report_type,
+        display_name: p.display_name,
+        description: p.description,
+        price_nad: p.price_nad,
+        requires_suburb: p.requires_suburb,
+        deliverables: p.deliverables,
+      })),
+      error: null,
+    };
+  }
+
+  @Get('reports/:reportType/preview')
+  async previewReport(
+    @Headers('x-crenit-key') crenitApiKey: string,
+    @Headers('x-rentcredit-key') legacyApiKey: string,
+    @Param('reportType') reportType: string,
+    @Query('suburb') suburb?: string,
+  ) {
+    const { client, keyRecord } = await this.resolveClient(crenitApiKey || legacyApiKey);
+    const data = await this.marketIntelligenceService.getReportPreview(reportType, suburb);
+    await this.marketIntelligenceService.logApiUsage(
+      client.id,
+      `/api/v1/reports/${reportType}/preview`,
+      200,
+      (keyRecord as any)?.id,
+    );
+    return { success: true, data, error: null };
+  }
+
+  @Get('reports/:reportType/pdf')
+  async downloadReportPdf(
+    @Headers('x-crenit-key') crenitApiKey: string,
+    @Headers('x-rentcredit-key') legacyApiKey: string,
+    @Param('reportType') reportType: string,
+    @Query('suburb') suburb: string | undefined,
+    @Res() res: Response,
+  ) {
+    const { client, keyRecord } = await this.resolveClient(crenitApiKey || legacyApiKey);
+    try {
+      const pdf = await this.marketIntelligenceService.generateReportPdf(reportType, suburb, undefined, client.id);
+      await this.marketIntelligenceService.logApiUsage(
+        client.id,
+        `/api/v1/reports/${reportType}/pdf`,
+        200,
+        (keyRecord as any)?.id,
+      );
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="crenit-${reportType}${suburb ? `-${suburb}` : ''}.pdf"`);
+      res.send(pdf);
+    } catch (e) {
+      const status = (e as { status?: number }).status === 400 ? 400 : 404;
+      await this.marketIntelligenceService.logApiUsage(
+        client.id,
+        `/api/v1/reports/${reportType}/pdf`,
+        status,
+        (keyRecord as any)?.id,
+      );
+      throw e;
+    }
   }
 }
