@@ -139,6 +139,12 @@ Set `ADMIN_REQUIRE_2FA=true` on the API. Admins must enable 2FA at `/admin/secur
 
 ## 9. GitHub Actions secrets (login E2E)
 
+**Prerequisites on staging (same Supabase project as the secrets below):**
+
+- Migrations through **`0034_payment_eft_proofs.sql`** applied (EFT proof columns + `payment-proofs` bucket).
+- Demo tenant exists with **KYC approved** (`npm run seed:demo` against staging, or matching real credentials in secrets).
+- Staging API **`CORS_ORIGIN`** includes your deployed web URL **and** `http://localhost:3002` (Playwright in CI serves Next on that origin while calling `NEXT_PUBLIC_API_URL`).
+
 Configure in the repo **Settings → Secrets and variables → Actions**:
 
 | Secret | Example / notes |
@@ -147,11 +153,15 @@ Configure in the repo **Settings → Secrets and variables → Actions**:
 | `E2E_TENANT_PASSWORD` | `DemoTenant123!` |
 | `NEXT_PUBLIC_SUPABASE_URL` | Staging Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Staging anon key |
-| `NEXT_PUBLIC_API_URL` | Staging API base URL (e.g. `https://api-staging.example.com`) |
+| `NEXT_PUBLIC_API_URL` | Staging API base URL (no trailing slash), e.g. `https://your-api.onrender.com` |
 
 Without these, CI still runs public Playwright tests; the tenant login spec is skipped.
 
+**Verify CI:** re-run the **web-e2e** job on `main`. You should see **5 passed** (not `1 skipped` on `login.spec.ts`).
+
 Optional observability secrets: `SENTRY_DSN` (API), `NEXT_PUBLIC_SENTRY_DSN` (web).
+
+**EFT proof on staging (manual):** tenant `/tenant/payments` → Pay now (EFT) → upload proof → landlord `/landlord/payments` → View proof → Mark received. Confirm `payment-proofs` bucket is private in Supabase Storage.
 
 ---
 
@@ -159,7 +169,7 @@ Optional observability secrets: `SENTRY_DSN` (API), `NEXT_PUBLIC_SENTRY_DSN` (we
 
 | Item | Owner | Date | Pass |
 |------|-------|------|------|
-| Migrations 0026–0034 | | | |
+| Migrations 0026–0034 (incl. EFT proof `0034`) | | | |
 | RLS script | | | |
 | E2E smoke + manual path | | | |
 | SMTP + password reset | | | |
