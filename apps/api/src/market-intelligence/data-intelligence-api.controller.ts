@@ -36,6 +36,23 @@ export class DataIntelligenceApiController {
     return { keyRecord, client };
   }
 
+  @Get('suburb/:name/trends')
+  async getSuburbTrends(
+    @Headers('x-crenit-key') crenitApiKey: string,
+    @Headers('x-rentcredit-key') legacyApiKey: string,
+    @Param('name') suburb: string,
+  ) {
+    const { client, keyRecord } = await this.resolveClient(crenitApiKey || legacyApiKey);
+    const data = await this.marketIntelligenceService.getSuburbTrends(suburb);
+    await this.marketIntelligenceService.logApiUsage(
+      client.id,
+      `/api/v1/suburb/${suburb}/trends`,
+      200,
+      (keyRecord as any)?.id,
+    );
+    return { success: true, data, error: null };
+  }
+
   @Get('suburb/:name')
   async getSuburb(
     @Headers('x-crenit-key') crenitApiKey: string,

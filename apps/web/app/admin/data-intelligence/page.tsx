@@ -142,7 +142,29 @@ const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
 const PIE_COLORS = ['#C0392B', '#1A1A1A', '#64748b', '#0ea5e9', '#f59e0b', '#10b981'];
 const REPORT_TYPES_NEED_SUBURB = ['suburb_report', 'development_feasibility', 'lender_risk_pack'];
 
-type TabId = 'explorer' | 'products' | 'roadmap' | 'b2b';
+type TabId = 'explorer' | 'licensing' | 'products' | 'roadmap' | 'b2b';
+
+type LicensableReport = {
+  generated_at: string;
+  data_source: string;
+  summary: {
+    total_suburbs_with_data: number;
+    ready_to_license: number;
+    directional_only: number;
+    below_minimum: number;
+  };
+  ready_to_license: Array<{
+    suburb: string;
+    city: string;
+    transaction_count: number;
+    median_rent: number;
+    on_time_rate: number;
+    confidence_level: string;
+    freshness_status?: string;
+    licensing_notice?: string;
+  }>;
+  directional_only: Array<{ suburb: string; city: string; transaction_count: number; confidence_level: string }>;
+};
 
 export default function DataIntelligencePage() {
   const { user, role, loading } = useAuth();
@@ -170,6 +192,7 @@ export default function DataIntelligencePage() {
   const [selectedReport, setSelectedReport] = useState('suburb_report');
   const [previewData, setPreviewData] = useState<unknown>(null);
   const [newKeyReveal, setNewKeyReveal] = useState<string | null>(null);
+  const [licensableReport, setLicensableReport] = useState<LicensableReport | null>(null);
 
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const [loadingData, setLoadingData] = useState(false);
@@ -206,12 +229,13 @@ export default function DataIntelligencePage() {
     setLoadingData(true);
     setError(null);
     try {
-      const [dashRes, suburbsRes, catalogRes, clientsRes, apiRes] = await Promise.all([
+      const [dashRes, suburbsRes, catalogRes, clientsRes, apiRes, licensableRes] = await Promise.all([
         api.get('/admin/data-intelligence/dashboard', { params: filterParams }),
         api.get('/admin/data-intelligence/suburbs', { params: filterParams }),
         api.get('/admin/data-intelligence/commercial-catalog'),
         api.get('/admin/data-intelligence/b2b-clients'),
         api.get('/admin/data-intelligence/api-config'),
+        api.get('/admin/data-intelligence/licensable-suburbs'),
       ]);
       setDashboard(dashRes.data.data);
       setSuburbs(suburbsRes.data.data?.suburbs ?? []);
@@ -220,6 +244,7 @@ export default function DataIntelligencePage() {
       setProducts(catalog?.products ?? []);
       setClients(clientsRes.data.data ?? []);
       setApiConfig(apiRes.data.data);
+      setLicensableReport(licensableRes.data.data);
       setLastFetchedAt(new Date());
       if (selectedSuburb) {
         const detailRes = await api.get(
@@ -658,6 +683,7 @@ export default function DataIntelligencePage() {
             {(
               [
                 { id: 'explorer' as TabId, label: 'Suburb comps' },
+                { id: 'licensing' as TabId, label: 'Ready to license' },
                 { id: 'products' as TabId, label: 'Licensed products' },
                 { id: 'roadmap' as TabId, label: 'Sale comps (planned)' },
                 { id: 'b2b' as TabId, label: 'Clients & API' },
@@ -687,6 +713,25 @@ export default function DataIntelligencePage() {
               />
             ) : null}
 
+            {activeTab === 'licensing' ? (
+              <LicensingPanel
+                report={licensableReport}
+                busy={busy}
+                onRollup={async () => {
+                  setBusy(true);
+                  try {
+                    await api.post('/admin/data-intelligence/snapshots/rollup');
+                    void loadAll();
+                  } catch (err: unknown) {
+                    const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
+                    setError(apiErr?.response?.data?.message || 'Rollup failed.');
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              />
+            ) : null}
+
             {activeTab === 'products' ? (
               <ProductsPanel
                 licensingTerms={commercial?.licensing_terms}
@@ -700,6 +745,23 @@ export default function DataIntelligencePage() {
                 suburbOptions={filterOptions?.suburbs ?? suburbs.map((s) => s.suburb)}
                 onPreview={handlePreviewReport}
                 onPdf={handleGeneratePdf}
+                onMethodologyPdf={async () => {
+                  setBusy(true);
+                  try {
+                    const res = await api.get('/admin/data-intelligence/methodology/pdf', { responseType: 'blob' });
+                    const url = URL.createObjectURL(res.data);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'crenit-data-intelligence-methodology.pdf';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch (err: unknown) {
+                    const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
+                    setError(apiErr?.response?.data?.message || 'Methodology PDF failed.');
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
                 onPriceUpdate={async (reportType, price) => {
                   await api.put(`/admin/data-intelligence/report-products/${reportType}/price`, { price_nad: price });
                   void loadAll();
@@ -1037,6 +1099,78 @@ function SaleCompsRoadmapPanel({
   );
 }
 
+function LicensingPanel({
+  report,
+  busy,
+  onRollup,
+}: {
+  report: LicensableReport | null;
+  busy: boolean;
+  onRollup: () => void;
+}) {
+  if (!report) {
+    return <p className="text-sm text-slate-500">Loading licensable suburb report…</p>;
+  }
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-600">
+          Suburbs with ≥10 verified payment records are cleared for commercial licensing (same rule as B2B API).
+        </p>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onRollup}
+          className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        >
+          Run snapshot rollup now
+        </button>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-4">
+        <AdminStatCard label="Ready to license" value={report.summary.ready_to_license} icon={MapPin} />
+        <AdminStatCard label="Directional (5–9)" value={report.summary.directional_only} icon={BarChart3} />
+        <AdminStatCard label="Below minimum" value={report.summary.below_minimum} icon={Database} />
+        <AdminStatCard label="Data source" value={report.data_source === 'market_data_records' ? 'Verified' : 'Fallback'} icon={Activity} />
+      </div>
+      {report.ready_to_license.length ? (
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Suburb</th>
+                <th className="px-4 py-3">City</th>
+                <th className="px-4 py-3">n</th>
+                <th className="px-4 py-3">Median rent</th>
+                <th className="px-4 py-3">On-time %</th>
+                <th className="px-4 py-3">Confidence</th>
+                <th className="px-4 py-3">Freshness</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.ready_to_license.map((row) => (
+                <tr key={row.suburb} className="border-t border-slate-100">
+                  <td className="px-4 py-3 font-medium">{row.suburb}</td>
+                  <td className="px-4 py-3">{row.city}</td>
+                  <td className="px-4 py-3">{row.transaction_count}</td>
+                  <td className="px-4 py-3">N${row.median_rent?.toLocaleString()}</td>
+                  <td className="px-4 py-3">{row.on_time_rate}%</td>
+                  <td className="px-4 py-3 capitalize">{row.confidence_level}</td>
+                  <td className="px-4 py-3 capitalize">{row.freshness_status ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <EmptyStateCard
+          title="No licensable suburbs yet"
+          description="Need at least 10 verified records per suburb. Grow consented payments on-platform."
+        />
+      )}
+    </div>
+  );
+}
+
 function ProductsPanel({
   licensingTerms = [],
   products,
@@ -1049,6 +1183,7 @@ function ProductsPanel({
   suburbOptions,
   onPreview,
   onPdf,
+  onMethodologyPdf,
   onPriceUpdate,
 }: {
   licensingTerms?: string[];
@@ -1062,13 +1197,24 @@ function ProductsPanel({
   suburbOptions: string[];
   onPreview: () => void;
   onPdf: () => void;
+  onMethodologyPdf: () => void;
   onPriceUpdate: (reportType: string, price: number) => void;
 }) {
   return (
     <div className="space-y-6">
-      <p className="text-sm text-slate-600">
-        Priced data products for property professionals. Adjust NAD pricing before quoting enterprise clients.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-600">
+          Priced data products for property professionals. Adjust NAD pricing before quoting enterprise clients.
+        </p>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onMethodologyPdf}
+          className="rounded-full bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#992d24] disabled:opacity-60"
+        >
+          Download methodology PDF
+        </button>
+      </div>
       {licensingTerms?.length ? (
         <ul className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600">
           {licensingTerms.map((term) => (

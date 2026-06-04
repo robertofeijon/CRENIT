@@ -9,6 +9,7 @@ import LandlordPageHeader from '../../components/ui/LandlordPageHeader';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { landlordInputClass, statusPillClass } from '../../components/landlord/landlordUi';
+import MarketDataConsentSection from '../../components/settings/MarketDataConsentSection';
 
 export default function LandlordSettingsPage() {
   const { user, role, loading } = useAuth();
@@ -212,6 +213,8 @@ export default function LandlordSettingsPage() {
           )}
         </div>
       </section>
+
+      <MarketDataConsentSection consentType="LANDLORD_MARKET_DATA" />
 
       {notificationPrefs ? (
         <section className="landlord-panel">

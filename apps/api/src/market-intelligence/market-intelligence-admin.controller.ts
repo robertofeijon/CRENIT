@@ -204,4 +204,27 @@ export class MarketIntelligenceAdminController {
     const data = await this.marketIntelligenceService.getApiConfig();
     return { success: true, data, error: null };
   }
+
+  @Get('licensable-suburbs')
+  async licensableSuburbs(@Headers('authorization') authHeader: string) {
+    await this.assertAdmin(authHeader);
+    const data = await this.marketIntelligenceService.getLicensableSuburbsReport();
+    return { success: true, data, error: null };
+  }
+
+  @Post('snapshots/rollup')
+  async rollupSnapshots(@Headers('authorization') authHeader: string) {
+    await this.assertAdmin(authHeader);
+    const data = await this.marketIntelligenceService.rollupSnapshotsFromVerifiedRecords();
+    return { success: true, data, error: null };
+  }
+
+  @Get('methodology/pdf')
+  async methodologyPdf(@Headers('authorization') authHeader: string, @Res() res: Response) {
+    const profile = await this.assertAdmin(authHeader);
+    const pdf = await this.marketIntelligenceService.generateMethodologyPdf(profile.id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="crenit-data-intelligence-methodology.pdf"');
+    res.send(pdf);
+  }
 }

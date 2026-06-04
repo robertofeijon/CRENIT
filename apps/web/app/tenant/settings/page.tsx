@@ -11,6 +11,7 @@ import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import { tenantInputClass, tenantSelectClass } from '../../components/tenant/tenantUi';
+import MarketDataConsentSection from '../../components/settings/MarketDataConsentSection';
 
 export default function TenantSettingsPage() {
   const { user, loading, roleReady } = useAuth();
@@ -287,6 +288,8 @@ export default function TenantSettingsPage() {
           )}
         </div>
       </section>
+
+      <MarketDataConsentSection consentType="TENANT_MARKET_DATA" />
 
       {notificationPrefs ? (
         <section className="tenant-panel">
