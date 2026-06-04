@@ -947,6 +947,22 @@ export class MarketIntelligenceService {
           path: '/api/v1/lender-risk/{suburb}',
           description: 'Rental-backed credit signals: payment behaviour and income stress bands for banks.',
         },
+        {
+          path: '/api/v1/suburb/{name}/trends',
+          description: 'Monthly on-time payment trend for one suburb (compliance envelope included).',
+        },
+        {
+          path: '/api/v1/reports',
+          description: 'Licensed report catalog (suburb_report, city_overview, lender_risk_pack, development_feasibility).',
+        },
+        {
+          path: '/api/v1/reports/{reportType}/preview?suburb=',
+          description: 'JSON preview of report data before PDF pull.',
+        },
+        {
+          path: '/api/v1/reports/{reportType}/pdf?suburb=',
+          description: 'Download licensed PDF; 400 when suburb sample below minimum.',
+        },
       ],
       tier_limits: {
         'One-time report': 10,

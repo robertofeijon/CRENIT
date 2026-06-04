@@ -745,6 +745,7 @@ export default function DataIntelligencePage() {
                 suburbOptions={filterOptions?.suburbs ?? suburbs.map((s) => s.suburb)}
                 onPreview={handlePreviewReport}
                 onPdf={handleGeneratePdf}
+                onGoToB2bSample={() => setActiveTab('b2b')}
                 onMethodologyPdf={async () => {
                   setBusy(true);
                   try {
@@ -778,6 +779,9 @@ export default function DataIntelligencePage() {
                 licensingTerms={commercial?.licensing_terms}
                 clients={clients}
                 apiConfig={apiConfig}
+                apiKeySample={newKeyReveal}
+                suburbOptions={filterOptions?.suburbs ?? suburbs.map((s) => s.suburb)}
+                onError={setError}
                 onGenerateKey={async (clientId) => {
                   setNewKeyReveal(null);
                   try {
@@ -1185,6 +1189,7 @@ function ProductsPanel({
   onPdf,
   onMethodologyPdf,
   onPriceUpdate,
+  onGoToB2bSample,
 }: {
   licensingTerms?: string[];
   products: any[];
@@ -1199,12 +1204,23 @@ function ProductsPanel({
   onPdf: () => void;
   onMethodologyPdf: () => void;
   onPriceUpdate: (reportType: string, price: number) => void;
+  onGoToB2bSample?: () => void;
 }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-slate-600">
           Priced data products for property professionals. Adjust NAD pricing before quoting enterprise clients.
+          {onGoToB2bSample ? (
+            <>
+              {' '}
+              Integrators use the{' '}
+              <button type="button" onClick={onGoToB2bSample} className="font-semibold text-[#C0392B] hover:underline">
+                B2B report API sample
+              </button>
+              .
+            </>
+          ) : null}
         </p>
         <button
           type="button"
@@ -1321,20 +1337,146 @@ function ProductsPanel({
   );
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+
 function B2bPanel({
   licensingTerms,
   clients,
   apiConfig,
+  apiKeySample,
+  suburbOptions,
+  onError,
   onGenerateKey,
   onRevokeKey,
 }: {
   licensingTerms?: string[];
   clients: any[];
   apiConfig: any;
+  apiKeySample: string | null;
+  suburbOptions: string[];
+  onError: (message: string) => void;
   onGenerateKey: (id: string) => void;
   onRevokeKey: (id: string) => void;
 }) {
+  const [sampleReport, setSampleReport] = useState('suburb_report');
+  const [sampleSuburb, setSampleSuburb] = useState('');
+  const [sampleBusy, setSampleBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const sampleSuburbParam =
+    REPORT_TYPES_NEED_SUBURB.includes(sampleReport) && sampleSuburb
+      ? `?suburb=${encodeURIComponent(sampleSuburb)}`
+      : '';
+
+  const sampleCurl = apiKeySample
+    ? `curl -sS -H "X-CRENIT-Key: ${apiKeySample}" "${API_BASE}/api/v1/reports/${sampleReport}/pdf${sampleSuburbParam}" -o crenit-${sampleReport}.pdf`
+    : `curl -sS -H "X-CRENIT-Key: YOUR_KEY" "${API_BASE}/api/v1/reports/${sampleReport}/pdf${sampleSuburbParam}" -o crenit-${sampleReport}.pdf`;
+
+  const copyCurl = async () => {
+    try {
+      await navigator.clipboard.writeText(sampleCurl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      onError('Could not copy to clipboard.');
+    }
+  };
+
+  const runB2bPdfSample = async () => {
+    if (!apiKeySample) {
+      onError('Generate an API key below, then run the B2B sample.');
+      return;
+    }
+    if (REPORT_TYPES_NEED_SUBURB.includes(sampleReport) && !sampleSuburb) {
+      onError('Select a suburb for this report type.');
+      return;
+    }
+    setSampleBusy(true);
+    try {
+      const url = `${API_BASE}/api/v1/reports/${sampleReport}/pdf${sampleSuburbParam}`;
+      const res = await fetch(url, { headers: { 'X-CRENIT-Key': apiKeySample } });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error((errBody as { message?: string }).message || `B2B PDF failed (${res.status})`);
+      }
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `crenit-b2b-${sampleReport}${sampleSuburb ? `-${sampleSuburb}` : ''}.pdf`;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'B2B PDF sample failed.';
+      onError(message);
+    } finally {
+      setSampleBusy(false);
+    }
+  };
+
   return (
+    <div className="space-y-8">
+      <div className="rounded-xl border border-[#C0392B]/20 bg-[#FDEDEC]/40 p-5">
+        <h3 className="font-semibold text-[#1A1A1A]">B2B report API sample</h3>
+        <p className="mt-1 text-sm text-slate-600">
+          Same PDFs as <strong>Licensed products</strong>, but pulled by integrators with <code className="text-xs">X-CRENIT-Key</code>.
+          Admin PDF uses session auth; B2B uses the routes below.
+        </p>
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <label className="text-sm">
+            Report
+            <select
+              value={sampleReport}
+              onChange={(e) => setSampleReport(e.target.value)}
+              className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2"
+            >
+              <option value="suburb_report">Suburb report</option>
+              <option value="city_overview">City overview</option>
+              <option value="lender_risk_pack">Lender risk pack</option>
+              <option value="development_feasibility">Development feasibility</option>
+            </select>
+          </label>
+          {REPORT_TYPES_NEED_SUBURB.includes(sampleReport) ? (
+            <label className="text-sm">
+              Suburb
+              <select
+                value={sampleSuburb}
+                onChange={(e) => setSampleSuburb(e.target.value)}
+                className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2"
+              >
+                <option value="">Select suburb</option>
+                {suburbOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <button
+            type="button"
+            disabled={sampleBusy}
+            onClick={() => void runB2bPdfSample()}
+            className="rounded-full bg-[#1A1A1A] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {sampleBusy ? 'Downloading…' : 'Download via B2B API'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void copyCurl()}
+            className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold"
+          >
+            {copied ? 'Copied' : 'Copy curl'}
+          </button>
+        </div>
+        <pre className="mt-4 overflow-x-auto rounded-lg bg-[#1A1A1A] p-3 text-[11px] leading-relaxed text-slate-100">
+          {sampleCurl}
+        </pre>
+        {!apiKeySample ? (
+          <p className="mt-2 text-xs text-amber-800">Generate a client API key in the list below to enable live download.</p>
+        ) : null}
+      </div>
+
     <div className="grid gap-8 lg:grid-cols-2">
       <div>
         <h3 className="font-semibold text-[#1A1A1A]">Licensed B2B clients</h3>
@@ -1400,6 +1542,7 @@ function B2bPanel({
           </>
         ) : null}
       </div>
+    </div>
     </div>
   );
 }
