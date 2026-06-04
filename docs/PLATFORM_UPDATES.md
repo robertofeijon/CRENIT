@@ -231,7 +231,41 @@ supabase/migrations/0027_landlord_verification_wizard.sql
 
 ---
 
-## 9. Deployment checklist
+## 9. B2B licensed reports API (market intelligence)
+
+Shipped on branch `feat/market-intelligence-compliance` (merge before using in production).
+
+### Endpoints (`X-CRENIT-Key` header)
+
+| Method | Path | Notes |
+|--------|------|--------|
+| GET | `/api/v1/reports` | Catalog: `suburb_report`, `city_overview`, `lender_risk_pack`, `development_feasibility` |
+| GET | `/api/v1/reports/:reportType/preview?suburb=` | JSON preview (same payload as PDF) |
+| GET | `/api/v1/reports/:reportType/pdf?suburb=` | PDF download; **400** if suburb sample &lt; 5 |
+
+Suburb query param required for all types except `city_overview`. Pulls are logged on `report_generations.client_id` and increment `b2b_clients.reports_pulled_this_month`.
+
+### Admin console sample
+
+**Data Intelligence → Clients & API** tab:
+
+1. Generate an API key for a B2B client (one-time reveal).
+2. Use **B2B report API sample** — pick report + suburb, **Download via B2B API**, or **Copy curl**.
+3. **Licensed products** tab links to the same sample; admin **Download PDF** still uses session auth (`POST /admin/data-intelligence/reports/generate`).
+
+### Example
+
+```bash
+curl -sS -H "X-CRENIT-Key: YOUR_KEY" \
+  "http://localhost:3001/api/v1/reports/suburb_report/pdf?suburb=Klein%20Windhoek" \
+  -o crenit-suburb_report.pdf
+```
+
+See also `docs/MARKET_INTELLIGENCE.md` and `docs/pull-requests/feat-market-intelligence-compliance.md`.
+
+---
+
+## 10. Deployment checklist
 
 1. Run migrations `0026` and `0027` on Supabase.  
 2. Ensure `kyc-documents` storage bucket exists and API service role can upload.  
@@ -245,7 +279,7 @@ supabase/migrations/0027_landlord_verification_wizard.sql
 
 ---
 
-## 10. Known follow-ups (optional)
+## 11. Known follow-ups (optional)
 
 - Align legacy `landlord_onboarding_submissions` / `/admin/partner-approvals` with unified KYC queue if still in use  
 - Page-level API 403 messages already enforce partner approval; keep in sync with UI guard  
@@ -253,4 +287,4 @@ supabase/migrations/0027_landlord_verification_wizard.sql
 
 ---
 
-*Last updated: June 2026 — reflects marketing refresh, tenant KYC wizard, landlord dashboard verification, admin dual-queue review, and landlord step-2–first location cross-check.*
+*Last updated: June 2026 — marketing refresh, tenant KYC wizard, landlord verification, admin location review, and B2B report API (see §9 + `feat/market-intelligence-compliance`).*
