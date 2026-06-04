@@ -23,6 +23,7 @@ Run each file in `supabase/migrations/` **in numeric order**. On an existing pro
 | `0031` | Capture suburb snapshot QA |
 | `0032` | Market intelligence alert notification pref |
 | `0033_two_factor_totp.sql` | `two_factor_verified_until` for TOTP session enforcement |
+| `0034_payment_eft_proofs.sql` | EFT proof columns on `payments` + private `payment-proofs` storage bucket |
 
 ## Staging procedure
 

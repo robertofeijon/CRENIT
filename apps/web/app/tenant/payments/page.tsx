@@ -28,6 +28,14 @@ export default function TenantPaymentsPage() {
   const [payDayOffset, setPayDayOffset] = useState('1');
   const [payMethod, setPayMethod] = useState<'EFT' | 'CARD' | 'MOBILE_MONEY'>('EFT');
   const [payLoading, setPayLoading] = useState(false);
+  const [pendingEft, setPendingEft] = useState<{
+    payment_id: string;
+    bank_details: { bankName: string; accountName: string; accountNumber: string; branchCode: string; reference: string };
+    reference: string;
+    expires_at?: string;
+  } | null>(null);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofUploading, setProofUploading] = useState(false);
 
   useEffect(() => {
     if (!loading && roleReady && !user) router.replace('/auth');
@@ -92,7 +100,19 @@ export default function TenantPaymentsPage() {
         payment_method: payMethod,
         payment_details: payMethod === 'MOBILE_MONEY' ? { provider: 'MTC' } : {},
       });
-      setMessage(res.data?.data?.message || 'Payment initiated successfully.');
+      const data = res.data?.data;
+      if (payMethod === 'EFT' && data?.payment_id && data?.payment_details?.bank_details) {
+        setPendingEft({
+          payment_id: data.payment_id,
+          bank_details: data.payment_details.bank_details,
+          reference: data.payment_details.reference,
+          expires_at: data.payment_details.expires_at,
+        });
+        setProofFile(null);
+      } else {
+        setPendingEft(null);
+      }
+      setMessage(data?.message || 'Payment initiated successfully.');
       await loadAll();
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to initiate payment.');
@@ -119,6 +139,30 @@ export default function TenantPaymentsPage() {
       setError(err?.response?.data?.message || 'Unable to enable auto-pay.');
     } finally {
       setAutoPayLoading(false);
+    }
+  };
+
+  const handleUploadEftProof = async () => {
+    if (!pendingEft?.payment_id || !proofFile) {
+      setError('Select a proof file (PDF or image) after your bank transfer.');
+      return;
+    }
+    setProofUploading(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append('file', proofFile);
+      await api.post(`/payments/${pendingEft.payment_id}/eft-proof`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setMessage('Proof uploaded. Your landlord will confirm once funds are received.');
+      setPendingEft(null);
+      setProofFile(null);
+      await loadAll();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to upload proof.');
+    } finally {
+      setProofUploading(false);
     }
   };
 
@@ -158,6 +202,51 @@ export default function TenantPaymentsPage() {
       {error ? <ErrorStateCard message={error} onRetry={() => void loadAll()} /> : null}
       {message ? (
         <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{message}</p>
+      ) : null}
+
+      {pendingEft ? (
+        <section className="tenant-panel border-amber-200 bg-amber-50/50">
+          <h2 className="text-lg font-semibold text-[#1A1A1A]">Complete your EFT transfer</h2>
+          <p className="mt-2 text-sm text-slate-600">Use these details, then upload your bank proof so your landlord can confirm.</p>
+          <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-slate-500">Bank</dt>
+              <dd className="font-medium">{pendingEft.bank_details.bankName}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Account name</dt>
+              <dd className="font-medium">{pendingEft.bank_details.accountName}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Account number</dt>
+              <dd className="font-mono font-medium">{pendingEft.bank_details.accountNumber}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Branch code</dt>
+              <dd className="font-mono font-medium">{pendingEft.bank_details.branchCode}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-slate-500">Payment reference</dt>
+              <dd className="font-mono font-semibold text-[#C0392B]">{pendingEft.reference}</dd>
+            </div>
+          </dl>
+          <div className="mt-4 space-y-3">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-[#C0392B] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+              onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+            />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="tenant-btn-primary" disabled={proofUploading || !proofFile} onClick={() => void handleUploadEftProof()}>
+                {proofUploading ? 'Uploading…' : 'Upload proof'}
+              </button>
+              <button type="button" className="tenant-btn-secondary" onClick={() => setPendingEft(null)}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </section>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr]">
@@ -252,6 +341,9 @@ export default function TenantPaymentsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusPillClass(payment.status)}`}>{payment.status}</span>
+                  {payment.payment_method === 'EFT' && payment.eft_proof_uploaded && payment.status !== 'PAID' ? (
+                    <span className="text-xs font-medium text-amber-800">Proof sent · awaiting landlord</span>
+                  ) : null}
                   {payment.status === 'PAID' && payment.id ? (
                     <button
                       type="button"

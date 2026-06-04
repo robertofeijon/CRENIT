@@ -43,6 +43,18 @@ export class LandlordPaymentsController {
     return { success: true, data: response, error: null };
   }
 
+  @Get(':paymentId/eft-proof')
+  async eftProof(@Headers('authorization') authHeader: string, @Param('paymentId') paymentId: string) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    assertPartnerApproved(profile, 'Your landlord account is under review. Payment confirmations are locked until approval.');
+    if (!paymentId) {
+      throw new BadRequestException('paymentId is required');
+    }
+    const result = await this.paymentsService.getEftProofSignedUrlForLandlord(profile.id, paymentId);
+    return { success: true, data: result, error: null };
+  }
+
   @Post(':paymentId/confirm')
   async confirm(
     @Headers('authorization') authHeader: string,

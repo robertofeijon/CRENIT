@@ -49,7 +49,7 @@ Senior full-stack review of `main` @ June 2026. Use this as the **release gate**
 | 14 | **Credit score + payment metrics** | Done | Streak + on-time rate on home/credit-score |
 | 15 | **Schedulers (auto-pay, overdue, reminders)** | Partial | In-process crons + `POST /internal/cron/:job` with `CRON_SECRET` for external triggers |
 | 16 | **Privacy / Terms pages** | Partial | `/company/privacy`, `/company/terms` (summary pages; legal review still required) |
-| 17 | **Automated tests** | Done | Vitest payment-metrics + Playwright + `.github/workflows/ci.yml` |
+| 17 | **Automated tests** | Done | Vitest payment-metrics + Playwright (public pages + optional tenant login via `E2E_TENANT_*` secrets) + CI |
 | 18 | **Admin operational smoke** | Done | `POST /admin/system-health/smoke` |
 | 19 | **GDPR export/anonymise** | Done | `/admin/compliance` |
 | 20 | **Rate limiting + security headers** | Done | `rate-limit.middleware`, `security-headers.middleware` |
@@ -63,9 +63,9 @@ Senior full-stack review of `main` @ June 2026. Use this as the **release gate**
 | 21 | **Mandatory 2FA for all admins** | Done | Set `ADMIN_REQUIRE_2FA=true`; `/admin/security` setup gate |
 | 22 | **SMS 2FA** | Missing | TOTP only |
 | 23 | **Real-time notifications** | Missing | Poll/refresh only; no Supabase realtime |
-| 24 | **E2E monitoring (Sentry/Datadog)** | Missing | Logs only |
+| 24 | **E2E monitoring (Sentry/Datadog)** | Partial | Optional `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` on API + web |
 | 25 | **Payment webhook → live provider** | Partial | Generic webhook + signature; not tied to PayToday/etc. |
-| 26 | **EFT proof upload** | Missing | Reference-only EFT; no receipt upload workflow |
+| 26 | **EFT proof upload** | Done | `POST /payments/:id/eft-proof`, private `payment-proofs` bucket, landlord view/confirm |
 | 27 | **E-sign / lease PDF generation** | Partial | Attachments + reports; no DocuSign-style flow |
 | 28 | **Legacy routes cleanup** | Partial | `/dashboard/tenant` duplicates `/tenant/home` — deprecate |
 | 29 | **B2B lender-risk n&lt;5** | Partial | Intentional stub for compliance |

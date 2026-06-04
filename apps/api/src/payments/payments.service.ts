@@ -4,6 +4,17 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { CreditScoreService } from '../credit-score/credit-score.service';
 import { MarketIntelligenceCaptureService } from '../market-intelligence/market-intelligence-capture.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { createSignedStorageUrl, sanitizeStorageFileName } from '../supabase/storage.utils';
+
+const PAYMENT_PROOFS_BUCKET = 'payment-proofs';
+const EFT_PROOF_MAX_BYTES = Number(process.env.MAX_EFT_PROOF_UPLOAD_BYTES || 5 * 1024 * 1024);
+const EFT_PROOF_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+  'application/octet-stream',
+]);
 
 type PaymentInitiationPayload = {
   property_unit_id: string;
@@ -264,6 +275,7 @@ export class PaymentsService {
       return {
         payment_id: payment?.id,
         status: 'pending_confirmation',
+        message: 'Transfer the amount using the bank details below, then upload your proof of payment.',
         receipt_url: payment?.receipt_url,
         commission_amount: payment?.commission_amount,
         net_amount: payment?.amount_net,
@@ -356,11 +368,163 @@ export class PaymentsService {
     if ((historyRes as any).error) throw (historyRes as any).error;
 
     return {
-      payments,
+      payments: (payments || []).map((payment: any) => this.mapPaymentWithEftProofMeta(payment)),
       payment_events: (historyRes as any).data || [],
       on_time_rate: onTimeRate,
       streak,
       total_paid_year: totalPaidYear,
+    };
+  }
+
+  private mapPaymentWithEftProofMeta(payment: any) {
+    return {
+      ...payment,
+      eft_proof_uploaded: Boolean(payment?.eft_proof_storage_path),
+      eft_proof_file_name: payment?.eft_proof_file_name ?? null,
+      eft_proof_uploaded_at: payment?.eft_proof_uploaded_at ?? null,
+    };
+  }
+
+  private async getLandlordUserIdForPayment(landlordProfileId: string): Promise<string | null> {
+    const client = this.getClient();
+    const { data, error } = await client.from('landlord_profiles').select('user_id').eq('id', landlordProfileId).single();
+    if (error || !data?.user_id) return null;
+    return data.user_id;
+  }
+
+  async uploadEftProof(
+    tenantId: string,
+    paymentId: string,
+    file: { buffer: Buffer; mimetype: string; originalname: string; size?: number },
+  ) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Proof file is required');
+    }
+    const size = file.size ?? file.buffer.length;
+    if (size > EFT_PROOF_MAX_BYTES) {
+      throw new BadRequestException(`Proof file exceeds ${EFT_PROOF_MAX_BYTES} bytes`);
+    }
+    if (!EFT_PROOF_MIME_TYPES.has(file.mimetype)) {
+      throw new BadRequestException('Unsupported file type. Upload JPEG, PNG, WebP, or PDF.');
+    }
+
+    const client = this.getClient();
+    const { data: payment, error } = await client.from('payments').select('*').eq('id', paymentId).single();
+    if (error || !payment) {
+      throw new NotFoundException('Payment not found');
+    }
+    if (payment.tenant_id !== tenantId) {
+      throw new BadRequestException('Payment does not belong to this tenant');
+    }
+    if (payment.payment_method !== 'EFT') {
+      throw new BadRequestException('Proof upload is only available for EFT payments');
+    }
+    if (!['PENDING', 'PROCESSING', 'OVERDUE'].includes(payment.status)) {
+      throw new BadRequestException(`Cannot upload proof for payment status ${payment.status}`);
+    }
+
+    const safeName = sanitizeStorageFileName(file.originalname || 'proof');
+    const storagePath = `${tenantId}/${paymentId}/${Date.now()}-${safeName}`;
+    const { error: uploadError } = await client.storage.from(PAYMENT_PROOFS_BUCKET).upload(storagePath, file.buffer, {
+      contentType: file.mimetype,
+      upsert: true,
+    });
+    if (uploadError) {
+      throw new BadRequestException(`Upload failed: ${uploadError.message}`);
+    }
+
+    const now = new Date().toISOString();
+    const { data: updated, error: updateError } = await client
+      .from('payments')
+      .update({
+        eft_proof_storage_path: storagePath,
+        eft_proof_file_name: safeName,
+        eft_proof_uploaded_at: now,
+        status: 'PROCESSING',
+        updated_at: now,
+      })
+      .eq('id', paymentId)
+      .select()
+      .limit(1);
+    if (updateError) {
+      throw updateError;
+    }
+
+    const row = updated?.[0] ?? null;
+    if (row?.id) {
+      await this.logPaymentHistory({
+        payment_id: row.id,
+        lease_id: row.lease_id,
+        tenant_id: row.tenant_id,
+        landlord_id: row.landlord_id,
+        amount: row.amount_gross,
+        payment_date: row.paid_date,
+        payment_method: row.payment_method,
+        payment_status: 'PROCESSING',
+        source: 'TENANT',
+        notes: 'EFT proof uploaded by tenant',
+        metadata: { file_name: safeName },
+      });
+    }
+
+    const landlordUserId = await this.getLandlordUserIdForPayment(payment.landlord_id);
+    if (landlordUserId) {
+      await this.notificationsService.createNotification({
+        user_id: landlordUserId,
+        type: 'EFT_PROOF_UPLOADED',
+        title: 'EFT proof received',
+        message: `A tenant uploaded proof of payment (N$${Number(payment.amount_gross || 0).toLocaleString()}). Review and confirm receipt.`,
+        metadata: { payment_id: paymentId, lease_id: payment.lease_id },
+      });
+    }
+
+    return this.mapPaymentWithEftProofMeta(row);
+  }
+
+  async getEftProofSignedUrlForTenant(tenantId: string, paymentId: string) {
+    const client = this.getClient();
+    const { data: payment, error } = await client.from('payments').select('*').eq('id', paymentId).single();
+    if (error || !payment) {
+      throw new NotFoundException('Payment not found');
+    }
+    if (payment.tenant_id !== tenantId) {
+      throw new BadRequestException('Unauthorized');
+    }
+    if (!payment.eft_proof_storage_path) {
+      throw new NotFoundException('No proof uploaded for this payment');
+    }
+    const signed_url = await createSignedStorageUrl(client, PAYMENT_PROOFS_BUCKET, payment.eft_proof_storage_path);
+    if (!signed_url) {
+      throw new BadRequestException('Unable to generate proof URL');
+    }
+    return {
+      signed_url,
+      file_name: payment.eft_proof_file_name,
+      uploaded_at: payment.eft_proof_uploaded_at,
+    };
+  }
+
+  async getEftProofSignedUrlForLandlord(landlordUserId: string, paymentId: string) {
+    const client = this.getClient();
+    const landlordProfileId = await this.getLandlordProfileId(landlordUserId);
+    const { data: payment, error } = await client.from('payments').select('*').eq('id', paymentId).single();
+    if (error || !payment) {
+      throw new NotFoundException('Payment not found');
+    }
+    if (payment.landlord_id !== landlordProfileId) {
+      throw new BadRequestException('Payment does not belong to this landlord');
+    }
+    if (!payment.eft_proof_storage_path) {
+      throw new NotFoundException('No proof uploaded for this payment');
+    }
+    const signed_url = await createSignedStorageUrl(client, PAYMENT_PROOFS_BUCKET, payment.eft_proof_storage_path);
+    if (!signed_url) {
+      throw new BadRequestException('Unable to generate proof URL');
+    }
+    return {
+      signed_url,
+      file_name: payment.eft_proof_file_name,
+      uploaded_at: payment.eft_proof_uploaded_at,
     };
   }
 
@@ -738,6 +902,8 @@ export class PaymentsService {
       paid_date: payment.paid_date,
       date: payment.paid_date,
       month: payment.due_date ? payment.due_date.slice(0, 7) : null,
+      eft_proof_uploaded: Boolean(payment.eft_proof_storage_path),
+      eft_proof_file_name: payment.eft_proof_file_name ?? null,
     }));
 
     return {

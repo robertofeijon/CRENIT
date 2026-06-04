@@ -10,6 +10,7 @@
 -- 0031_market_capture_suburb_snapshot.sql
 -- 0032_notification_market_alerts.sql
 -- 0033_two_factor_totp.sql
+-- 0034_payment_eft_proofs.sql
 
 -- After apply, verify:
 --   SELECT column_name FROM information_schema.columns

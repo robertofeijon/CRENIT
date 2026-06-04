@@ -1,4 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
+import * as Sentry from '@sentry/nestjs';
 import type { Response } from 'express';
 
 @Catch()
@@ -26,6 +27,10 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       code = exception.name?.toUpperCase() || 'HTTP_EXCEPTION';
     } else if (exception instanceof Error) {
       error = exception.message || error;
+    }
+
+    if (statusCode >= 500 && process.env.SENTRY_DSN) {
+      Sentry.captureException(exception);
     }
 
     response.status(statusCode).json({ error, code, statusCode });

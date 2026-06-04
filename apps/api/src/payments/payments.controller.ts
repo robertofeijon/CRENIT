@@ -1,4 +1,20 @@
-import { Controller, Get, Post, Body, BadRequestException, Logger, Headers, Req, UnauthorizedException, Query, Param, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  BadRequestException,
+  Logger,
+  Headers,
+  Req,
+  UnauthorizedException,
+  Query,
+  Param,
+  Res,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { PaymentsService } from './payments.service';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -58,6 +74,41 @@ export class PaymentsController {
       year: year ? Number(year) : undefined,
     });
 
+    return { success: true, data: result, error: null };
+  }
+
+  @Post(':paymentId/eft-proof')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadEftProof(
+    @Headers('authorization') authHeader: string,
+    @Param('paymentId') paymentId: string,
+    @UploadedFile() file: { buffer: Buffer; mimetype: string; originalname: string; size?: number },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertKycApproved(profile);
+    if (!paymentId) {
+      throw new BadRequestException('paymentId is required');
+    }
+    if (!file) {
+      throw new BadRequestException('file is required');
+    }
+    const result = await this.paymentsService.uploadEftProof(profile.id, paymentId, {
+      buffer: file.buffer,
+      mimetype: file.mimetype,
+      originalname: file.originalname,
+      size: file.size,
+    });
+    return { success: true, data: result, error: null };
+  }
+
+  @Get(':paymentId/eft-proof')
+  async eftProof(
+    @Headers('authorization') authHeader: string,
+    @Param('paymentId') paymentId: string,
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertKycApproved(profile);
+    const result = await this.paymentsService.getEftProofSignedUrlForTenant(profile.id, paymentId);
     return { success: true, data: result, error: null };
   }
 

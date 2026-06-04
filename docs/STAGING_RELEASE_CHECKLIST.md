@@ -7,7 +7,7 @@ Run on **staging** before production. Commands assume repo root and `.env` confi
 ## 1. Staging migrations + RLS
 
 ```bash
-# Apply migrations 0026–0033 in Supabase (see supabase/scripts/staging_apply_reference.sql)
+# Apply migrations 0026–0034 in Supabase (see supabase/scripts/staging_apply_reference.sql)
 # Then validate tenant-scoped RLS with anon key:
 npm run validate:rls
 ```
@@ -36,7 +36,7 @@ npm run smoke:staging
 | 4 | Tenant | `/tenant/kyc` → complete 3 steps → submit |
 | 5 | Admin | `/admin/kyc` → approve tenant |
 | 6 | Tenant | `/tenant/settings` → add payment method |
-| 7 | Tenant | `/tenant/payments` → initiate EFT (or card simulated) |
+| 7 | Tenant | `/tenant/payments` → initiate EFT → upload proof → landlord confirms on `/landlord/payments` |
 | 8 | Landlord | `/landlord/payments` → confirm payment received |
 | 9 | Tenant | `/tenant/home` → streak + on-time % update; `/tenant/credit-score` → recalculate |
 
@@ -137,11 +137,29 @@ Set `ADMIN_REQUIRE_2FA=true` on the API. Admins must enable 2FA at `/admin/secur
 
 ---
 
+## 9. GitHub Actions secrets (login E2E)
+
+Configure in the repo **Settings → Secrets and variables → Actions**:
+
+| Secret | Example / notes |
+|--------|-----------------|
+| `E2E_TENANT_EMAIL` | `tenant@rentcredit.demo` (from `npm run seed:demo`) |
+| `E2E_TENANT_PASSWORD` | `DemoTenant123!` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Staging Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Staging anon key |
+| `NEXT_PUBLIC_API_URL` | Staging API base URL (e.g. `https://api-staging.example.com`) |
+
+Without these, CI still runs public Playwright tests; the tenant login spec is skipped.
+
+Optional observability secrets: `SENTRY_DSN` (API), `NEXT_PUBLIC_SENTRY_DSN` (web).
+
+---
+
 ## Sign-off
 
 | Item | Owner | Date | Pass |
 |------|-------|------|------|
-| Migrations 0026–0033 | | | |
+| Migrations 0026–0034 | | | |
 | RLS script | | | |
 | E2E smoke + manual path | | | |
 | SMTP + password reset | | | |

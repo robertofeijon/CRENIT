@@ -64,6 +64,18 @@ export default function LandlordPaymentsPage() {
     if (user && (role === 'LANDLORD' || role === 'ADMIN')) void loadPayments();
   }, [user, role, loadPayments]);
 
+  const handleViewEftProof = async (paymentId: string) => {
+    setError(null);
+    try {
+      const res = await api.get(`/landlords/payments/${paymentId}/eft-proof`);
+      const url = res.data?.data?.signed_url;
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      else setError('Proof URL unavailable.');
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to open proof.');
+    }
+  };
+
   const handleConfirmPayment = async (paymentId: string, receivedDate?: string, amount?: string) => {
     setConfirmingId(paymentId);
     setActionMessage(null);
@@ -87,6 +99,9 @@ export default function LandlordPaymentsPage() {
   }
 
   const pendingDirect = payments.filter((p) => p.payment_method === 'DIRECT' && p.status === 'PENDING').length;
+  const pendingEftProof = payments.filter(
+    (p) => p.payment_method === 'EFT' && p.status === 'PROCESSING' && p.eft_proof_uploaded,
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -132,6 +147,14 @@ export default function LandlordPaymentsPage() {
             {pendingDirect} direct payment{pendingDirect === 1 ? '' : 's'} awaiting your confirmation
           </p>
           <p className="mt-1 text-xs text-amber-900/90">Confirm receipt so tenant credit scores update correctly.</p>
+        </div>
+      ) : null}
+      {pendingEftProof > 0 ? (
+        <div className="landlord-panel border-sky-200 bg-sky-50/80">
+          <p className="text-sm font-semibold text-sky-950">
+            {pendingEftProof} EFT payment{pendingEftProof === 1 ? '' : 's'} with proof awaiting confirmation
+          </p>
+          <p className="mt-1 text-xs text-sky-900/90">Review the uploaded proof, then mark as received.</p>
         </div>
       ) : null}
 
@@ -192,7 +215,10 @@ export default function LandlordPaymentsPage() {
               </thead>
               <tbody>
                 {payments.map((payment: any) => {
-                  const needsConfirm = payment.payment_method === 'DIRECT' && payment.status === 'PENDING';
+                  const needsConfirm =
+                    (payment.payment_method === 'DIRECT' && payment.status === 'PENDING') ||
+                    (payment.payment_method === 'EFT' && payment.status === 'PROCESSING' && payment.eft_proof_uploaded);
+                  const hasEftProof = payment.payment_method === 'EFT' && payment.eft_proof_uploaded;
                   return (
                     <tr
                       key={payment.id}
@@ -214,6 +240,15 @@ export default function LandlordPaymentsPage() {
                       <td className="relative px-4 py-3">
                         {needsConfirm ? (
                           <>
+                            {hasEftProof ? (
+                              <button
+                                type="button"
+                                onClick={() => void handleViewEftProof(payment.id)}
+                                className="landlord-btn-secondary mb-2 py-2 text-xs"
+                              >
+                                View proof
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               onClick={() =>

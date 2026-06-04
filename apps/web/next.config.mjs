@@ -1,3 +1,5 @@
+import { withSentryConfig } from '@sentry/nextjs';
+
 /** @type {import('next').NextConfig} */
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -25,4 +27,11 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+const sentryDsn = process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN;
+export default sentryDsn
+  ? withSentryConfig(nextConfig, {
+      silent: true,
+      disableServerWebpackPlugin: !process.env.SENTRY_DSN,
+      hideSourceMaps: true,
+    })
+  : nextConfig;
