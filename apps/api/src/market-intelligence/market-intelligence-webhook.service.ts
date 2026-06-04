@@ -1,6 +1,7 @@
 import { createHmac, randomBytes } from 'crypto';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { LandlordLicensableNotifyService } from './landlord-licensable-notify.service';
 import { MIN_STATISTICAL_SUBURB_SAMPLE } from './market-intelligence.utils';
 
 export type LicensableSuburbEvent = {
@@ -17,7 +18,10 @@ const MAX_WEBHOOK_ATTEMPTS = 6;
 export class MarketIntelligenceWebhookService {
   private readonly logger = new Logger(MarketIntelligenceWebhookService.name);
 
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly landlordNotify: LandlordLicensableNotifyService,
+  ) {}
 
   private mi() {
     return this.supabase.getClient().schema('market_intelligence');
@@ -62,16 +66,27 @@ export class MarketIntelligenceWebhookService {
     return { ok: true };
   }
 
-  async listRecentDeliveries(limit = 50) {
-    const { data, error } = await this.mi()
+  async listRecentDeliveries(limit = 50, filter: 'all' | 'failed' | 'pending_retry' = 'all') {
+    const fetchLimit = filter === 'all' ? limit : Math.min(200, limit * 4);
+    let query = this.mi()
       .from('webhook_deliveries')
       .select(
         'id, event_type, payload, response_status, created_at, subscription_id, attempt_count, next_retry_at, last_error',
       )
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .limit(fetchLimit);
+    if (filter === 'pending_retry') {
+      query = query.not('next_retry_at', 'is', null);
+    }
+    const { data, error } = await query;
     if (error) throw error;
-    const deliveries = data ?? [];
+    let deliveries = data ?? [];
+    if (filter === 'failed') {
+      deliveries = deliveries.filter(
+        (d: { response_status: number | null }) => d.response_status == null || d.response_status >= 400,
+      );
+    }
+    deliveries = deliveries.slice(0, limit);
     const subIds = [...new Set(deliveries.map((d: { subscription_id: string | null }) => d.subscription_id).filter(Boolean))];
     let subMap = new Map<string, { url: string; client_id: string }>();
     if (subIds.length) {
@@ -231,6 +246,11 @@ export class MarketIntelligenceWebhookService {
 
       if (newlyLicensable.length) {
         await this.dispatchEvent('suburb.licensable', { suburbs: newlyLicensable });
+        try {
+          await this.landlordNotify.notifyLandlordsForNewlyLicensableSuburbs(newlyLicensable);
+        } catch (notifyErr) {
+          this.logger.warn('Landlord licensable notifications failed', notifyErr as Error);
+        }
       }
 
       return { synced: rows.length, newly_licensable: newlyLicensable.length, suburbs: newlyLicensable };

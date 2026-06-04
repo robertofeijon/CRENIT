@@ -38,6 +38,7 @@ import B2bIntegratorExports from './B2bIntegratorExports';
 import B2bWebhookAdmin from './B2bWebhookAdmin';
 import SaleCompsPilotPanel from './SaleCompsPilotPanel';
 import LicensableWatchPanel from './LicensableWatchPanel';
+import GeocodeQaPanel from './GeocodeQaPanel';
 
 type Timeframe = 'today' | '7d' | '30d' | '90d' | 'qtd' | 'ytd' | 'all';
 
@@ -148,7 +149,7 @@ const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
 const PIE_COLORS = ['#C0392B', '#1A1A1A', '#64748b', '#0ea5e9', '#f59e0b', '#10b981'];
 const REPORT_TYPES_NEED_SUBURB = ['suburb_report', 'development_feasibility', 'lender_risk_pack'];
 
-type TabId = 'explorer' | 'licensing' | 'products' | 'roadmap' | 'b2b';
+type TabId = 'explorer' | 'licensing' | 'products' | 'roadmap' | 'b2b' | 'qa';
 
 type LicensableReport = {
   generated_at: string;
@@ -702,6 +703,7 @@ export default function DataIntelligencePage() {
                 { id: 'products' as TabId, label: 'Licensed products' },
                 { id: 'roadmap' as TabId, label: 'Sale comps pilot' },
                 { id: 'b2b' as TabId, label: 'Clients & API' },
+                { id: 'qa' as TabId, label: 'Data QA' },
               ] as const
             ).map((tab) => (
               <button
@@ -799,6 +801,8 @@ export default function DataIntelligencePage() {
                 onRefresh={() => void loadAll()}
               />
             ) : null}
+
+            {activeTab === 'qa' ? <GeocodeQaPanel onError={setError} /> : null}
 
             {activeTab === 'b2b' ? (
               <B2bPanel

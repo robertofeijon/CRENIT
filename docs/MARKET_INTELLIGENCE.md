@@ -251,6 +251,10 @@ Recommended wording:
 - Licensable suburb webhooks (`suburb.licensable`, migration `0028`); admin delivery log + test send.
 - Sale comps pilot ingest + `GET /api/v1/suburb/:name/sale-comps`; landlord `/market-data/suburbs/:name/sale-comps`.
 - Landlord rent vs suburb median: `GET /market-data/compare`.
+- Admin **Data QA** tab: geocode/suburb mismatch report (`GET /admin/data-intelligence/geocode-qa`).
+- Sale comps **CSV upload** (`POST /admin/data-intelligence/sale-comps/csv-ingest`).
+- Webhook delivery filters: failed only / pending retry.
+- Landlord **email + in-app** alert when their suburb becomes licensable (migration `0030`).
 
 ### Backlog
 

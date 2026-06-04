@@ -33,17 +33,20 @@ export default function B2bWebhookAdmin({ clients, onError, onMessage }: Props) 
   const [registerBusy, setRegisterBusy] = useState<string | null>(null);
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
   const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
+  const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'failed' | 'pending_retry'>('all');
   const [watchCount, setWatchCount] = useState<number | null>(null);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
 
   const loadDeliveries = useCallback(async () => {
     try {
-      const res = await api.get('/admin/data-intelligence/webhooks/deliveries', { params: { limit: 30 } });
+      const res = await api.get('/admin/data-intelligence/webhooks/deliveries', {
+        params: { limit: 40, filter: deliveryFilter },
+      });
       setDeliveries(res.data.data ?? []);
     } catch {
       setDeliveries([]);
     }
-  }, []);
+  }, [deliveryFilter]);
 
   const loadWatch = useCallback(async () => {
     try {
@@ -275,7 +278,29 @@ export default function B2bWebhookAdmin({ clients, onError, onMessage }: Props) 
       ) : null}
 
       <div className="mt-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Recent deliveries</p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Recent deliveries</p>
+          <div className="flex gap-1 rounded-full bg-white p-1 text-xs">
+            {(
+              [
+                { id: 'all' as const, label: 'All' },
+                { id: 'failed' as const, label: 'Failed only' },
+                { id: 'pending_retry' as const, label: 'Pending retry' },
+              ] as const
+            ).map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setDeliveryFilter(f.id)}
+                className={`rounded-full px-3 py-1 font-semibold ${
+                  deliveryFilter === f.id ? 'bg-[#1A1A1A] text-white' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
         {deliveries.length ? (
           <ul className="mt-2 max-h-48 space-y-1 overflow-auto text-xs text-slate-600">
             {deliveries.map((d) => (

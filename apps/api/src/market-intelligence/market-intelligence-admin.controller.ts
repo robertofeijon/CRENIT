@@ -293,10 +293,25 @@ export class MarketIntelligenceAdminController {
   }
 
   @Get('webhooks/deliveries')
-  async listWebhookDeliveries(@Headers('authorization') authHeader: string, @Query('limit') limit?: string) {
+  async listWebhookDeliveries(
+    @Headers('authorization') authHeader: string,
+    @Query('limit') limit?: string,
+    @Query('filter') filter?: 'all' | 'failed' | 'pending_retry',
+  ) {
     await this.assertAdmin(authHeader);
+    const allowed = filter === 'failed' || filter === 'pending_retry' ? filter : 'all';
     const data = await this.marketIntelligenceService.listWebhookDeliveries(
       limit ? Math.min(100, Math.max(1, Number(limit))) : 50,
+      allowed,
+    );
+    return { success: true, data, error: null };
+  }
+
+  @Get('geocode-qa')
+  async geocodeQa(@Headers('authorization') authHeader: string, @Query('limit') limit?: string) {
+    await this.assertAdmin(authHeader);
+    const data = await this.marketIntelligenceService.getGeocodeQaReport(
+      limit ? Math.min(200, Math.max(20, Number(limit))) : 120,
     );
     return { success: true, data, error: null };
   }
@@ -305,6 +320,20 @@ export class MarketIntelligenceAdminController {
   async licensableWatch(@Headers('authorization') authHeader: string) {
     await this.assertAdmin(authHeader);
     const data = await this.marketIntelligenceService.getLicensableSuburbWatchState();
+    return { success: true, data, error: null };
+  }
+
+  @Post('sale-comps/csv-ingest')
+  async csvIngestSaleComps(
+    @Headers('authorization') authHeader: string,
+    @Body() body: { csv: string; partner_client_id?: string },
+  ) {
+    await this.assertAdmin(authHeader);
+    if (!body?.csv?.trim()) throw new BadRequestException('csv text is required');
+    const data = await this.marketIntelligenceService.ingestSaleCompsFromCsv(
+      body.partner_client_id ?? null,
+      body.csv,
+    );
     return { success: true, data, error: null };
   }
 

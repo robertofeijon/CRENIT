@@ -18,6 +18,8 @@ import {
 } from './market-intelligence-response.util';
 import { buildOpenApiDocument } from './market-intelligence-openapi.util';
 import { buildPostmanCollection } from './market-intelligence-postman.util';
+import { parseSaleCompsCsv } from './market-intelligence-sale-comps-csv.util';
+import { haversineMeters, normalizeSuburbLabel, suburbsMatch } from './market-intelligence-geocode.util';
 import { MarketIntelligenceWebhookService } from './market-intelligence-webhook.service';
 import {
   IntelligenceFilters,
@@ -1012,8 +1014,158 @@ export class MarketIntelligenceService {
     return this.webhookService.deactivateWebhook(subscriptionId, clientId);
   }
 
-  listWebhookDeliveries(limit?: number) {
-    return this.webhookService.listRecentDeliveries(limit);
+  listWebhookDeliveries(limit?: number, filter?: 'all' | 'failed' | 'pending_retry') {
+    return this.webhookService.listRecentDeliveries(limit ?? 50, filter ?? 'all');
+  }
+
+  async ingestSaleCompsFromCsv(partnerClientId: string | null, csvText: string) {
+    const records = parseSaleCompsCsv(csvText, 500);
+    return this.ingestSaleCompsPilot(partnerClientId, records);
+  }
+
+  async getGeocodeQaReport(limit = 120) {
+    const client = this.supabase.getClient();
+    const { data: records, error } = await this.mi()
+      .from('market_data_records')
+      .select('id, payment_id, suburb, city, geo_lat, geo_lng, captured_at')
+      .order('captured_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    const rows = records ?? [];
+    const paymentIds = rows.map((r: { payment_id: string }) => r.payment_id).filter(Boolean);
+
+    type PaymentCtx = {
+      property_suburb: string | null;
+      property_city: string | null;
+      property_name: string | null;
+      property_geo_lat: number | null;
+      property_geo_lng: number | null;
+      tenant_suburb: string | null;
+    };
+    const ctxByPayment = new Map<string, PaymentCtx>();
+
+    if (paymentIds.length) {
+      const { data: payments } = await client
+        .from('payments')
+        .select('id, tenant_id, lease_id')
+        .in('id', paymentIds);
+      const leaseIds = [...new Set((payments ?? []).map((p: { lease_id: string | null }) => p.lease_id).filter(Boolean))];
+      const tenantIds = [...new Set((payments ?? []).map((p: { tenant_id: string | null }) => p.tenant_id).filter(Boolean))];
+
+      const leaseMap = new Map<string, { unit_id: string | null }>();
+      if (leaseIds.length) {
+        const { data: leases } = await client.from('leases').select('id, unit_id').in('id', leaseIds);
+        for (const l of leases ?? []) leaseMap.set(l.id, { unit_id: l.unit_id });
+      }
+
+      const unitIds = [...new Set([...leaseMap.values()].map((l) => l.unit_id).filter(Boolean))] as string[];
+      const propertyByUnit = new Map<string, PaymentCtx>();
+      if (unitIds.length) {
+        const { data: units } = await client
+          .from('units')
+          .select('id, property_id, properties(property_name, address_suburb, address_city, geo_lat, geo_lng)')
+          .in('id', unitIds);
+        for (const u of units ?? []) {
+          const prop = (u as { properties?: Record<string, unknown> | Record<string, unknown>[] }).properties;
+          const p = Array.isArray(prop) ? prop[0] : prop;
+          propertyByUnit.set(u.id, {
+            property_suburb: (p?.address_suburb as string) ?? null,
+            property_city: (p?.address_city as string) ?? null,
+            property_name: (p?.property_name as string) ?? null,
+            property_geo_lat: p?.geo_lat != null ? Number(p.geo_lat) : null,
+            property_geo_lng: p?.geo_lng != null ? Number(p.geo_lng) : null,
+            tenant_suburb: null,
+          });
+        }
+      }
+
+      const tenantSuburb = new Map<string, string | null>();
+      if (tenantIds.length) {
+        const { data: profiles } = await client.from('profiles').select('id, address_suburb').in('id', tenantIds);
+        for (const p of profiles ?? []) tenantSuburb.set(p.id, p.address_suburb ?? null);
+      }
+
+      for (const pay of payments ?? []) {
+        const lease = pay.lease_id ? leaseMap.get(pay.lease_id) : null;
+        const propCtx = lease?.unit_id ? propertyByUnit.get(lease.unit_id) : undefined;
+        ctxByPayment.set(pay.id, {
+          property_suburb: propCtx?.property_suburb ?? null,
+          property_city: propCtx?.property_city ?? null,
+          property_name: propCtx?.property_name ?? null,
+          property_geo_lat: propCtx?.property_geo_lat ?? null,
+          property_geo_lng: propCtx?.property_geo_lng ?? null,
+          tenant_suburb: pay.tenant_id ? tenantSuburb.get(pay.tenant_id) ?? null : null,
+        });
+      }
+    }
+
+    const GEO_DRIFT_METERS = 1500;
+    const flags: Array<{
+      payment_id: string;
+      record_suburb: string;
+      property_suburb: string | null;
+      tenant_suburb: string | null;
+      issues: string[];
+      distance_m: number | null;
+      captured_at: string;
+    }> = [];
+
+    for (const rec of rows) {
+      const ctx = ctxByPayment.get(rec.payment_id);
+      const issues: string[] = [];
+      let distance_m: number | null = null;
+
+      if (!ctx?.property_suburb) {
+        issues.push('missing_property_link');
+      } else if (!suburbsMatch(rec.suburb, ctx.property_suburb)) {
+        issues.push('property_suburb_mismatch');
+      }
+
+      if (ctx?.tenant_suburb && ctx.property_suburb && !suburbsMatch(ctx.tenant_suburb, ctx.property_suburb)) {
+        issues.push('tenant_property_suburb_mismatch');
+      }
+
+      if (ctx?.property_geo_lat == null || ctx?.property_geo_lng == null) {
+        issues.push('missing_property_geo');
+      }
+
+      const rLat = rec.geo_lat != null ? Number(rec.geo_lat) : null;
+      const rLng = rec.geo_lng != null ? Number(rec.geo_lng) : null;
+      if (
+        rLat != null &&
+        rLng != null &&
+        ctx?.property_geo_lat != null &&
+        ctx?.property_geo_lng != null
+      ) {
+        distance_m = Math.round(haversineMeters(rLat, rLng, ctx.property_geo_lat, ctx.property_geo_lng));
+        if (distance_m > GEO_DRIFT_METERS) issues.push('geo_drift');
+      }
+
+      if (issues.length) {
+        flags.push({
+          payment_id: rec.payment_id,
+          record_suburb: rec.suburb,
+          property_suburb: ctx?.property_suburb ?? null,
+          tenant_suburb: ctx?.tenant_suburb ?? null,
+          issues,
+          distance_m,
+          captured_at: rec.captured_at,
+        });
+      }
+    }
+
+    return {
+      scanned: rows.length,
+      flagged_count: flags.length,
+      summary: {
+        property_suburb_mismatch: flags.filter((f) => f.issues.includes('property_suburb_mismatch')).length,
+        tenant_property_suburb_mismatch: flags.filter((f) => f.issues.includes('tenant_property_suburb_mismatch')).length,
+        missing_property_geo: flags.filter((f) => f.issues.includes('missing_property_geo')).length,
+        geo_drift: flags.filter((f) => f.issues.includes('geo_drift')).length,
+        missing_property_link: flags.filter((f) => f.issues.includes('missing_property_link')).length,
+      },
+      flags: flags.slice(0, 80),
+    };
   }
 
   async sendWebhookTestDelivery(subscriptionId: string) {

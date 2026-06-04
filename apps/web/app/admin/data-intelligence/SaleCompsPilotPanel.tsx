@@ -28,6 +28,7 @@ export default function SaleCompsPilotPanel({ pilotSummary, suburbOptions, clien
   const [preview, setPreview] = useState<unknown>(null);
   const [bulkJson, setBulkJson] = useState('');
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [csvBusy, setCsvBusy] = useState(false);
 
   const ingest = async () => {
     const price = Number(salePrice);
@@ -144,6 +145,46 @@ export default function SaleCompsPilotPanel({ pilotSummary, suburbOptions, clien
           {busy ? 'Ingesting…' : 'Ingest record'}
         </button>
       </div>
+      <div className="mt-6 border-t border-sky-200/80 pt-4">
+        <p className="text-sm font-semibold text-[#1A1A1A]">CSV upload</p>
+        <p className="mt-1 text-xs text-slate-600">
+          Columns: <code className="text-[10px]">suburb, sale_price, transfer_date</code> (required); optional{' '}
+          <code className="text-[10px]">city, source_type, bedrooms, price_per_sqm</code>.
+        </p>
+        <input
+          type="file"
+          accept=".csv,text/csv"
+          className="mt-2 block text-sm"
+          disabled={csvBusy}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async () => {
+              const text = String(reader.result ?? '');
+              setCsvBusy(true);
+              try {
+                const res = await api.post('/admin/data-intelligence/sale-comps/csv-ingest', {
+                  csv: text,
+                  partner_client_id: partnerId || undefined,
+                });
+                const inserted = res.data.data?.inserted ?? 0;
+                onMessage?.(`CSV ingest: ${inserted} record(s) inserted.`);
+                onSuccess();
+              } catch (err: unknown) {
+                const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
+                onError(apiErr?.response?.data?.message || apiErr?.message || 'CSV ingest failed.');
+              } finally {
+                setCsvBusy(false);
+                e.target.value = '';
+              }
+            };
+            reader.readAsText(file);
+          }}
+        />
+        {csvBusy ? <p className="mt-1 text-xs text-slate-500">Uploading CSV…</p> : null}
+      </div>
+
       <div className="mt-6 border-t border-sky-200/80 pt-4">
         <p className="text-sm font-semibold text-[#1A1A1A]">Bulk ingest (JSON array, max 500)</p>
         <textarea

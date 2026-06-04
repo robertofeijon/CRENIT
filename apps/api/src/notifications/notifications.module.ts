@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
@@ -7,7 +7,7 @@ import { EmailDeliveryService } from './email-delivery.service';
 import { MarketIntelligenceModule } from '../market-intelligence/market-intelligence.module';
 
 @Module({
-  imports: [SupabaseModule, MarketIntelligenceModule],
+  imports: [SupabaseModule, forwardRef(() => MarketIntelligenceModule)],
   controllers: [NotificationsController],
   providers: [NotificationsService, NotificationsSchedulerService, EmailDeliveryService],
   exports: [NotificationsService, EmailDeliveryService],

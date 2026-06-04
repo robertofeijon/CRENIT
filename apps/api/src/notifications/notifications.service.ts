@@ -57,6 +57,7 @@ export class NotificationsService {
     if (type.includes('KYC')) return 'kyc_updates';
     if (type.includes('LEASE') || type.includes('INVITE')) return 'lease_events';
     if (type.includes('DEPOSIT') || type.includes('DISPUTE')) return 'deposit_events';
+    if (type.includes('MARKET')) return 'payment_confirmations';
     return null;
   }
 
@@ -87,6 +88,8 @@ export class NotificationsService {
         return { subject: 'A dispute has been filed', body: message };
       case 'DISPUTE_RESOLVED':
         return { subject: 'Dispute resolved', body: message };
+      case 'MARKET_SUBURB_LICENSABLE':
+        return { subject: title, body: message };
       default:
         return { subject: title, body: message };
     }
