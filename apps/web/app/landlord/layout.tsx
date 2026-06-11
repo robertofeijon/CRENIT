@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import api from '../../src/lib/api';
@@ -28,7 +28,7 @@ function mapPartnerToDisplay(partnerStatus?: string | null): VerificationDisplay
   return 'UNVERIFIED';
 }
 
-export default function LandlordLayout({ children }: { children: ReactNode }) {
+function LandlordLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -206,5 +206,19 @@ export default function LandlordLayout({ children }: { children: ReactNode }) {
         onStatusChange={() => void loadVerification()}
       />
     </>
+  );
+}
+
+export default function LandlordLayout({ children }: { children: ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#F3F4F6]">
+          <p className="text-sm text-slate-500">Loading partner workspace…</p>
+        </div>
+      }
+    >
+      <LandlordLayoutContent>{children}</LandlordLayoutContent>
+    </Suspense>
   );
 }

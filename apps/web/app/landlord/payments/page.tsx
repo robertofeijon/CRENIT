@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle2, Percent, RefreshCw, Receipt, Wallet } from 'lucide-react';
 import api from '../../../src/lib/api';
@@ -12,7 +12,7 @@ import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { formatN$, landlordInputClass, landlordSelectClass, statusPillClass } from '../../components/landlord/landlordUi';
 
-export default function LandlordPaymentsPage() {
+function LandlordPaymentsPageContent() {
   const { user, role, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -326,5 +326,13 @@ export default function LandlordPaymentsPage() {
         )}
       </section>
     </div>
+  );
+}
+
+export default function LandlordPaymentsPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-slate-500">Loading payments…</p>}>
+      <LandlordPaymentsPageContent />
+    </Suspense>
   );
 }
