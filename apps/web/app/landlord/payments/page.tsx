@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { CheckCircle2, Percent, RefreshCw, Receipt, Wallet } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
@@ -12,10 +12,9 @@ import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { formatN$, landlordInputClass, landlordSelectClass, statusPillClass } from '../../components/landlord/landlordUi';
 
-function LandlordPaymentsPageContent() {
+export default function LandlordPaymentsPage() {
   const { user, role, loading } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [payments, setPayments] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,11 +32,13 @@ function LandlordPaymentsPageContent() {
   }, [loading, user, role, router]);
 
   useEffect(() => {
-    const method = searchParams.get('payment_method');
-    const status = searchParams.get('status');
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const method = params.get('payment_method');
+    const status = params.get('status');
     if (method) setPaymentMethodFilter(method.toUpperCase());
     if (status) setStatusFilter(status.toUpperCase());
-  }, [searchParams]);
+  }, []);
 
   const loadPayments = useCallback(async () => {
     setIsLoading(true);
@@ -326,13 +327,5 @@ function LandlordPaymentsPageContent() {
         )}
       </section>
     </div>
-  );
-}
-
-export default function LandlordPaymentsPage() {
-  return (
-    <Suspense fallback={<p className="text-sm text-slate-500">Loading payments…</p>}>
-      <LandlordPaymentsPageContent />
-    </Suspense>
   );
 }
