@@ -1,20 +1,31 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'Products',
+  description:
+    'Rent payments, credit scoring, deposit management, and licensed rental market intelligence — one CRENIT platform.',
+};
 
 const products = [
   {
     title: 'Rent Payments',
+    slug: 'rent-payments',
     description: 'Collect rent seamlessly, automate receipts, and track every payment in one verified ledger.',
   },
   {
     title: 'Credit Score',
+    slug: 'credit-score',
     description: 'Convert on-time rental payments into a trusted credit history for tenants and lenders.',
   },
   {
     title: 'Deposit Management',
+    slug: 'deposit-management',
     description: 'Securely manage tenant deposits from move-in to move-out with automated reconciliation.',
   },
   {
     title: 'Data Intelligence',
+    slug: 'market-data',
     description:
       'Licensed suburb rental comps for developers, estate agents, banks, and contractors — verified from real payments, not listings.',
   },
@@ -35,10 +46,15 @@ export default function ProductsPage() {
           </p>
           <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
             {products.map((product) => (
-              <div key={product.title} className="rounded-[1.5rem] border border-slate-200 bg-[#F8F8F8] p-6">
-                <h2 className="text-xl font-semibold text-[#1A1A1A]">{product.title}</h2>
+              <Link
+                key={product.title}
+                href={`/products/${product.slug}`}
+                className="group rounded-[1.5rem] border border-slate-200 bg-[#F8F8F8] p-6 transition hover:border-[#C0392B]/30 hover:shadow-md"
+              >
+                <h2 className="text-xl font-semibold text-[#1A1A1A] group-hover:text-[#C0392B]">{product.title}</h2>
                 <p className="mt-4 text-sm leading-6 text-slate-600">{product.description}</p>
-              </div>
+                <span className="mt-4 inline-block text-sm font-semibold text-[#C0392B]">Learn more →</span>
+              </Link>
             ))}
           </div>
         </section>
@@ -91,42 +107,9 @@ export default function ProductsPage() {
             packs for property professionals. Individual tenants are never exposed; only aggregated
             statistics that meet minimum sample rules are licensed.
           </p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              { who: 'Developers', what: 'Feasibility rent assumptions and unit-mix revenue by suburb.' },
-              { who: 'Estate agents', what: 'Evidence-backed asking rent ranges for landlords and investors.' },
-              { who: 'Banks & lenders', what: 'Neighbourhood on-time rates and income-to-rent stress signals.' },
-              { who: 'Contractors & PM', what: 'Benchmark portfolio performance and service charges by area.' },
-              { who: 'Government & research', what: 'Policy-grade rental affordability aggregates.' },
-              { who: 'Investors', what: 'Compare suburbs for yield using verified median rent.' },
-            ].map((item) => (
-              <div key={item.who} className="rounded-[1.25rem] border border-slate-200 bg-white p-5">
-                <p className="font-semibold text-[#1A1A1A]">{item.who}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{item.what}</p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-6 text-sm text-slate-500">
-            Rental comps are available today. Sale / transfer comps are on the roadmap via registry, valuer, and bank
-            partners — separate from rent data so clients never mix deed values with asking rent.
-          </p>
-        </section>
-
-        <section className="mt-8 rounded-[1.5rem] border border-dashed border-slate-300 bg-white p-8">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
-              Planned
-            </span>
-            <h3 className="text-xl font-semibold text-[#1A1A1A]">Sale comps (partner integration)</h3>
-          </div>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600">
-            For developers pricing stock, agents listing for sale, and banks on mortgage collateral — suburb sale bands and
-            transfer volumes will ship through vetted partner feeds (deeds registry, valuers, MLS, collateral desks), then
-            the same CRENIT API and report formats you use for rental intelligence.
-          </p>
-          <p className="mt-4 text-sm font-medium text-[#C0392B]">
-            Partner pilot — contact CRENIT to register as a data partner or to request early access.
-          </p>
+          <Link href="/products/market-data" className="mt-6 inline-flex text-sm font-semibold text-[#C0392B] hover:underline">
+            Explore market data →
+          </Link>
         </section>
 
         <section className="mt-16 rounded-[2rem] bg-white p-10 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">

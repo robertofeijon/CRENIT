@@ -1,4 +1,7 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { CONTACT_EMAIL, MARKETING_SLUGS } from '../../../src/lib/site';
 
 const pageData: Record<string, { title: string; headline: string; description: string; bullets: string[] }> = {
   'products/rent-payments': {
@@ -101,23 +104,33 @@ const pageData: Record<string, { title: string; headline: string; description: s
   },
 };
 
+export function generateStaticParams() {
+  return MARKETING_SLUGS.map((slug) => {
+    const [section, ...rest] = slug.split('/');
+    return { section, slug: rest.join('/') };
+  });
+}
+
+export function generateMetadata({ params }: { params: { section: string; slug: string } }): Metadata {
+  const key = `${params.section}/${params.slug}`;
+  const page = pageData[key];
+  if (!page) return { title: 'Not found' };
+  return {
+    title: page.title,
+    description: page.description,
+    openGraph: { title: page.headline, description: page.description },
+  };
+}
+
 export default function SectionPage({ params }: { params: { section: string; slug: string } }) {
   const key = `${params.section}/${params.slug}`;
   const page = pageData[key];
 
   if (!page) {
-    return (
-      <main className="min-h-[80vh] bg-[#F5F5F5] py-20">
-        <div className="mx-auto max-w-4xl rounded-[2rem] bg-white p-12 shadow-xl">
-          <h1 className="text-3xl font-semibold text-[#1A1A1A]">Page not found</h1>
-          <p className="mt-4 text-slate-600">The page you requested does not exist yet.</p>
-          <Link href="/" className="mt-8 inline-flex rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white hover:bg-[#992d24]">
-            Return Home
-          </Link>
-        </div>
-      </main>
-    );
+    notFound();
   }
+
+  const isContact = key === 'company/contact';
 
   return (
     <main className="min-h-[80vh] bg-[#F5F5F5] py-20">
@@ -133,6 +146,25 @@ export default function SectionPage({ params }: { params: { section: string; slu
               </div>
             ))}
           </div>
+          {isContact ? (
+            <div className="mt-10 rounded-2xl border border-slate-200 bg-[#F8F8F8] p-6">
+              <p className="text-sm font-semibold text-[#1A1A1A]">Email us</p>
+              <a href={`mailto:${CONTACT_EMAIL}`} className="mt-2 inline-block text-lg font-semibold text-[#C0392B] hover:underline">
+                {CONTACT_EMAIL}
+              </a>
+              <p className="mt-4 text-sm text-slate-600">
+                For account access, use{' '}
+                <Link href="/auth" className="font-semibold text-[#C0392B] hover:underline">
+                  sign in
+                </Link>{' '}
+                or{' '}
+                <Link href="/auth?mode=register" className="font-semibold text-[#C0392B] hover:underline">
+                  create an account
+                </Link>
+                .
+              </p>
+            </div>
+          ) : null}
           <div className="mt-10 flex flex-wrap gap-4">
             <Link href="/auth" className="inline-flex items-center justify-center rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white hover:bg-[#992d24]">
               Get Started

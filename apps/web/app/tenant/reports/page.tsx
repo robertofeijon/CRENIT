@@ -7,6 +7,8 @@ import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import TenantPageHeader from '../../components/ui/TenantPageHeader';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
+import EmptyStateCard from '../../components/ui/EmptyStateCard';
+import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 
 const downloadPdf = (blob: Blob, filename: string) => {
   const url = window.URL.createObjectURL(blob);
@@ -32,6 +34,7 @@ export default function TenantReportsPage() {
   const [creditLoading, setCreditLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && roleReady && !user) router.replace('/auth');
@@ -39,11 +42,14 @@ export default function TenantReportsPage() {
   }, [loading, roleReady, user, router]);
 
   const loadLatestReport = useCallback(async () => {
+    setPageLoading(true);
     try {
       const res = await api.get('/tenants/me');
       setLatestReport(res.data?.data?.latestReport ?? null);
     } catch {
       setLatestReport(null);
+    } finally {
+      setPageLoading(false);
     }
   }, []);
 
@@ -81,7 +87,11 @@ export default function TenantReportsPage() {
   };
 
   if (loading || !roleReady || !user) {
-    return <p className="text-sm text-slate-500">Loading tenant workspace…</p>;
+    return (
+      <div className="space-y-6">
+        <SkeletonBlocks rows={2} />
+      </div>
+    );
   }
 
   return (
@@ -101,6 +111,15 @@ export default function TenantReportsPage() {
       {error ? <ErrorStateCard message={error} onRetry={() => void loadLatestReport()} /> : null}
       {message ? (
         <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{message}</p>
+      ) : null}
+
+      {pageLoading ? (
+        <SkeletonBlocks rows={3} />
+      ) : !latestReport?.generated_at ? (
+        <EmptyStateCard
+          title="No reports generated yet"
+          description="Download your first payment or credit score report below. PDFs are formatted for landlords and lenders."
+        />
       ) : null}
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -141,11 +160,11 @@ export default function TenantReportsPage() {
         </section>
       </div>
 
-      <p className="text-sm text-slate-500">
-        {latestReport?.generated_at
-          ? `Last payment report generated: ${new Date(latestReport.generated_at).toLocaleString()}`
-          : 'No reports generated yet. Download your first report above.'}
-      </p>
+      {latestReport?.generated_at ? (
+        <p className="text-sm text-slate-500">
+          Last payment report generated: {new Date(latestReport.generated_at).toLocaleString()}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -1,20 +1,30 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'Company',
+  description: 'About CRENIT — building verified rental credit and market intelligence in Namibia.',
+};
 
 const companyHighlights = [
   {
     title: 'About Us',
+    slug: 'about-us',
     description: 'CRENIT records rent payments to build verified rental credit and market intelligence.',
   },
   {
     title: 'How It Works',
+    slug: 'how-it-works',
     description: 'We connect landlords, tenants, and lenders through verified rental payment data and credit reporting.',
   },
   {
     title: 'Blog',
+    slug: 'blog',
     description: 'Read the latest market insights, product updates, and stories from our partner network.',
   },
   {
     title: 'Contact',
+    slug: 'contact',
     description: 'Reach out for partnerships or support from the CRENIT team.',
   },
 ];
@@ -33,36 +43,16 @@ export default function CompanyPage() {
           </p>
           <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
             {companyHighlights.map((item) => (
-              <div key={item.title} className="rounded-[1.5rem] border border-slate-200 bg-[#F8F8F8] p-6">
-                <h2 className="text-xl font-semibold text-[#1A1A1A]">{item.title}</h2>
+              <Link
+                key={item.title}
+                href={`/company/${item.slug}`}
+                className="group rounded-[1.5rem] border border-slate-200 bg-[#F8F8F8] p-6 transition hover:border-[#C0392B]/30 hover:shadow-md"
+              >
+                <h2 className="text-xl font-semibold text-[#1A1A1A] group-hover:text-[#C0392B]">{item.title}</h2>
                 <p className="mt-4 text-sm leading-6 text-slate-600">{item.description}</p>
-              </div>
+                <span className="mt-4 inline-block text-sm font-semibold text-[#C0392B]">Learn more →</span>
+              </Link>
             ))}
-          </div>
-        </section>
-
-        <section className="mt-16 grid gap-8 lg:grid-cols-[1fr_0.95fr]">
-          <div className="rounded-[2rem] bg-[#1A1A1A] p-10 text-white shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
-            <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Our mission</p>
-            <h2 className="mt-4 text-3xl font-semibold">Deliver financial identity through everyday rental payments.</h2>
-            <p className="mt-6 text-base leading-7 text-slate-300">
-              We believe rental behavior should be visible, verifiable, and valuable — for tenants, landlords, and lenders alike.
-            </p>
-          </div>
-          <div className="rounded-[2rem] bg-white p-10 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
-            <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">What we value</p>
-            <div className="mt-6 space-y-5">
-              {[
-                'Trust through verified data',
-                'Accessibility for rental customers',
-                'Transparency in credit outcomes',
-                'Local market insight and service',
-              ].map((value) => (
-                <div key={value} className="rounded-[1.5rem] border border-slate-200 bg-[#F8F8F8] p-6">
-                  <p className="text-sm font-semibold text-[#1A1A1A]">{value}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 
@@ -73,10 +63,10 @@ export default function CompanyPage() {
               <h2 className="mt-3 text-3xl font-semibold text-[#1A1A1A]">Talk to the CRENIT team today.</h2>
             </div>
             <Link
-              href="/auth"
+              href="/company/contact"
               className="inline-flex items-center justify-center rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white hover:bg-[#992d24]"
             >
-              Contact Us
+              Contact us
             </Link>
           </div>
         </section>

@@ -19,6 +19,14 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      { source: '/dashboard/tenant', destination: '/tenant/home', permanent: true },
+      { source: '/dashboard/tenant/:path*', destination: '/tenant/home', permanent: true },
+      { source: '/dashboard/landlord', destination: '/landlord/overview', permanent: true },
+      { source: '/dashboard/landlord/:path*', destination: '/landlord/overview', permanent: true },
+    ];
+  },
   async rewrites() {
     if (!apiUrl || apiUrl.includes('localhost')) {
       return [];
