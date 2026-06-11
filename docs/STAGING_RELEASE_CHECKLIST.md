@@ -12,6 +12,14 @@ Run on **staging** before production. Commands assume repo root and `.env` confi
 npm run validate:rls
 ```
 
+**Migration `0034_payment_eft_proofs.sql` (required for EFT proof + CI login E2E path):**
+
+| Check | Where |
+|-------|--------|
+| `payment_eft_proofs` table exists | Supabase → Table Editor |
+| `payments.eft_proof_*` columns exist | `payments` table |
+| Private bucket `payment-proofs` | Supabase → Storage |
+
 Expected: `4/4 RLS checks passed`.
 
 ---
@@ -42,9 +50,9 @@ npm run smoke:staging
 
 ---
 
-## 3. SMTP + forgot-password email
+## 3. SMTP, contact form, and forgot-password email
 
-**.env (API + scripts):**
+**.env (API — repo root / Render):**
 
 ```env
 EMAIL_PROVIDER=smtp
@@ -53,8 +61,28 @@ SMTP_PORT=587
 SMTP_USER=your@gmail.com
 SMTP_PASS=app-password
 EMAIL_FROM=CRENIT <your@gmail.com>
+EMAIL_CONTACT=hello@yourdomain.com
+EMAIL_REPLY_TO=hello@yourdomain.com
 WEB_URL=https://your-staging-web.vercel.app
 ```
+
+**Web (Vercel / `apps/web/.env.local`):**
+
+```env
+NEXT_PUBLIC_CONTACT_EMAIL=hello@yourdomain.com
+```
+
+`POST /public/contact` delivers to **`EMAIL_CONTACT`** (falls back to `EMAIL_REPLY_TO` → `SMTP_USER`). The contact page mailto link uses **`NEXT_PUBLIC_CONTACT_EMAIL`**.
+
+**Test contact form:**
+
+```bash
+curl -X POST "$NEXT_PUBLIC_API_URL/public/contact" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Staging","email":"you@example.com","subject":"Smoke test","message":"Hello from staging checklist."}'
+```
+
+Expected: `email_sent: true` when SMTP is configured; otherwise `email_sent: false` with a received acknowledgement.
 
 **Test transport:**
 
@@ -141,11 +169,11 @@ Set `ADMIN_REQUIRE_2FA=true` on the API. Admins must enable 2FA at `/admin/secur
 
 **Prerequisites on staging (same Supabase project as the secrets below):**
 
-- Migrations through **`0034_payment_eft_proofs.sql`** applied (EFT proof columns + `payment-proofs` bucket).
+- Migrations through **`0034_payment_eft_proofs.sql`** applied — see §1 table.
 - Demo tenant exists with **KYC approved** (`npm run seed:demo` against staging, or matching real credentials in secrets).
 - Staging API **`CORS_ORIGIN`** includes your deployed web URL **and** `http://localhost:3002` (Playwright in CI serves Next on that origin while calling `NEXT_PUBLIC_API_URL`).
 
-Configure in the repo **Settings → Secrets and variables → Actions**:
+Configure in the repo **Settings → Secrets and variables → Actions** (repository secrets, not environment-only):
 
 | Secret | Example / notes |
 |--------|-----------------|
@@ -155,9 +183,17 @@ Configure in the repo **Settings → Secrets and variables → Actions**:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Staging anon key |
 | `NEXT_PUBLIC_API_URL` | Staging API base URL (no trailing slash), e.g. `https://your-api.onrender.com` |
 
-Without these, CI still runs public Playwright tests; the tenant login spec is skipped.
+Without these, CI still runs public Playwright tests; the tenant login spec is **skipped**.
 
-**Verify CI:** re-run the **web-e2e** job on `main`. You should see **5 passed** (not `1 skipped` on `login.spec.ts`).
+**Verify CI:** push to `main` or re-run **web-e2e**. Expected: **5 passed** including `login.spec.ts` (not `1 skipped`).
+
+**Local E2E with login** (optional):
+
+```bash
+cd apps/web
+E2E_TENANT_EMAIL=tenant@rentcredit.demo E2E_TENANT_PASSWORD=DemoTenant123! \
+  NEXT_PUBLIC_API_URL=http://localhost:3001 npm run test:e2e
+```
 
 Optional observability secrets: `SENTRY_DSN` (API), `NEXT_PUBLIC_SENTRY_DSN` (web).
 
@@ -171,8 +207,10 @@ Optional observability secrets: `SENTRY_DSN` (API), `NEXT_PUBLIC_SENTRY_DSN` (we
 |------|-------|------|------|
 | Migrations 0026–0034 (incl. EFT proof `0034`) | | | |
 | RLS script | | | |
+| Contact form (`EMAIL_CONTACT` + `NEXT_PUBLIC_CONTACT_EMAIL`) | | | |
 | E2E smoke + manual path | | | |
 | SMTP + password reset | | | |
+| GitHub E2E secrets (5 passed in CI) | | | |
 | 2FA step-up | | | |
 | Admin health smoke | | | |
 | CI green | | | |

@@ -36,6 +36,20 @@ const flywheel = [
   { step: '04', label: 'Banks & developers license market data' },
 ];
 
+const marketDataRows = [
+  ['Khomasdal', 'N$8,200', '92%'],
+  ['Pioneerspark', 'N$7,450', '94%'],
+  ['Klein Windhoek', 'N$10,300', '96%'],
+  ['Katutura', 'N$6,900', '91%'],
+  ['Eros', 'N$11,100', '97%'],
+] as const;
+
+const testimonialBullets = [
+  'Landlords see portfolio on-time rates by property',
+  'Tenants download score reports for applications',
+  'Developers license suburb feasibility packs',
+] as const;
+
 export default function Home() {
   return (
     <div className="marketing-page flex min-h-screen w-full flex-col">
@@ -129,6 +143,78 @@ export default function Home() {
                   </Link>
                 );
               })}
+            </div>
+          </div>
+        </section>
+
+        <section id="market-data" className="border-y border-slate-200/60 bg-white text-[#1A1A1A]">
+          <div className="marketing-container py-14 sm:py-20">
+            <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:items-start">
+              <div>
+                <p className="marketing-eyebrow">Market intelligence</p>
+                <h2 className="marketing-h2 mt-4">Real rent data from real payments—not property listings</h2>
+                <p className="mt-5 text-base leading-7 text-slate-600">
+                  When a payment is confirmed on CRENIT, anonymised signals flow into suburb aggregates. Banks, developers,
+                  and agents license reports with minimum sample rules—never tenant names or addresses.
+                </p>
+                <Link href="/products/market-data" className="marketing-btn-primary mt-8 inline-flex">
+                  Request data access
+                </Link>
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-[#b4534d] bg-[#fff5f5] shadow-[0_10px_24px_rgba(127,29,29,0.18)]">
+                <table className="w-full text-left text-sm text-black">
+                  <thead className="bg-[#7f1d1d] text-white">
+                    <tr>
+                      <th className="px-5 py-3.5 font-medium">Suburb</th>
+                      <th className="px-5 py-3.5 font-medium">Avg 2BR</th>
+                      <th className="px-5 py-3.5 font-medium">On-time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#e9b4b0]">
+                    {marketDataRows.map((row) => (
+                      <tr key={row[0]} className="hover:bg-[#fde8e7]">
+                        <td className="px-5 py-3.5 font-medium">{row[0]}</td>
+                        <td className="px-5 py-3.5">{row[1]}</td>
+                        <td className="px-5 py-3.5">{row[2]}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="border-t border-[#e9b4b0] px-5 py-3 text-xs text-slate-600">
+                  Illustrative pilot aggregates · minimum sample rules apply in licensed reports
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="marketing-section">
+          <div className="marketing-container">
+            <div className="marketing-metal-card rounded-3xl p-8 sm:p-12 lg:grid lg:grid-cols-[1.2fr_0.8fr] lg:gap-12">
+              <div>
+                <p className="marketing-eyebrow">From the field</p>
+                <blockquote className="mt-4 text-2xl font-medium leading-9 text-[#1A1A1A] sm:text-3xl">
+                  &ldquo;We stopped guessing what Khomasdal rents should be. CRENIT gave us payment-backed numbers our
+                  underwriters actually use.&rdquo;
+                </blockquote>
+                <footer className="mt-6">
+                  <p className="font-semibold">Sarah M.</p>
+                  <p className="text-sm text-slate-500">Credit analyst · Banking partner, Windhoek</p>
+                </footer>
+              </div>
+              <div className="mt-8 flex flex-col justify-center gap-4 lg:mt-0">
+                {testimonialBullets.map((item) => (
+                  <div key={item} className="flex gap-3 rounded-xl bg-[#F3F4F6] px-4 py-3">
+                    <span
+                      className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#C0392B] text-xs text-white"
+                      aria-hidden
+                    >
+                      ✓
+                    </span>
+                    <p className="text-sm leading-6 text-slate-700">{item}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>

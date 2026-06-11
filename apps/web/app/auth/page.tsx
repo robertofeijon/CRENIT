@@ -11,8 +11,12 @@ function AuthPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, role: sessionRole, roleReady } = useAuth();
-  const [modalOpen, setModalOpen] = useState(true);
   const mode = searchParams.get('mode') === 'register' ? 'register' : 'login';
+  const [modalOpen, setModalOpen] = useState(true);
+
+  useEffect(() => {
+    setModalOpen(true);
+  }, [mode]);
 
   useEffect(() => {
     if (!user || !roleReady || !sessionRole) return;
@@ -23,26 +27,36 @@ function AuthPageContent() {
   }, [user, sessionRole, roleReady, router]);
 
   return (
-    <main className="min-h-screen bg-[#F3F4F6] px-4 py-8 text-[#1A1A1A] sm:px-8">
-      <div className="mx-auto max-w-3xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-[0_24px_80px_rgba(0,0,0,0.08)] sm:p-10">
+    <main className="relative min-h-screen bg-[#F3F4F6] px-4 py-8 text-[#1A1A1A] sm:px-8">
+      <div className="mx-auto flex max-w-3xl flex-col items-center pt-8">
         <Logo />
-        <h1 className="mt-4 text-3xl font-semibold">Account access</h1>
-        <p className="mt-3 text-sm leading-7 text-slate-600">
-          Sign in or create your account to continue to your dashboard.
+        <p className="mt-6 text-center text-sm text-slate-500">
+          {mode === 'register' ? 'Create your CRENIT account' : 'Sign in to your CRENIT account'}
         </p>
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="mt-6 inline-flex items-center justify-center rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-[#C0392B]/25 transition hover:bg-[#992d24]"
-        >
-          {mode === 'register' ? 'Open sign up' : 'Open login'}
-        </button>
-        <Link
-          href="/"
-          className="mt-4 inline-flex items-center justify-center rounded-full border border-[#1A1A1A] px-5 py-2 text-sm font-semibold transition hover:bg-slate-100"
-        >
-          Back to home
-        </Link>
+        {!modalOpen ? (
+          <div className="mt-6 flex flex-col items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="inline-flex items-center justify-center rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-[#C0392B]/25 transition hover:bg-[#992d24]"
+            >
+              {mode === 'register' ? 'Open sign up' : 'Open login'}
+            </button>
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center rounded-full border border-[#1A1A1A] px-5 py-2 text-sm font-semibold transition hover:bg-slate-100"
+            >
+              Back to home
+            </Link>
+          </div>
+        ) : (
+          <Link
+            href="/"
+            className="mt-6 text-sm font-semibold text-slate-600 hover:text-[#C0392B]"
+          >
+            ← Back to home
+          </Link>
+        )}
       </div>
       <AuthModal open={modalOpen} mode={mode} onClose={() => setModalOpen(false)} />
     </main>

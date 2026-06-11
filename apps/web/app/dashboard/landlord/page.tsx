@@ -18,12 +18,16 @@ import { useAuth } from '../../../src/contexts/AuthContext';
 import LandlordPageHeader from '../../components/ui/LandlordPageHeader';
 import LandlordStatCard from '../../components/ui/LandlordStatCard';
 import Badge from '../../components/ui/Badge';
+import ErrorStateCard from '../../components/ui/ErrorStateCard';
+import EmptyStateCard from '../../components/ui/EmptyStateCard';
+import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import { LandlordWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { landlordNavItems } from '../../components/landlord/landlordNav';
 
 const WORKSPACE_LINKS = landlordNavItems.filter((item) => item.href !== '/landlord/overview');
 
 export default function LandlordDashboard() {
-  const { user, loading, role } = useAuth();
+  const { user, loading, roleReady, role } = useAuth();
   const router = useRouter();
   const [dashboard, setDashboard] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,9 +36,9 @@ export default function LandlordDashboard() {
   const [switchRequests, setSwitchRequests] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/auth');
-    if (!loading && user && role && role !== 'LANDLORD' && role !== 'ADMIN') router.replace('/tenant/home');
-  }, [loading, user, role, router]);
+    if (!loading && roleReady && !user) router.replace('/auth');
+    if (!loading && roleReady && user && role && role !== 'LANDLORD' && role !== 'ADMIN') router.replace('/tenant/home');
+  }, [loading, roleReady, user, role, router]);
 
   useEffect(() => {
     if (user && (role === 'LANDLORD' || role === 'ADMIN')) loadOverview();
@@ -82,11 +86,12 @@ export default function LandlordDashboard() {
     }
   };
 
-  if (loading || !user) {
-    return <p className="text-sm text-gray-500">Loading…</p>;
+  if (loading || !roleReady || !user) {
+    return <LandlordWorkspaceLoading />;
   }
 
   const stats = dashboard?.stats ?? {};
+  const statsLoading = isLoading && !dashboard;
   const hasDirectLease = (dashboard?.tenants ?? []).some((tenant: any) => tenant.payment_method === 'DIRECT');
   const pendingApproval = (dashboard?.landlord?.partnerStatus || '').toUpperCase() === 'PENDING_APPROVAL';
   const formatMoney = (v: unknown) => `N$${Number(v || 0).toLocaleString()}`;
@@ -106,35 +111,61 @@ export default function LandlordDashboard() {
         }
       />
 
-      {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+      {error ? <ErrorStateCard message={error} onRetry={() => void loadOverview()} /> : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <LandlordStatCard label="Properties" value={stats.totalProperties ?? '—'} icon={Building2} />
-        <LandlordStatCard label="Active tenants" value={stats.activeTenants ?? '—'} icon={Users} />
-        <LandlordStatCard
-          label="Monthly rent expected"
-          value={formatMoney(stats.monthlyRentExpected)}
-          icon={Receipt}
-        />
-        <LandlordStatCard
-          label="Collected this month"
-          value={formatMoney(stats.collectedThisMonth)}
-          icon={Receipt}
-          accent="success"
-        />
-        <LandlordStatCard
-          label="Outstanding balance"
-          value={formatMoney(stats.outstanding)}
-          icon={Wallet}
-          accent={Number(stats.outstanding) > 0 ? 'warning' : 'default'}
-        />
-        <LandlordStatCard
-          label="Data recording (monthly)"
-          value={formatMoney(stats.commissionEarnedThisMonth)}
-          icon={Wallet}
-          accent="dark"
-        />
-      </section>
+      {statsLoading ? (
+        <SkeletonBlocks rows={3} />
+      ) : (
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <LandlordStatCard
+            label="Properties"
+            value={stats.totalProperties ?? 0}
+            sub={Number(stats.totalProperties) === 0 ? 'Add your first property' : undefined}
+            icon={Building2}
+          />
+          <LandlordStatCard
+            label="Active tenants"
+            value={stats.activeTenants ?? 0}
+            sub={Number(stats.activeTenants) === 0 ? 'Invite tenants from the Tenants workspace' : undefined}
+            icon={Users}
+          />
+          <LandlordStatCard
+            label="Monthly rent expected"
+            value={formatMoney(stats.monthlyRentExpected)}
+            icon={Receipt}
+          />
+          <LandlordStatCard
+            label="Collected this month"
+            value={formatMoney(stats.collectedThisMonth)}
+            icon={Receipt}
+            accent="success"
+          />
+          <LandlordStatCard
+            label="Outstanding balance"
+            value={formatMoney(stats.outstanding)}
+            icon={Wallet}
+            accent={Number(stats.outstanding) > 0 ? 'warning' : 'default'}
+          />
+          <LandlordStatCard
+            label="Data recording (monthly)"
+            value={formatMoney(stats.commissionEarnedThisMonth)}
+            icon={Wallet}
+            accent="dark"
+          />
+        </section>
+      )}
+
+      {!statsLoading && Number(stats.totalProperties) === 0 ? (
+        <div className="space-y-3">
+          <EmptyStateCard
+            title="No properties yet"
+            description="Add a property and invite tenants to start collecting verified rent data."
+          />
+          <Link href={hrefWhenApproved('/landlord/properties')} className="landlord-btn-primary inline-flex">
+            Add property
+          </Link>
+        </div>
+      ) : null}
 
       {hasDirectLease ? (
         <div className="landlord-panel border-indigo-200 bg-indigo-50/80">
@@ -249,36 +280,53 @@ export default function LandlordDashboard() {
       </div>
 
       <div className="landlord-panel">
-        <h2 className="text-lg font-semibold text-gray-900">Recent payments</h2>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[560px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-xs uppercase tracking-wider text-gray-500">
-                <th className="py-3 pr-4">Method</th>
-                <th className="py-3 pr-4">Amount</th>
-                <th className="py-3 pr-4">Status</th>
-                <th className="py-3">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(dashboard?.recentPayments ?? []).slice(0, 8).map((payment: any) => (
-                <tr key={payment.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="py-3">{payment.payment_method || '—'}</td>
-                  <td className="py-3 font-medium">{formatMoney(payment.amount_gross)}</td>
-                  <td className="py-3">
-                    <Badge variant={payment.status === 'PAID' ? 'success' : payment.status === 'OVERDUE' ? 'error' : 'warning'}>
-                      {payment.status}
-                    </Badge>
-                  </td>
-                  <td className="py-3 text-gray-500">
-                    {payment.paid_date ? new Date(payment.paid_date).toLocaleDateString() : 'Pending'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!dashboard?.recentPayments?.length ? <p className="py-4 text-sm text-gray-500">No payments yet.</p> : null}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-gray-900">Recent payments</h2>
+          <Link href={hrefWhenApproved('/landlord/payments')} className="text-sm font-semibold text-[#C0392B] hover:underline">
+            View all
+          </Link>
         </div>
+        {statsLoading ? (
+          <div className="mt-4">
+            <SkeletonBlocks rows={3} />
+          </div>
+        ) : (dashboard?.recentPayments ?? []).length ? (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[560px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-xs uppercase tracking-wider text-gray-500">
+                  <th className="py-3 pr-4">Method</th>
+                  <th className="py-3 pr-4">Amount</th>
+                  <th className="py-3 pr-4">Status</th>
+                  <th className="py-3">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(dashboard?.recentPayments ?? []).slice(0, 8).map((payment: any) => (
+                  <tr key={payment.id} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="py-3">{payment.payment_method || '—'}</td>
+                    <td className="py-3 font-medium">{formatMoney(payment.amount_gross)}</td>
+                    <td className="py-3">
+                      <Badge variant={payment.status === 'PAID' ? 'success' : payment.status === 'OVERDUE' ? 'error' : 'warning'}>
+                        {payment.status}
+                      </Badge>
+                    </td>
+                    <td className="py-3 text-gray-500">
+                      {payment.paid_date ? new Date(payment.paid_date).toLocaleDateString() : 'Pending'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="mt-4">
+            <EmptyStateCard
+              title="No payments recorded yet"
+              description="Payments appear here once tenants pay on-platform or you confirm direct rent."
+            />
+          </div>
+        )}
       </div>
 
       <div className="landlord-panel">
@@ -302,7 +350,11 @@ export default function LandlordDashboard() {
               </div>
             </li>
           ))}
-          {!notifications.length ? <li className="text-sm text-gray-500">No unread notifications.</li> : null}
+          {!notifications.length ? (
+            <li>
+              <EmptyStateCard title="All caught up" description="Unread alerts about payments, tenants, and deposits will show here." />
+            </li>
+          ) : null}
         </ul>
       </div>
     </div>
