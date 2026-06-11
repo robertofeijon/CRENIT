@@ -9,6 +9,7 @@ import TenantPageHeader from '../../components/ui/TenantPageHeader';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 
 const downloadPdf = (blob: Blob, filename: string) => {
   const url = window.URL.createObjectURL(blob);
@@ -87,11 +88,7 @@ export default function TenantReportsPage() {
   };
 
   if (loading || !roleReady || !user) {
-    return (
-      <div className="space-y-6">
-        <SkeletonBlocks rows={2} />
-      </div>
-    );
+    return <TenantWorkspaceLoading />;
   }
 
   return (

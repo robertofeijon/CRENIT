@@ -1,7 +1,9 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { supabase } from '../lib/supabaseClient';
 import api from '../lib/api';
+import { isAuthRequiredPath } from '../lib/auth-routes';
 import type { ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 
@@ -28,11 +30,13 @@ function roleFromUserMetadata(user: User | null): string | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname() ?? '/';
+  const authRequired = isAuthRequiredPath(pathname);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [apiRole, setApiRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [roleReady, setRoleReady] = useState(false);
+  const [loading, setLoading] = useState(authRequired);
+  const [roleReady, setRoleReady] = useState(!authRequired);
   const [twoFactorRequired, setTwoFactorRequired] = useState(false);
   const [twoFactorSetupRequired, setTwoFactorSetupRequired] = useState(false);
   const hydrateGeneration = useRef(0);
@@ -81,8 +85,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const applyLightSession = useCallback((nextSession: Session | null) => {
+    setSession(nextSession);
+    setUser(nextSession?.user ?? null);
+    if (nextSession?.access_token) {
+      api.defaults.headers.common.Authorization = `Bearer ${nextSession.access_token}`;
+      setApiRole(roleFromUserMetadata(nextSession.user));
+    } else {
+      delete api.defaults.headers.common.Authorization;
+      setApiRole(null);
+    }
+    setTwoFactorRequired(false);
+    setTwoFactorSetupRequired(false);
+    setRoleReady(true);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     let mounted = true;
+
+    if (!authRequired) {
+      const probeSession = async () => {
+        const {
+          data: { session: initialSession },
+        } = await supabase.auth.getSession();
+        if (!mounted) return;
+        applyLightSession(initialSession);
+      };
+
+      void probeSession();
+
+      const { data: listener } = supabase.auth.onAuthStateChange((event, currentSession) => {
+        if (!mounted || event === 'INITIAL_SESSION') return;
+        applyLightSession(currentSession);
+      });
+
+      return () => {
+        mounted = false;
+        listener.subscription.unsubscribe();
+      };
+    }
+
+    setLoading(true);
+    setRoleReady(false);
 
     const bootstrap = async () => {
       const {
@@ -96,7 +141,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, currentSession) => {
       if (!mounted) return;
-      // Initial session is handled by bootstrap() — duplicate calls caused a stuck loading state.
       if (event === 'INITIAL_SESSION') return;
       void hydrateFromSession(currentSession);
     });
@@ -105,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, [hydrateFromSession]);
+  }, [authRequired, hydrateFromSession, applyLightSession]);
 
   const login = async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password }, { timeout: 12_000 });
