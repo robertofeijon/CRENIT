@@ -4,12 +4,17 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, LineChart as LineChartIcon, RefreshCw, Search, TrendingUp, Users } from 'lucide-react';
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import dynamic from 'next/dynamic';
+import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+
+const LazyScoreHistoryChart = dynamic(() => import('../../components/charts/ScoreHistoryChart'), {
+  ssr: false,
+  loading: () => <SkeletonBlocks rows={3} />,
+});
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import AdminPageHeader from '../../components/ui/AdminPageHeader';
 import AdminStatCard from '../../components/ui/AdminStatCard';
-import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 
@@ -320,19 +325,7 @@ export default function AdminCreditScoresPage() {
                 <p>Deposit (10%): {selected.deposit_management_score ?? '—'}</p>
               </div>
               <div className="h-[180px] rounded-xl border border-slate-100 bg-[#F3F4F6] p-2">
-                {history.length ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={history}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="recorded_at" tickFormatter={(v) => String(v).slice(0, 10)} fontSize={10} />
-                      <YAxis domain={[300, 900]} fontSize={10} />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="score" stroke="#C0392B" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <p className="flex h-full items-center justify-center text-xs text-slate-500">No history yet</p>
-                )}
+                <LazyScoreHistoryChart data={history} />
               </div>
               <button
                 type="button"

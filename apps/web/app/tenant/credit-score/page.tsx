@@ -8,6 +8,7 @@ import { useAuth } from '../../../src/contexts/AuthContext';
 import TenantPageHeader from '../../components/ui/TenantPageHeader';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import RentalCreditModelCard from '../../components/credit/RentalCreditModelCard';
 
 const FACTOR_LABELS: Record<string, { label: string; weight: string }> = {
@@ -83,7 +84,7 @@ export default function TenantCreditScorePage() {
   const maxHistoryScore = useMemo(() => Math.max(...history.map((h) => h.score), score, 900), [history, score]);
 
   if (loading || !roleReady || !user) {
-    return <p className="text-sm text-slate-500">Loading tenant workspace…</p>;
+    return <TenantWorkspaceLoading />;
   }
 
   return (

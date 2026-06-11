@@ -9,6 +9,7 @@ import LandlordPageHeader from '../../components/ui/LandlordPageHeader';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import { LandlordWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { landlordInputClass, landlordSelectClass } from '../../components/landlord/landlordUi';
 
 const downloadPdf = (blob: Blob, filename: string) => {
@@ -96,7 +97,7 @@ export default function LandlordReportsPage() {
   };
 
   if (loading || !user) {
-    return <p className="text-sm text-slate-500">Loading partner workspace…</p>;
+    return <LandlordWorkspaceLoading />;
   }
 
   return (

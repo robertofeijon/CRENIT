@@ -8,6 +8,7 @@ import { useAuth } from '../../../src/contexts/AuthContext';
 import { statusPillClass } from '../../components/tenant/tenantUi';
 import KycDocumentUploadField from '../../components/kyc/KycDocumentUploadField';
 import KycWizardProgress from '../../components/kyc/KycWizardProgress';
+import WorkspaceLoading from '../../components/ui/WorkspaceLoading';
 
 type KycDocType = 'government_id' | 'selfie' | 'income_proof' | 'proof_of_address';
 
@@ -251,8 +252,10 @@ export default function TenantKycPage() {
 
   if (loading || !roleReady || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F3F4F6]">
-        <p className="text-sm text-slate-500">Loading verification…</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#F3F4F6] p-6">
+        <div className="w-full max-w-lg">
+          <WorkspaceLoading label="Loading verification…" />
+        </div>
       </div>
     );
   }

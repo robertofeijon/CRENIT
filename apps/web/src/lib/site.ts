@@ -24,7 +24,6 @@ export const MARKETING_SLUGS = [
   'solutions/for-developers',
   'company/about-us',
   'company/how-it-works',
-  'company/blog',
   'company/contact',
   'company/privacy',
   'company/terms',

@@ -20,6 +20,7 @@ import { TenantsModule } from './tenants/tenants.module';
 import { SettingsModule } from './settings/settings.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OpsModule } from './ops/ops.module';
+import { PublicModule } from './public/public.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { OpsModule } from './ops/ops.module';
     AdminModule,
     SettingsModule,
     NotificationsModule,
+    PublicModule,
   ],
   controllers: [AppController],
   providers: [AppService],

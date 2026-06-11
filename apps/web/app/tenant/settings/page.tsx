@@ -8,6 +8,7 @@ import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import TenantPageHeader from '../../components/ui/TenantPageHeader';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import { tenantInputClass, tenantSelectClass } from '../../components/tenant/tenantUi';
@@ -174,7 +175,7 @@ export default function TenantSettingsPage() {
   };
 
   if (loading || !roleReady || !user) {
-    return <p className="text-sm text-slate-500">Loading tenant workspace…</p>;
+    return <TenantWorkspaceLoading />;
   }
 
   return (

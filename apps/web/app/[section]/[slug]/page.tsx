@@ -74,13 +74,6 @@ const pageData: Record<string, { title: string; headline: string; description: s
       'CRENIT connects landlords, tenants, and lenders through verified rental payment flows, transparent score updates, and actionable market data.',
     bullets: ['Tenant rent verification', 'Landlord dashboard', 'Credit reporting'],
   },
-  'company/blog': {
-    title: 'Blog',
-    headline: 'Latest insights from the rent credit ecosystem.',
-    description:
-      'Stay informed with product updates, market analysis, and stories from landlords and tenants who are building stronger financial futures.',
-    bullets: ['Product news', 'Market commentary', 'Partner stories'],
-  },
   'company/contact': {
     title: 'Contact',
     headline: 'Get in touch with the CRENIT team.',

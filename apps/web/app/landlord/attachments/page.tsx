@@ -9,6 +9,7 @@ import LandlordPageHeader from '../../components/ui/LandlordPageHeader';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import { LandlordWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { formatN$, landlordInputClass, landlordSelectClass, statusPillClass } from '../../components/landlord/landlordUi';
 
 interface Attachment {
@@ -298,7 +299,7 @@ export default function AttachmentsPage() {
     residenceValid;
 
   if (loading || !user) {
-    return <p className="text-sm text-slate-500">Loading partner workspace…</p>;
+    return <LandlordWorkspaceLoading />;
   }
 
   return (

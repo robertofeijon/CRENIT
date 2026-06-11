@@ -9,6 +9,8 @@ import { useAuth } from '../../../src/contexts/AuthContext';
 import TenantPageHeader from '../../components/ui/TenantPageHeader';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import EmptyStateCard from '../../components/ui/EmptyStateCard';
+import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { formatN$, statusPillClass, tenantInputClass } from '../../components/tenant/tenantUi';
 
 export default function TenantDepositPage() {
@@ -100,7 +102,7 @@ export default function TenantDepositPage() {
   };
 
   if (loading || !roleReady || !user) {
-    return <p className="text-sm text-slate-500">Loading tenant workspace…</p>;
+    return <TenantWorkspaceLoading />;
   }
 
   return (
@@ -168,7 +170,12 @@ export default function TenantDepositPage() {
             ) : null}
           </>
         ) : (
-          <p className="mt-4 text-sm text-slate-500">No active deposit record found for your lease.</p>
+          <div className="mt-4">
+            <EmptyStateCard
+              title="No deposit on file"
+              description="Your landlord will record a deposit when your lease starts. Check back after move-in."
+            />
+          </div>
         )}
       </section>
 

@@ -10,6 +10,7 @@ import LandlordStatCard from '../../components/ui/LandlordStatCard';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import { LandlordWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { formatN$, landlordInputClass, landlordSelectClass, statusPillClass } from '../../components/landlord/landlordUi';
 
 export default function LandlordLeasesPage() {
@@ -276,7 +277,7 @@ export default function LandlordLeasesPage() {
   };
 
   if (loading || !user) {
-    return <p className="text-sm text-slate-500">Loading partner workspace…</p>;
+    return <LandlordWorkspaceLoading />;
   }
 
   return (

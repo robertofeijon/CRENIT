@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { TenantWorkspaceLoading } from '../components/ui/WorkspaceLoading';
 
 export default function TenantPage() {
   const { user, loading, roleReady } = useAuth();
@@ -19,8 +20,10 @@ export default function TenantPage() {
   }, [loading, roleReady, user, router]);
 
   return (
-    <div className="flex min-h-[40vh] items-center justify-center">
-      <p className="text-sm text-slate-500">Loading tenant workspace…</p>
+    <div className="flex min-h-[40vh] items-center justify-center p-6">
+      <div className="w-full max-w-lg">
+        <TenantWorkspaceLoading />
+      </div>
     </div>
   );
 }

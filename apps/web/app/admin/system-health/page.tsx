@@ -4,12 +4,17 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Activity, CheckCircle2, AlertTriangle, RefreshCw, ScrollText, Server, Shield } from 'lucide-react';
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import dynamic from 'next/dynamic';
+import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+
+const LazyAuditActivityChart = dynamic(() => import('../../components/charts/AuditActivityChart'), {
+  ssr: false,
+  loading: () => <SkeletonBlocks rows={3} />,
+});
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import AdminPageHeader from '../../components/ui/AdminPageHeader';
 import AdminStatCard from '../../components/ui/AdminStatCard';
-import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 
@@ -236,20 +241,7 @@ export default function AdminSystemHealthPage() {
               <h2 className="font-semibold text-[#1A1A1A]">Admin activity (7 days)</h2>
               <p className="mt-1 text-xs text-slate-500">Actions logged vs error-like entries</p>
               <div className="mt-4 h-[220px]">
-                {chartData.length ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="day" tick={{ fontSize: 10 }} />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="admin_actions" stroke="#1A1A1A" strokeWidth={2} dot={false} name="Actions" />
-                      <Line type="monotone" dataKey="errors" stroke="#C0392B" strokeWidth={2} dot={false} name="Errors" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <p className="flex h-full items-center justify-center text-sm text-slate-400">No audit data</p>
-                )}
+                <LazyAuditActivityChart data={chartData} />
               </div>
             </article>
 

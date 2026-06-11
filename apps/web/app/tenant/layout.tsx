@@ -7,6 +7,7 @@ import api from '../../src/lib/api';
 import { useAuth } from '../../src/contexts/AuthContext';
 import DashboardShell from '../components/layout/DashboardShell';
 import { tenantNavItems } from '../components/tenant/tenantNav';
+import { TenantWorkspaceLoading } from '../components/ui/WorkspaceLoading';
 
 const isKycApproved = (status: string) => status === 'APPROVED' || status === 'VERIFIED';
 
@@ -74,8 +75,10 @@ export default function TenantLayout({ children }: { children: ReactNode }) {
 
   if (loading || !roleReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F3F4F6]">
-        <p className="text-sm text-slate-500">Loading tenant workspace…</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#F3F4F6] p-6">
+        <div className="w-full max-w-lg">
+          <TenantWorkspaceLoading />
+        </div>
       </div>
     );
   }

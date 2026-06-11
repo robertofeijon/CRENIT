@@ -8,6 +8,7 @@ import { useAuth } from '../../../src/contexts/AuthContext';
 import LandlordPageHeader from '../../components/ui/LandlordPageHeader';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import { LandlordWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { landlordInputClass, statusPillClass } from '../../components/landlord/landlordUi';
 import MarketDataConsentSection from '../../components/settings/MarketDataConsentSection';
 
@@ -122,7 +123,7 @@ export default function LandlordSettingsPage() {
   };
 
   if (loading || !user) {
-    return <p className="text-sm text-slate-500">Loading partner workspace…</p>;
+    return <LandlordWorkspaceLoading />;
   }
 
   return (

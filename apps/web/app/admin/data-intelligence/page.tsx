@@ -33,12 +33,14 @@ import AdminStatCard from '../../components/ui/AdminStatCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
-import B2bApiPlayground from './B2bApiPlayground';
-import B2bIntegratorExports from './B2bIntegratorExports';
-import B2bWebhookAdmin from './B2bWebhookAdmin';
-import SaleCompsPilotPanel from './SaleCompsPilotPanel';
-import LicensableWatchPanel from './LicensableWatchPanel';
-import GeocodeQaPanel from './GeocodeQaPanel';
+import {
+  LazyB2bApiPlayground,
+  LazyB2bIntegratorExports,
+  LazyB2bWebhookAdmin,
+  LazyGeocodeQaPanel,
+  LazyLicensableWatchPanel,
+  LazySaleCompsPilotPanel,
+} from './lazy-panels';
 
 type Timeframe = 'today' | '7d' | '30d' | '90d' | 'qtd' | 'ytd' | 'all';
 
@@ -802,7 +804,7 @@ export default function DataIntelligencePage() {
               />
             ) : null}
 
-            {activeTab === 'qa' ? <GeocodeQaPanel onError={setError} /> : null}
+            {activeTab === 'qa' ? <LazyGeocodeQaPanel onError={setError} /> : null}
 
             {activeTab === 'b2b' ? (
               <B2bPanel
@@ -1128,7 +1130,7 @@ function SaleCompsRoadmapPanel({
         </div>
       </div>
 
-      <SaleCompsPilotPanel
+      <LazySaleCompsPilotPanel
         pilotSummary={roadmap.pilot_summary}
         suburbOptions={suburbOptions}
         clients={clients}
@@ -1189,7 +1191,7 @@ function LicensingPanel({
         <AdminStatCard label="Below minimum" value={report.summary.below_minimum} icon={Database} />
         <AdminStatCard label="Data source" value={report.data_source === 'market_data_records' ? 'Verified' : 'Fallback'} icon={Activity} />
       </div>
-      <LicensableWatchPanel />
+      <LazyLicensableWatchPanel />
       {report.ready_to_license.length ? (
         <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="min-w-full text-left text-sm">
@@ -1571,13 +1573,13 @@ function B2bPanel({
         ) : null}
       </div>
 
-      <B2bIntegratorExports onError={onError} />
-      <B2bWebhookAdmin
+      <LazyB2bIntegratorExports onError={onError} />
+      <LazyB2bWebhookAdmin
         clients={clients.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name }))}
         onError={onError}
         onMessage={(m) => onMessage(m)}
       />
-      <B2bApiPlayground apiKey={apiKeySample} suburbOptions={suburbOptions} onError={onError} />
+      <LazyB2bApiPlayground apiKey={apiKeySample} suburbOptions={suburbOptions} onError={onError} />
 
     <div className="grid gap-8 lg:grid-cols-2">
       <div>

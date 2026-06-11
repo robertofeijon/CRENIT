@@ -9,6 +9,7 @@ import TenantPageHeader from '../../components/ui/TenantPageHeader';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { formatN$, statusPillClass, tenantInputClass, tenantSelectClass } from '../../components/tenant/tenantUi';
 
 export default function TenantPaymentsPage() {
@@ -180,7 +181,7 @@ export default function TenantPaymentsPage() {
   };
 
   if (loading || !roleReady || !user) {
-    return <p className="text-sm text-slate-500">Loading tenant workspace…</p>;
+    return <TenantWorkspaceLoading />;
   }
 
   const next = upcoming?.next_payment;

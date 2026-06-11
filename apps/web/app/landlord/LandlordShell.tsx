@@ -18,6 +18,7 @@ import {
   isLandlordVerificationLockedPath,
   LANDLORD_VERIFICATION_LOCK_REASON,
 } from '../components/landlord/landlordVerificationPaths';
+import { LandlordWorkspaceLoading } from '../components/ui/WorkspaceLoading';
 
 const BANNER_DISMISS_KEY = 'crenit_landlord_kyc_banner_dismissed';
 
@@ -150,8 +151,10 @@ export default function LandlordShell({ children }: { children: ReactNode }) {
 
   if (loading || !roleReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F3F4F6]">
-        <p className="text-sm text-slate-500">Loading partner workspace…</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#F3F4F6] p-6">
+        <div className="w-full max-w-lg">
+          <LandlordWorkspaceLoading />
+        </div>
       </div>
     );
   }

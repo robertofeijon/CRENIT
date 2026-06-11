@@ -16,6 +16,7 @@ import { useAuth } from '../../../src/contexts/AuthContext';
 import TenantPageHeader from '../../components/ui/TenantPageHeader';
 import LandlordStatCard from '../../components/ui/LandlordStatCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
+import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import { formatN$, statusPillClass, tenantInputClass } from '../../components/tenant/tenantUi';
@@ -105,7 +106,7 @@ export default function TenantHomePage() {
   };
 
   if (loading || !roleReady || !user) {
-    return <p className="text-sm text-slate-500">Loading tenant workspace…</p>;
+    return <TenantWorkspaceLoading />;
   }
 
   const name = data?.profile?.full_name ?? user.email?.split('@')[0] ?? 'there';
