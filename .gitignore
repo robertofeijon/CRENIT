@@ -5,6 +5,7 @@ dist/
 **/.next/
 **/.DS_Store
 .env
+.env.staging
 apps/api/.env
 apps/web/.env.local
 apps/web/test-results/

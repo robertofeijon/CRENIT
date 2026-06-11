@@ -20,7 +20,9 @@
     "staging:checklist": "node scripts/staging-checklist.mjs",
     "test:metrics": "npm run test -w crenit-api",
     "test:e2e": "npm run test:e2e -w crenit-web",
-    "email:test": "node scripts/send-test-email.mjs"
+    "email:test": "node scripts/send-test-email.mjs",
+    "configure:contact-env": "node scripts/configure-contact-env.mjs",
+    "setup:github-e2e-secrets": "node scripts/setup-github-e2e-secrets.mjs"
   },
   "devDependencies": {
     "concurrently": "^8.0.0"

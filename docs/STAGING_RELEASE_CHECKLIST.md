@@ -61,15 +61,15 @@ SMTP_PORT=587
 SMTP_USER=your@gmail.com
 SMTP_PASS=app-password
 EMAIL_FROM=CRENIT <your@gmail.com>
-EMAIL_CONTACT=hello@yourdomain.com
-EMAIL_REPLY_TO=hello@yourdomain.com
+EMAIL_CONTACT=hello@crenit.co
+EMAIL_REPLY_TO=hello@crenit.co
 WEB_URL=https://your-staging-web.vercel.app
 ```
 
 **Web (Vercel / `apps/web/.env.local`):**
 
 ```env
-NEXT_PUBLIC_CONTACT_EMAIL=hello@yourdomain.com
+NEXT_PUBLIC_CONTACT_EMAIL=hello@crenit.co
 ```
 
 `POST /public/contact` delivers to **`EMAIL_CONTACT`** (falls back to `EMAIL_REPLY_TO` → `SMTP_USER`). The contact page mailto link uses **`NEXT_PUBLIC_CONTACT_EMAIL`**.
@@ -186,6 +186,14 @@ Configure in the repo **Settings → Secrets and variables → Actions** (reposi
 Without these, CI still runs public Playwright tests; the tenant login spec is **skipped**.
 
 **Verify CI:** push to `main` or re-run **web-e2e**. Expected: **5 passed** including `login.spec.ts` (not `1 skipped`).
+
+**Automated secret setup** (after filling `.env.staging` from `.env.staging.example`):
+
+```bash
+npm run setup:github-e2e-secrets
+```
+
+Requires [GitHub CLI](https://cli.github.com/) and `gh auth login`.
 
 **Local E2E with login** (optional):
 

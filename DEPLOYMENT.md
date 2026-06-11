@@ -15,6 +15,8 @@
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://xxxx.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `NEXT_PUBLIC_API_URL` | `https://crenit-api.onrender.com` |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | `hello@crenit.co` (contact page + mailto) |
+| `NEXT_PUBLIC_SITE_URL` | `https://crenit-web.vercel.app` (canonical URLs / sitemap) |
 | `NEXT_PUBLIC_SMS_ENABLED` | `false` |
 
 `apps/web/vercel.json` adds security headers. Production builds fail if Supabase public keys are missing.
@@ -54,7 +56,34 @@ Render sets `PORT` automatically. The API binds to `0.0.0.0`.
 | `RATE_LIMIT_WINDOW_MS` | `60000` |
 | `RATE_LIMIT_MAX_REQUESTS` | `120` |
 | `EMAIL_PROVIDER` / SMTP or Resend vars | See `.env.example` |
+| `EMAIL_CONTACT` | Inbox for `POST /public/contact` (e.g. `hello@crenit.co`) |
+| `EMAIL_REPLY_TO` | Reply-to for outbound mail (often same as `EMAIL_CONTACT`) |
 | `PAYMENT_WEBHOOK_SECRET` | Required when payment webhooks are enabled |
+
+---
+
+## Contact email + GitHub E2E secrets (one-time)
+
+**Local dev** (creates/updates gitignored `.env` files):
+
+```bash
+npm run configure:contact-env
+```
+
+**GitHub Actions** (tenant login Playwright in CI):
+
+1. Copy `.env.staging.example` → `.env.staging`
+2. Fill `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `NEXT_PUBLIC_API_URL` from your staging Supabase + Render API
+3. Install [GitHub CLI](https://cli.github.com/) and run `gh auth login`
+4. Push secrets:
+
+```bash
+npm run setup:github-e2e-secrets
+```
+
+E2E credentials default to demo seed (`tenant@rentcredit.demo` / `DemoTenant123!`) — run `npm run seed:demo` on staging first.
+
+**Render / Vercel dashboards:** set `EMAIL_CONTACT` and `EMAIL_REPLY_TO` on the API service; set `NEXT_PUBLIC_CONTACT_EMAIL` on the web project (same address).
 
 ---
 
