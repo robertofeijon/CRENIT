@@ -1,7 +1,7 @@
 # CRENIT — Project status (where we are)
 
 **Single source of truth for current position.**  
-**Last updated:** June 2026 · **`main` @ `d4470b0`** (product code through `e5e728b`)
+**Last updated:** June 2026 · **`main` @ `7416691`** (product code through `e5e728b`)
 
 ---
 
@@ -22,7 +22,7 @@
 
 | Commit | Summary |
 |--------|---------|
-| `d4470b0` | **This doc** + synced `SYSTEM_OVERVIEW`, roadmap, gaps, staging checklist, `IMPLEMENTATION_STATUS` |
+| `7416691` / `d4470b0` | **Status docs** — `PROJECT_STATUS.md` + synced overview, roadmap, gaps, checklist |
 | `e5e728b` | Flywheel metrics on admin system health; tenant home Bronze–Platinum tier; staging ref 0035/0036 |
 | `e296c90` | **Phase 1 trust:** score tiers, insights, simulator, auto-confirm EFT, shareable PDF, dispute UX, migration `0036` |
 | `1492404` | `SYSTEM_OVERVIEW.md` + `PRODUCT_ROADMAP_3_PHASES.md` |
