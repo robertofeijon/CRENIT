@@ -215,6 +215,24 @@ Optional observability secrets: `SENTRY_DSN` (API), `NEXT_PUBLIC_SENTRY_DSN` (we
 
 ---
 
+## 10. Notification bell + lease renewals (manual)
+
+Requires migration **`0035_notifications_realtime.sql`** (§1) and web deploy with `NotificationsProvider` / `NotificationBell`.
+
+| Step | Actor | Action | Pass criteria |
+|------|--------|--------|----------------|
+| 1 | Tenant | Log in → any `/tenant/*` page | Header **bell** visible; click opens panel titled **Notifications** |
+| 2 | Tenant | Trigger an in-app notification (e.g. landlord renewal proposal) | Bell badge increments; item appears in dropdown without full page refresh |
+| 3 | Tenant | Dismiss one / Mark all read | Badge clears; list updates |
+| 4 | Landlord | Log in → `/landlord/overview` or `/landlord/leases` | Same bell behaviour |
+| 5 | Admin | Log in → `/admin` | Same bell behaviour |
+| 6 | Tenant | `/tenant/home` → **Lease renewals** | Accept / Decline / Send counter show loading labels; green success banner after respond |
+| 7 | Landlord | `/landlord/leases` → **Lease renewal proposals** | Approve / Reject / counter show busy state; success message after respond |
+
+**Playwright:** `cd apps/web && E2E_TENANT_EMAIL=… E2E_TENANT_PASSWORD=… NEXT_PUBLIC_API_URL=… npm run test:e2e -- dashboard-shell.spec.ts`
+
+---
+
 ## Sign-off
 
 | Item | Owner | Date | Pass |
@@ -224,7 +242,9 @@ Optional observability secrets: `SENTRY_DSN` (API), `NEXT_PUBLIC_SENTRY_DSN` (we
 | Contact form (`EMAIL_CONTACT` + `NEXT_PUBLIC_CONTACT_EMAIL`) | | | |
 | E2E smoke + manual path | | | |
 | SMTP + password reset | | | |
-| GitHub E2E secrets (5 passed in CI) | | | |
+| Migration `0035` (notifications realtime) | | | |
+| Notification bell + renewals (§10) | | | |
+| GitHub E2E secrets (5+ passed in CI) | | | |
 | 2FA step-up | | | |
 | Admin health smoke | | | |
 | CI green | | | |

@@ -23,7 +23,6 @@ import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { LandlordWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { landlordNavItems } from '../../components/landlord/landlordNav';
-import { useNotificationRealtime } from '../../../src/hooks/useNotificationRealtime';
 
 const WORKSPACE_LINKS = landlordNavItems.filter((item) => item.href !== '/landlord/overview');
 
@@ -33,7 +32,6 @@ export default function LandlordDashboard() {
   const [dashboard, setDashboard] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<any[]>([]);
   const [switchRequests, setSwitchRequests] = useState<any[]>([]);
 
   useEffect(() => {
@@ -43,20 +41,8 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     if (user && (role === 'LANDLORD' || role === 'ADMIN')) loadOverview();
-    if (user && (role === 'LANDLORD' || role === 'ADMIN')) loadNotifications();
     if (user && (role === 'LANDLORD' || role === 'ADMIN')) loadSwitchRequests();
   }, [user, role]);
-
-  useNotificationRealtime(user?.id, (event, row) => {
-    if (row.read) {
-      setNotifications((prev) => prev.filter((n) => n.id !== row.id));
-      return;
-    }
-    setNotifications((prev) => {
-      const without = prev.filter((n) => n.id !== row.id);
-      return event === 'insert' ? [row, ...without] : without.map((n) => (n.id === row.id ? row : n));
-    });
-  });
 
   const loadOverview = async () => {
     setIsLoading(true);
@@ -71,30 +57,12 @@ export default function LandlordDashboard() {
     }
   };
 
-  const loadNotifications = async () => {
-    try {
-      const res = await api.get('/notifications/unread');
-      setNotifications(res.data?.data || []);
-    } catch {
-      setNotifications([]);
-    }
-  };
-
   const loadSwitchRequests = async () => {
     try {
       const res = await api.get('/landlords/lease/payment-method-switch/requests');
       setSwitchRequests(res.data?.data || []);
     } catch {
       setSwitchRequests([]);
-    }
-  };
-
-  const markNotificationRead = async (id: string) => {
-    try {
-      await api.post(`/notifications/${id}/read`);
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-    } catch {
-      // Keep non-blocking in dashboard.
     }
   };
 
@@ -341,34 +309,6 @@ export default function LandlordDashboard() {
         )}
       </div>
 
-      <div className="landlord-panel">
-        <h2 className="text-lg font-semibold text-[#1A1A1A]">Unread notifications</h2>
-        <ul className="mt-4 space-y-3">
-          {notifications.slice(0, 6).map((note: any) => (
-            <li key={note.id} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">{note.title}</p>
-                  <p className="mt-1 text-sm text-gray-600">{note.message}</p>
-                  <p className="mt-1 text-xs text-gray-400">{new Date(note.created_at).toLocaleString()}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => markNotificationRead(note.id)}
-                  className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </li>
-          ))}
-          {!notifications.length ? (
-            <li>
-              <EmptyStateCard title="All caught up" description="Unread alerts about payments, tenants, and deposits will show here." />
-            </li>
-          ) : null}
-        </ul>
-      </div>
     </div>
   );
 }

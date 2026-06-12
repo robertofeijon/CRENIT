@@ -7,8 +7,10 @@ import { useEffect, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Menu, X } from 'lucide-react';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import { NotificationsProvider } from '../../../src/contexts/NotificationsContext';
 import MarketingNav from './MarketingNav';
 import Logo from '../ui/Logo';
+import NotificationBell from '../ui/NotificationBell';
 
 export type NavItem = {
   label: string;
@@ -167,6 +169,7 @@ export default function DashboardShell({
   );
 
   return (
+    <NotificationsProvider>
     <div className="min-h-screen bg-[#F3F4F6]">
       <header
         className={`fixed left-0 right-0 top-0 z-50 h-16 border-b backdrop-blur ${
@@ -190,6 +193,7 @@ export default function DashboardShell({
           </div>
           <div className="flex items-center gap-2">
             {headerBadge}
+            {isPolishedShell ? <NotificationBell role={role} /> : null}
             <Link href={pill.href} className={`rounded-full px-4 py-2 text-sm font-semibold ${pill.className}`}>
               {pill.label}
             </Link>
@@ -232,5 +236,6 @@ export default function DashboardShell({
         {children}
       </main>
     </div>
+    </NotificationsProvider>
   );
 }

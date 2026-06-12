@@ -11,6 +11,8 @@ import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { LandlordWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
+import RenewalProposalCard from '../../components/renewals/RenewalProposalCard';
+import { countActionableRenewals } from '../../../src/lib/renewalUi';
 import { formatN$, landlordInputClass, landlordSelectClass, statusPillClass } from '../../components/landlord/landlordUi';
 
 export default function LandlordLeasesPage() {
@@ -35,6 +37,7 @@ export default function LandlordLeasesPage() {
   });
   const [updateForm, setUpdateForm] = useState({ monthly_rent: '', end_date: '', status: '' });
   const [counterByRenewal, setCounterByRenewal] = useState<Record<string, { proposed_rent: string; proposed_end_date: string }>>({});
+  const [renewalBusyId, setRenewalBusyId] = useState<string | null>(null);
   const [leaseAgreements, setLeaseAgreements] = useState<any[]>([]);
   const [agreementFile, setAgreementFile] = useState<File | null>(null);
   const [agreementTitle, setAgreementTitle] = useState('');
@@ -94,17 +97,17 @@ export default function LandlordLeasesPage() {
   }, [leases, renewals]);
 
   const respondRenewal = async (renewalId: string, action: 'APPROVE' | 'REJECT') => {
-    setIsLoading(true);
+    setRenewalBusyId(renewalId);
     setError(null);
     setMessage(null);
     try {
       await api.post(`/landlords/renewals/${renewalId}/respond`, { action });
-      setMessage(`Renewal ${action.toLowerCase()}d.`);
+      setMessage(action === 'APPROVE' ? 'Renewal approved — lease terms will update.' : 'Renewal declined.');
       await loadRenewals();
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to update renewal.');
     } finally {
-      setIsLoading(false);
+      setRenewalBusyId(null);
     }
   };
 
@@ -114,7 +117,7 @@ export default function LandlordLeasesPage() {
       setError('Provide a counter rent or counter end date before sending.');
       return;
     }
-    setIsLoading(true);
+    setRenewalBusyId(renewalId);
     setError(null);
     setMessage(null);
     try {
@@ -123,12 +126,12 @@ export default function LandlordLeasesPage() {
         proposed_rent: counter?.proposed_rent ? Number(counter.proposed_rent) : undefined,
         proposed_end_date: counter?.proposed_end_date || undefined,
       });
-      setMessage('Counter-offer sent.');
+      setMessage('Counter-offer sent to tenant.');
       await loadRenewals();
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to send counter-offer.');
     } finally {
-      setIsLoading(false);
+      setRenewalBusyId(null);
     }
   };
 
@@ -280,6 +283,8 @@ export default function LandlordLeasesPage() {
     return <LandlordWorkspaceLoading />;
   }
 
+  const pendingRenewalCount = countActionableRenewals(renewals);
+
   return (
     <div className="space-y-6">
       <LandlordPageHeader
@@ -297,6 +302,17 @@ export default function LandlordLeasesPage() {
       {error ? <ErrorStateCard message={error} onRetry={loadLeases} /> : null}
       {message ? (
         <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{message}</p>
+      ) : null}
+
+      {pendingRenewalCount > 0 ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-medium text-amber-950">
+            {pendingRenewalCount === 1
+              ? 'One renewal proposal needs your review.'
+              : `${pendingRenewalCount} renewal proposals need your review.`}
+          </p>
+          <p className="mt-1 text-sm text-amber-900/80">Approve, reject, or counter tenant responses below.</p>
+        </div>
       ) : null}
 
       <section className="grid gap-4 sm:grid-cols-3">
@@ -451,67 +467,28 @@ export default function LandlordLeasesPage() {
         <div className="mt-4 space-y-3">
           {renewals.length ? (
             renewals.slice(0, 10).map((renewal) => (
-              <div key={renewal.id} className="rounded-xl border border-slate-100 bg-[#F3F4F6] p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-[#1A1A1A]">Lease {renewal.lease_id}</p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      End {renewal.current_end_date} → Proposed {renewal.proposed_end_date} • {formatN$(renewal.proposed_rent)}
-                    </p>
-                  </div>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusPillClass(renewal.status)}`}>{renewal.status}</span>
-                </div>
-                {renewal.status !== 'APPROVED' && renewal.status !== 'REJECTED' ? (
-                  <div className="mt-3 space-y-3">
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <input
-                        type="number"
-                        placeholder="Counter rent (optional)"
-                        value={counterByRenewal[renewal.id]?.proposed_rent ?? ''}
-                        onChange={(event) =>
-                          setCounterByRenewal((prev) => ({
-                            ...prev,
-                            [renewal.id]: {
-                              proposed_rent: event.target.value,
-                              proposed_end_date: prev[renewal.id]?.proposed_end_date ?? '',
-                            },
-                          }))
-                        }
-                        className={landlordInputClass}
-                      />
-                      <input
-                        type="date"
-                        value={counterByRenewal[renewal.id]?.proposed_end_date ?? ''}
-                        onChange={(event) =>
-                          setCounterByRenewal((prev) => ({
-                            ...prev,
-                            [renewal.id]: {
-                              proposed_rent: prev[renewal.id]?.proposed_rent ?? '',
-                              proposed_end_date: event.target.value,
-                            },
-                          }))
-                        }
-                        className={landlordInputClass}
-                        aria-label="Counter end date"
-                      />
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" onClick={() => submitCounterRenewal(renewal.id)} className="landlord-btn-secondary py-2 text-xs">
-                        Send counter
-                      </button>
-                      <button type="button" onClick={() => respondRenewal(renewal.id, 'APPROVE')} className="landlord-btn-primary bg-emerald-600 py-2 text-xs hover:bg-emerald-700">
-                        Approve
-                      </button>
-                      <button type="button" onClick={() => respondRenewal(renewal.id, 'REJECT')} className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white">
-                        Reject
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
+              <RenewalProposalCard
+                key={renewal.id}
+                renewal={renewal}
+                role="landlord"
+                busy={renewalBusyId === renewal.id}
+                counter={counterByRenewal[renewal.id] ?? { proposed_rent: '', proposed_end_date: '' }}
+                onCounterChange={(patch) =>
+                  setCounterByRenewal((prev) => ({
+                    ...prev,
+                    [renewal.id]: { ...(prev[renewal.id] ?? { proposed_rent: '', proposed_end_date: '' }), ...patch },
+                  }))
+                }
+                onApprove={() => respondRenewal(renewal.id, 'APPROVE')}
+                onReject={() => respondRenewal(renewal.id, 'REJECT')}
+                onCounter={() => submitCounterRenewal(renewal.id)}
+              />
             ))
           ) : (
-            <EmptyStateCard title="No renewal proposals" description="Renewal proposals from tenants will appear here." />
+            <EmptyStateCard
+              title="No renewal proposals"
+              description="When a lease nears its end, renewal drafts and tenant counter-offers appear here and in the notification bell."
+            />
           )}
         </div>
       </section>

@@ -176,6 +176,11 @@ npm run setup:github-e2e-secrets       # requires gh auth login
 | `/auth?mode=register` | Modal opens on register tab |
 | `/landlord/overview` | Stat cards, empty states, loading skeletons |
 | `/tenant/*`, `/landlord/*` | Consistent workspace loading shells |
+| **Tenant / landlord / admin** | Log in → **bell in header** visible; badge updates when unread exist; dropdown lists items; dismiss / mark all read |
+| **`/tenant/home`** | Pending-renewal banner when actionable; Accept / Decline / Send counter show **Saving…** / **Sending…**; green success banner after action |
+| **`/landlord/leases`** | Renewal proposals use shared cards; Approve / Reject / counter show busy labels; success message after respond |
+
+**Automated (staging credentials):** `apps/web/e2e/dashboard-shell.spec.ts` — bell + renewal sections (runs in CI when `E2E_TENANT_*` + `NEXT_PUBLIC_API_URL` are set).
 
 ---
 
@@ -193,12 +198,20 @@ npm run setup:github-e2e-secrets       # requires gh auth login
 - **Tenant home** — onboarding progress bar, empty states (no lease, no payments), KYC/settings CTAs, score hints.
 - **Privacy & Terms** — full sections in `src/content/legal-pages.ts` rendered on `/company/privacy` and `/company/terms`.
 - **Admin overview** — “Queue clear” attention state; deposit escrow panel always visible with empty state.
-- **Realtime notifications** — `useNotificationRealtime` on tenant home + landlord overview; migration `0035_notifications_realtime.sql`.
 - **Contact email** — `robertofeijon@mail.com` (Nodemailer / `EMAIL_CONTACT` / `NEXT_PUBLIC_CONTACT_EMAIL`).
 
 ---
 
-## 11. Deferred (not in this batch)
+## 11. Notification bell + lease renewal polish
+
+- **Global notification bell** — `NotificationBell` in `DashboardShell` header for tenant, landlord, and admin shells.
+- **NotificationsProvider** — `src/contexts/NotificationsContext.tsx` loads unread, subscribes via `useNotificationRealtime`, exposes `markRead` / `markAllRead`.
+- **Realtime** — single subscription per logged-in dashboard session (migration `0035_notifications_realtime.sql`); removed duplicate fetches from tenant home and legacy landlord dashboard.
+- **Lease renewals** — shared `RenewalProposalCard` + `renewalUi` helpers; pending-renewal banners on tenant home and landlord leases; per-action busy states and clearer status copy.
+
+---
+
+## 12. Deferred (not in this batch)
 
 - Production payment gateway integration
 - SMS 2FA

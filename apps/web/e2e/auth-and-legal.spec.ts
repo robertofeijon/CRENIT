@@ -9,7 +9,7 @@ test.describe('Public auth and legal pages', () => {
 
   test('auth page shows login form in modal', async ({ page }) => {
     await page.goto('/auth');
-    await expect(page.getByRole('heading', { name: /account access/i })).toBeVisible();
+    await expect(page.getByText(/sign in to your crenit account/i)).toBeVisible();
     await expect(page.getByPlaceholder('you@example.com')).toBeVisible();
     await expect(page.getByRole('link', { name: /forgot password/i })).toBeVisible();
   });

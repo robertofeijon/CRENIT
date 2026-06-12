@@ -9,7 +9,6 @@ test.describe('Tenant login (staging credentials)', () => {
 
   test('tenant can sign in and reach home dashboard', async ({ page }) => {
     await page.goto('/auth');
-    await page.getByRole('button', { name: /open login/i }).click();
     await expect(page.getByPlaceholder('you@example.com')).toBeVisible();
     await page.getByPlaceholder('you@example.com').fill(tenantEmail!);
     await page.getByPlaceholder('••••••••').fill(tenantPassword!);

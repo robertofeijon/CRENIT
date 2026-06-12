@@ -3,14 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  ArrowRight,
-  Bell,
-  CreditCard,
-  RefreshCw,
-  ScrollText,
-  TrendingUp,
-} from 'lucide-react';
+import { ArrowRight, CreditCard, RefreshCw, ScrollText, TrendingUp } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import TenantPageHeader from '../../components/ui/TenantPageHeader';
@@ -19,8 +12,9 @@ import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
-import { formatN$, statusPillClass, tenantInputClass } from '../../components/tenant/tenantUi';
-import { useNotificationRealtime } from '../../../src/hooks/useNotificationRealtime';
+import RenewalProposalCard from '../../components/renewals/RenewalProposalCard';
+import { formatN$, statusPillClass } from '../../components/tenant/tenantUi';
+import { countActionableRenewals } from '../../../src/lib/renewalUi';
 
 export default function TenantHomePage() {
   const { user, role, loading, roleReady } = useAuth();
@@ -28,10 +22,10 @@ export default function TenantHomePage() {
   const [data, setData] = useState<any>(null);
   const [upcoming, setUpcoming] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<any[]>([]);
   const [renewals, setRenewals] = useState<any[]>([]);
   const [counterByRenewal, setCounterByRenewal] = useState<Record<string, { proposed_rent: string; proposed_end_date: string }>>({});
   const [loadingDashboard, setLoadingDashboard] = useState(false);
+  const [submittingRenewalId, setSubmittingRenewalId] = useState<string | null>(null);
   const [switchRequests, setSwitchRequests] = useState<any[]>([]);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -45,16 +39,14 @@ export default function TenantHomePage() {
     setLoadingDashboard(true);
     setError(null);
     try {
-      const [me, up, notes, renewalRes, switchRes] = await Promise.all([
+      const [me, up, renewalRes, switchRes] = await Promise.all([
         api.get('/tenants/me'),
         api.get('/payments/upcoming').catch(() => null),
-        api.get('/notifications/unread').catch(() => null),
         api.get('/tenants/renewals').catch(() => null),
         api.get('/tenants/lease/payment-method-switch/requests').catch(() => null),
       ]);
       setData(me.data.data);
       setUpcoming(up?.data?.data ?? null);
-      setNotifications(notes?.data?.data ?? []);
       setRenewals(renewalRes?.data?.data ?? []);
       setSwitchRequests(switchRes?.data?.data ?? []);
     } catch (err: any) {
@@ -68,27 +60,9 @@ export default function TenantHomePage() {
     void loadDashboard();
   }, [loadDashboard]);
 
-  useNotificationRealtime(user?.id, (event, row) => {
-    if (row.read) {
-      setNotifications((prev) => prev.filter((n) => n.id !== row.id));
-      return;
-    }
-    setNotifications((prev) => {
-      const without = prev.filter((n) => n.id !== row.id);
-      return event === 'insert' ? [row, ...without] : without.map((n) => (n.id === row.id ? row : n));
-    });
-  });
-
-  const markNotificationRead = async (id: string) => {
-    try {
-      await api.post(`/notifications/${id}/read`);
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-    } catch {
-      /* non-blocking */
-    }
-  };
-
   const respondRenewal = async (renewalId: string, action: 'APPROVE' | 'REJECT') => {
+    setSubmittingRenewalId(renewalId);
+    setError(null);
     try {
       await api.post('/tenants/renewals/respond', { renewal_id: renewalId, action });
       setRenewals((prev) =>
@@ -97,12 +71,19 @@ export default function TenantHomePage() {
       setMessage(`Renewal ${action === 'APPROVE' ? 'accepted' : 'declined'}.`);
     } catch {
       setError('Unable to update renewal.');
+    } finally {
+      setSubmittingRenewalId(null);
     }
   };
 
   const sendCounterRenewal = async (renewalId: string) => {
     const counter = counterByRenewal[renewalId];
-    if (!counter?.proposed_rent && !counter?.proposed_end_date) return;
+    if (!counter?.proposed_rent && !counter?.proposed_end_date) {
+      setError('Enter a counter rent or end date before sending.');
+      return;
+    }
+    setSubmittingRenewalId(renewalId);
+    setError(null);
     try {
       await api.post('/tenants/renewals/respond', {
         renewal_id: renewalId,
@@ -114,6 +95,8 @@ export default function TenantHomePage() {
       setMessage('Counter proposal sent to your landlord.');
     } catch {
       setError('Unable to send counter proposal.');
+    } finally {
+      setSubmittingRenewalId(null);
     }
   };
 
@@ -130,6 +113,7 @@ export default function TenantHomePage() {
   const next = upcoming?.next_payment;
   const daysUntil = next?.days_until_due ?? null;
   const showAlert = daysUntil != null && daysUntil <= 3;
+  const pendingRenewalCount = countActionableRenewals(renewals);
   const onboarding = data?.onboarding;
   const leaseSummary = data?.leaseSummary;
   const hasLease = Boolean(leaseSummary?.lease_id || data?.activeLease?.id);
@@ -166,6 +150,17 @@ export default function TenantHomePage() {
           <Link href="/tenant/payments" className="tenant-btn-primary text-center">
             Pay now
           </Link>
+        </div>
+      ) : null}
+
+      {pendingRenewalCount > 0 ? (
+        <div className="rounded-2xl border border-[#C0392B]/25 bg-gradient-to-r from-[#FDEDEC]/60 to-white p-4">
+          <p className="text-sm font-medium text-[#1A1A1A]">
+            {pendingRenewalCount === 1
+              ? 'You have a lease renewal awaiting your response.'
+              : `You have ${pendingRenewalCount} lease renewals awaiting your response.`}
+          </p>
+          <p className="mt-1 text-sm text-slate-600">Review the proposal below or check the notification bell for updates.</p>
         </div>
       ) : null}
 
@@ -398,111 +393,36 @@ export default function TenantHomePage() {
       ) : null}
 
       <section className="tenant-panel">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-[#C0392B]" aria-hidden />
-            <h2 className="text-lg font-semibold text-[#1A1A1A]">Notifications</h2>
-          </div>
-          {notifications.length ? (
-            <button
-              type="button"
-              className="tenant-btn-secondary px-3 py-1.5 text-xs"
-              onClick={() => notifications.forEach((n) => void markNotificationRead(n.id))}
-            >
-              Mark all read
-            </button>
-          ) : null}
-        </div>
-        <ul className="mt-4 space-y-2">
-          {notifications.slice(0, 5).map((note) => (
-            <li key={note.id} className="rounded-xl border border-slate-100 bg-[#F3F4F6] p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-[#1A1A1A]">{note.title}</p>
-                  <p className="mt-1 text-sm text-slate-600">{note.message}</p>
-                  <p className="mt-1 text-xs text-slate-400">{new Date(note.created_at).toLocaleString()}</p>
-                </div>
-                <button type="button" className="text-xs font-semibold text-slate-600 hover:text-[#1A1A1A]" onClick={() => void markNotificationRead(note.id)}>
-                  Dismiss
-                </button>
-              </div>
-            </li>
-          ))}
-          {!notifications.length ? (
-            <EmptyStateCard title="All caught up" description="No unread notifications right now." />
-          ) : null}
-        </ul>
-      </section>
-
-      <section className="tenant-panel">
         <div className="flex items-center gap-2">
           <ScrollText className="h-5 w-5 text-[#C0392B]" aria-hidden />
           <h2 className="text-lg font-semibold text-[#1A1A1A]">Lease renewals</h2>
         </div>
+        <p className="mt-1 text-sm text-slate-500">Accept, decline, or counter renewal offers from your landlord.</p>
         <ul className="mt-4 space-y-3">
-          {renewals.slice(0, 3).map((renewal) => (
-            <li key={renewal.id} className="rounded-xl border border-slate-100 bg-[#F3F4F6] p-4">
-              <p className="text-sm font-semibold text-[#1A1A1A]">Current lease ends {renewal.current_end_date}</p>
-              <p className="mt-1 text-sm text-slate-600">
-                Proposed: {renewal.proposed_end_date} at {formatN$(renewal.proposed_rent)} ·{' '}
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusPillClass(renewal.status)}`}>
-                  {renewal.status}
-                </span>
-              </p>
-              {renewal.status !== 'APPROVED' && renewal.status !== 'REJECTED' ? (
-                <div className="mt-3 space-y-2">
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <input
-                      type="number"
-                      placeholder="Counter rent (optional)"
-                      value={counterByRenewal[renewal.id]?.proposed_rent ?? ''}
-                      onChange={(event) =>
-                        setCounterByRenewal((prev) => ({
-                          ...prev,
-                          [renewal.id]: {
-                            proposed_rent: event.target.value,
-                            proposed_end_date: prev[renewal.id]?.proposed_end_date ?? '',
-                          },
-                        }))
-                      }
-                      className={tenantInputClass}
-                    />
-                    <input
-                      type="date"
-                      value={counterByRenewal[renewal.id]?.proposed_end_date ?? ''}
-                      onChange={(event) =>
-                        setCounterByRenewal((prev) => ({
-                          ...prev,
-                          [renewal.id]: {
-                            proposed_rent: prev[renewal.id]?.proposed_rent ?? '',
-                            proposed_end_date: event.target.value,
-                          },
-                        }))
-                      }
-                      className={tenantInputClass}
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" className="tenant-btn-secondary" onClick={() => void sendCounterRenewal(renewal.id)}>
-                      Send counter
-                    </button>
-                    <button type="button" className="tenant-btn-primary" onClick={() => void respondRenewal(renewal.id, 'APPROVE')}>
-                      Accept
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-800 hover:bg-red-100"
-                      onClick={() => void respondRenewal(renewal.id, 'REJECT')}
-                    >
-                      Decline
-                    </button>
-                  </div>
-                </div>
-              ) : null}
+          {renewals.slice(0, 5).map((renewal) => (
+            <li key={renewal.id}>
+              <RenewalProposalCard
+                renewal={renewal}
+                role="tenant"
+                busy={submittingRenewalId === renewal.id}
+                counter={counterByRenewal[renewal.id] ?? { proposed_rent: '', proposed_end_date: '' }}
+                onCounterChange={(patch) =>
+                  setCounterByRenewal((prev) => ({
+                    ...prev,
+                    [renewal.id]: { ...(prev[renewal.id] ?? { proposed_rent: '', proposed_end_date: '' }), ...patch },
+                  }))
+                }
+                onApprove={() => respondRenewal(renewal.id, 'APPROVE')}
+                onReject={() => respondRenewal(renewal.id, 'REJECT')}
+                onCounter={() => sendCounterRenewal(renewal.id)}
+              />
             </li>
           ))}
           {!renewals.length ? (
-            <EmptyStateCard title="No renewal proposals" description="Your landlord has not sent a renewal offer yet." />
+            <EmptyStateCard
+              title="No renewal proposals"
+              description="When your landlord sends a renewal offer, it will appear here and in the notification bell."
+            />
           ) : null}
         </ul>
       </section>
