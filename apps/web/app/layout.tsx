@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import './globals.css';
 import type { Metadata } from 'next';
-import { AuthProvider } from '../src/contexts/AuthContext';
 import AppShell from './components/layout/AppShell';
 import { getSiteUrl, SITE_DESCRIPTION, SITE_NAME } from '../src/lib/site';
 
@@ -49,11 +48,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           Skip to content
         </a>
-        <AuthProvider>
-          <AppShell>
-            <div id="main-content">{children}</div>
-          </AppShell>
-        </AuthProvider>
+        <AppShell>
+          <div id="main-content">{children}</div>
+        </AppShell>
       </body>
     </html>
   );

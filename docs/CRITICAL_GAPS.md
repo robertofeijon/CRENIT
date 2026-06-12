@@ -67,7 +67,7 @@ Senior full-stack review of `main` @ June 2026. Use this as the **release gate**
 | 25 | **Payment webhook → live provider** | Partial | Generic webhook + signature; not tied to PayToday/etc. |
 | 26 | **EFT proof upload** | Done | `POST /payments/:id/eft-proof`, private `payment-proofs` bucket, landlord view/confirm |
 | 27 | **E-sign / lease PDF generation** | Partial | Attachments + reports; no DocuSign-style flow |
-| 28 | **Legacy routes cleanup** | Partial | `/dashboard/tenant` duplicates `/tenant/home` — deprecate |
+| 28 | **Legacy routes cleanup** | Done | `/dashboard/*` → permanent redirects; pages removed |
 | 29 | **B2B lender-risk n&lt;5** | Partial | Intentional stub for compliance |
 | 30 | **Multi-region / HA schedulers** | Missing | Heartbeats in-memory per API instance |
 

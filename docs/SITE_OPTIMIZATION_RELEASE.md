@@ -34,7 +34,8 @@ Prior related fixes already on `main`: `f3a287f` (Vercel landlord `useSearchPara
 
 - Public marketing paths skip `/auth/me`; light Supabase session probe only (faster homepage).
 - Full hydration on `/tenant`, `/landlord`, `/admin`, `/auth`, `/join`, `/dashboard`.
-- `src/lib/auth-routes.ts` — `isAuthRequiredPath()` helper.
+- `src/lib/auth-routes.ts` — `isAuthScopedPath()` documents auth-wrapped segments.
+- `src/providers/AuthScopeLayout.tsx` — `AuthProvider` only on tenant/landlord/admin/auth/join (not marketing).
 
 ### Logo asset
 
@@ -189,7 +190,7 @@ npm run setup:github-e2e-secrets       # requires gh auth login
 - `AdminWorkspaceLoading` in `WorkspaceLoading.tsx`.
 - `app/admin/loading.tsx` — route-level loader.
 - `app/admin/layout.tsx` — centralized auth gate + skeleton (replaces per-page plain `<p>` tags).
-- Legacy redirects (`/dashboard/tenant`, `/landlord/onboarding`) use workspace loaders.
+- Legacy `/dashboard/*` URLs redirect via `next.config.mjs` (no `app/dashboard` pages).
 
 ---
 
@@ -215,5 +216,5 @@ npm run setup:github-e2e-secrets       # requires gh auth login
 
 - Production payment gateway integration
 - SMS 2FA
-- Scope `AuthProvider` off public routes entirely (partial lazy hydrate done)
+- ~~Scope `AuthProvider` off public routes~~ — done via `AuthScopeLayout` on session routes only
 - Restore original photographic logo if brand requires it (`git show b6d1dde^:apps/web/public/crenit-logo.svg`)

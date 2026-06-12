@@ -16,19 +16,19 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
-import LandlordPageHeader from '../../components/ui/LandlordPageHeader';
-import LandlordStatCard from '../../components/ui/LandlordStatCard';
-import Badge from '../../components/ui/Badge';
-import ErrorStateCard from '../../components/ui/ErrorStateCard';
-import EmptyStateCard from '../../components/ui/EmptyStateCard';
-import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
-import { LandlordWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
-import { landlordNavItems } from '../../components/landlord/landlordNav';
+import LandlordPageHeader from '../ui/LandlordPageHeader';
+import LandlordStatCard from '../ui/LandlordStatCard';
+import Badge from '../ui/Badge';
+import ErrorStateCard from '../ui/ErrorStateCard';
+import EmptyStateCard from '../ui/EmptyStateCard';
+import SkeletonBlocks from '../ui/SkeletonBlocks';
+import { LandlordWorkspaceLoading } from '../ui/WorkspaceLoading';
+import { landlordNavItems } from './landlordNav';
 import { countActionableRenewals } from '../../../src/lib/renewalUi';
 
 const WORKSPACE_LINKS = landlordNavItems.filter((item) => item.href !== '/landlord/overview');
 
-export default function LandlordDashboard() {
+export default function LandlordOverviewDashboard() {
   const { user, loading, roleReady, role } = useAuth();
   const router = useRouter();
   const [dashboard, setDashboard] = useState<any>(null);

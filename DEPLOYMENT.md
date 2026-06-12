@@ -106,6 +106,24 @@ Confirm each bucket shows **Public: OFF** under Storage.
 
 ---
 
+## Deploy gates (`6edfdf8`+)
+
+Run locally before/after pushing to `main`:
+
+```bash
+npm run verify:deploy-gates
+```
+
+| Gate | Action |
+|------|--------|
+| **Vercel** | Redeploy `apps/web`; build log SHA = `git rev-parse --short HEAD` |
+| **Render** | Redeploy API; `EMAIL_CONTACT`, `CORS_ORIGIN`, `WEB_URL` set |
+| **Supabase** | Apply `0034_payment_eft_proofs.sql` + `0035_notifications_realtime.sql` |
+| **GitHub CI** | [Actions → CI](https://github.com/robertofeijon/CRENIT/actions) — **web-e2e** 9+ passed with E2E secrets |
+| **Manual** | `docs/STAGING_RELEASE_CHECKLIST.md` §10 (notification bell + renewals) |
+
+---
+
 ## Post-deploy smoke tests
 
 | Test | Command / URL | Pass |

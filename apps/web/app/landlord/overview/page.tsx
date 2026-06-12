@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import LandlordDashboard from '../../dashboard/landlord/page';
+import LandlordOverviewDashboard from '../../components/landlord/LandlordOverviewDashboard';
 
 export default function LandlordOverviewPage() {
-  return <LandlordDashboard />;
+  return <LandlordOverviewDashboard />;
 }
