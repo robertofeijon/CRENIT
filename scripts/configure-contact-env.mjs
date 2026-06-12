@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
-const contactEmail = (process.env.CONTACT_EMAIL || 'hello@crenit.co').trim();
+const contactEmail = (process.env.CONTACT_EMAIL || 'robertofeijon@mail.com').trim();
 
 function upsertKey(filePath, key, value) {
   let content = existsSync(filePath) ? readFileSync(filePath, 'utf8') : '';

@@ -20,6 +20,7 @@ import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import { formatN$, statusPillClass, tenantInputClass } from '../../components/tenant/tenantUi';
+import { useNotificationRealtime } from '../../../src/hooks/useNotificationRealtime';
 
 export default function TenantHomePage() {
   const { user, role, loading, roleReady } = useAuth();
@@ -66,6 +67,17 @@ export default function TenantHomePage() {
   useEffect(() => {
     void loadDashboard();
   }, [loadDashboard]);
+
+  useNotificationRealtime(user?.id, (event, row) => {
+    if (row.read) {
+      setNotifications((prev) => prev.filter((n) => n.id !== row.id));
+      return;
+    }
+    setNotifications((prev) => {
+      const without = prev.filter((n) => n.id !== row.id);
+      return event === 'insert' ? [row, ...without] : without.map((n) => (n.id === row.id ? row : n));
+    });
+  });
 
   const markNotificationRead = async (id: string) => {
     try {
@@ -122,6 +134,10 @@ export default function TenantHomePage() {
   const leaseSummary = data?.leaseSummary;
   const hasLease = Boolean(leaseSummary?.lease_id || data?.activeLease?.id);
   const leasePaymentMethod = leaseSummary?.payment_method || data?.activeLease?.payment_method || 'PLATFORM';
+  const onboardingSteps = onboarding?.steps ?? [];
+  const onboardingDone = onboardingSteps.filter((s: { completed: boolean }) => s.completed).length;
+  const onboardingTotal = onboardingSteps.length || 1;
+  const onboardingPct = Math.round((onboardingDone / onboardingTotal) * 100);
 
   return (
     <div className="space-y-6">
@@ -225,22 +241,36 @@ export default function TenantHomePage() {
           </div>
         </section>
       ) : !loadingDashboard ? (
-        <section className="tenant-panel border-dashed border-slate-300 bg-[#F3F4F6]/50">
-          <div className="flex items-start gap-3">
-            <ScrollText className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
-            <div>
-              <h2 className="text-lg font-semibold text-[#1A1A1A]">No lease linked yet</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                When your landlord registers you on CRENIT or you accept an invite, your lease details will appear here.
-              </p>
-            </div>
+        <section className="tenant-panel">
+          <EmptyStateCard
+            title="No lease linked yet"
+            description="Ask your landlord for an invite link, or complete verification so you're ready when they add you."
+          />
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/tenant/kyc" className="tenant-btn-primary">
+              Complete verification
+            </Link>
+            <Link href="/tenant/settings" className="tenant-btn-secondary">
+              Account settings
+            </Link>
           </div>
         </section>
       ) : null}
 
-      {!onboarding?.completed && !loadingDashboard ? (
-        <section className="tenant-panel">
-          <h2 className="text-lg font-semibold text-[#1A1A1A]">Complete your setup</h2>
+      {!onboarding?.completed && !loadingDashboard && onboardingSteps.length ? (
+        <section className="tenant-panel border-[#C0392B]/20 bg-gradient-to-br from-white to-[#FDEDEC]/30">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-[#1A1A1A]">Complete your setup</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {onboardingDone} of {onboardingTotal} steps done — unlock payments and credit scoring.
+              </p>
+            </div>
+            <span className="text-sm font-semibold tabular-nums text-[#C0392B]">{onboardingPct}%</span>
+          </div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200">
+            <div className="h-full rounded-full bg-[#C0392B] transition-all" style={{ width: `${onboardingPct}%` }} />
+          </div>
           <div className="mt-4 space-y-2">
             {(onboarding?.steps || []).map((step: any) => (
               <div key={step.key} className="flex items-center justify-between rounded-xl bg-[#F3F4F6] px-4 py-3">
@@ -260,16 +290,23 @@ export default function TenantHomePage() {
         </section>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <LandlordStatCard label="Current score" value={score} icon={TrendingUp} />
-        <LandlordStatCard label="Score tier" value={tier} />
-        <LandlordStatCard label="On-time streak" value={`${streak} mo`} icon={CreditCard} />
-        <LandlordStatCard
-          label="On-time rate (12 mo)"
-          value={`${onTime}%`}
-          accent={onTime >= 80 ? 'success' : 'default'}
-        />
-      </div>
+      {!loadingDashboard ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <LandlordStatCard
+            label="Current score"
+            value={score}
+            sub={!hasLease ? 'Link a lease to start building' : undefined}
+            icon={TrendingUp}
+          />
+          <LandlordStatCard label="Score tier" value={tier} sub={tier === 'BUILDING' ? 'Pay on time to improve' : undefined} />
+          <LandlordStatCard label="On-time streak" value={`${streak} mo`} icon={CreditCard} />
+          <LandlordStatCard
+            label="On-time rate (12 mo)"
+            value={`${onTime}%`}
+            accent={onTime >= 80 ? 'success' : 'default'}
+          />
+        </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {hasLease ? (
@@ -300,7 +337,12 @@ export default function TenantHomePage() {
               </li>
             ))}
             {!data?.recentPayments?.length ? (
-              <li className="text-sm text-slate-500">No payment activity yet.</li>
+              <li>
+                <EmptyStateCard
+                  title="No payments yet"
+                  description={hasLease ? 'Your first rent payment will show here.' : 'Link a lease to start recording rent.'}
+                />
+              </li>
             ) : null}
           </ul>
           <Link href="/tenant/payments" className="mt-4 inline-flex text-sm font-semibold text-[#C0392B] hover:underline">

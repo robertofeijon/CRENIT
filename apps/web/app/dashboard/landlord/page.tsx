@@ -23,6 +23,7 @@ import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { LandlordWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { landlordNavItems } from '../../components/landlord/landlordNav';
+import { useNotificationRealtime } from '../../../src/hooks/useNotificationRealtime';
 
 const WORKSPACE_LINKS = landlordNavItems.filter((item) => item.href !== '/landlord/overview');
 
@@ -45,6 +46,17 @@ export default function LandlordDashboard() {
     if (user && (role === 'LANDLORD' || role === 'ADMIN')) loadNotifications();
     if (user && (role === 'LANDLORD' || role === 'ADMIN')) loadSwitchRequests();
   }, [user, role]);
+
+  useNotificationRealtime(user?.id, (event, row) => {
+    if (row.read) {
+      setNotifications((prev) => prev.filter((n) => n.id !== row.id));
+      return;
+    }
+    setNotifications((prev) => {
+      const without = prev.filter((n) => n.id !== row.id);
+      return event === 'insert' ? [row, ...without] : without.map((n) => (n.id === row.id ? row : n));
+    });
+  });
 
   const loadOverview = async () => {
     setIsLoading(true);

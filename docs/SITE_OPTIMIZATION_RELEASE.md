@@ -188,10 +188,19 @@ npm run setup:github-e2e-secrets       # requires gh auth login
 
 ---
 
-## 10. Deferred (not in this batch)
+## 10. Tenant home, legal pages, admin overview, realtime (latest)
+
+- **Tenant home** — onboarding progress bar, empty states (no lease, no payments), KYC/settings CTAs, score hints.
+- **Privacy & Terms** — full sections in `src/content/legal-pages.ts` rendered on `/company/privacy` and `/company/terms`.
+- **Admin overview** — “Queue clear” attention state; deposit escrow panel always visible with empty state.
+- **Realtime notifications** — `useNotificationRealtime` on tenant home + landlord overview; migration `0035_notifications_realtime.sql`.
+- **Contact email** — `robertofeijon@mail.com` (Nodemailer / `EMAIL_CONTACT` / `NEXT_PUBLIC_CONTACT_EMAIL`).
+
+---
+
+## 11. Deferred (not in this batch)
 
 - Production payment gateway integration
 - SMS 2FA
-- Real-time notifications
 - Scope `AuthProvider` off public routes entirely (partial lazy hydrate done)
 - Restore original photographic logo if brand requires it (`git show b6d1dde^:apps/web/public/crenit-logo.svg`)

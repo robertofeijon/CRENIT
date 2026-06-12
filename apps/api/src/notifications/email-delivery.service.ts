@@ -19,7 +19,7 @@ export class EmailDeliveryService {
   }
 
   contactEmail(): string {
-    return process.env.EMAIL_CONTACT || process.env.EMAIL_REPLY_TO || process.env.SMTP_USER || 'hello@crenit.co';
+    return process.env.EMAIL_CONTACT || process.env.EMAIL_REPLY_TO || process.env.SMTP_USER || 'robertofeijon@mail.com';
   }
 
   fromAddress(): string {

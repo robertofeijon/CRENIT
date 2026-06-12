@@ -27,6 +27,7 @@ import AdminPageHeader from '../components/ui/AdminPageHeader';
 import AdminStatCard from '../components/ui/AdminStatCard';
 import SkeletonBlocks from '../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../components/ui/ErrorStateCard';
+import EmptyStateCard from '../components/ui/EmptyStateCard';
 
 type QuickLink = {
   title: string;
@@ -156,12 +157,22 @@ export default function AdminPage() {
         <SkeletonBlocks rows={4} />
       ) : stats ? (
         <>
-          {attentionItems.length > 0 ? (
-            <section className="rounded-[1.5rem] border border-amber-200 bg-amber-50/80 p-5 sm:p-6">
-              <div className="flex items-center gap-2">
+          <section
+            className={`rounded-[1.5rem] border p-5 sm:p-6 ${
+              attentionItems.length > 0 ? 'border-amber-200 bg-amber-50/80' : 'border-emerald-200 bg-emerald-50/60'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {attentionItems.length > 0 ? (
                 <AlertTriangle className="h-5 w-5 text-amber-800" aria-hidden />
-                <h2 className="font-semibold text-amber-950">Needs attention</h2>
-              </div>
+              ) : (
+                <BadgeCheck className="h-5 w-5 text-emerald-700" aria-hidden />
+              )}
+              <h2 className="font-semibold text-[#1A1A1A]">
+                {attentionItems.length > 0 ? 'Needs attention' : 'Queue clear'}
+              </h2>
+            </div>
+            {attentionItems.length > 0 ? (
               <ul className="mt-4 flex flex-wrap gap-3">
                 {attentionItems.map((item) => (
                   <li key={item.label}>
@@ -179,8 +190,12 @@ export default function AdminPage() {
                   </li>
                 ))}
               </ul>
-            </section>
-          ) : null}
+            ) : (
+              <p className="mt-3 text-sm text-emerald-900">
+                No pending KYC, disputes, partner approvals, or service requests right now.
+              </p>
+            )}
+          </section>
 
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <AdminStatCard label="Total users" value={stats.total_users ?? 0} icon={Users} />
@@ -211,20 +226,21 @@ export default function AdminPage() {
             <AdminStatCard label="Active landlords" value={stats.active_landlords ?? 0} />
           </section>
 
-          {escrow?.recent_transactions?.length ? (
-            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-[#1A1A1A]">Recent escrow activity</h2>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Held N${Number(escrow?.summary?.total_held || 0).toLocaleString()} · Released N$
-                    {Number(escrow?.summary?.total_released || 0).toLocaleString()}
-                  </p>
-                </div>
-                <Link href="/admin/disputes" className="text-sm font-semibold text-[#C0392B] hover:underline">
-                  Open disputes →
-                </Link>
+          <section className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-[#1A1A1A]">Deposit escrow</h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Held N${Number(escrow?.summary?.total_held || 0).toLocaleString()} · Released N$
+                  {Number(escrow?.summary?.total_released || 0).toLocaleString()}
+                  {escrow?.summary?.disputed_count != null ? ` · ${escrow.summary.disputed_count} disputed` : ''}
+                </p>
               </div>
+              <Link href="/admin/disputes" className="text-sm font-semibold text-[#C0392B] hover:underline">
+                Manage disputes →
+              </Link>
+            </div>
+            {escrow?.recent_transactions?.length ? (
               <div className="mt-4 space-y-2">
                 {escrow.recent_transactions.map((row: any) => (
                   <div
@@ -240,8 +256,15 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
-            </section>
-          ) : null}
+            ) : (
+              <div className="mt-4">
+                <EmptyStateCard
+                  title="No recent escrow movements"
+                  description="Deposit holds, releases, and dispute resolutions will appear here."
+                />
+              </div>
+            )}
+          </section>
 
           <section>
             <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Workspaces</h2>

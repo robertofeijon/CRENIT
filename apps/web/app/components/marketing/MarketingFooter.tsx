@@ -60,7 +60,7 @@ export default function MarketingFooter() {
         </div>
         <div className="mt-12 flex flex-col gap-3 border-t border-white/15 pt-8 text-sm text-white/70 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} CRENIT. All rights reserved.</p>
-          <p>crenit.co · hello@crenit.co</p>
+          <p>crenit.co · robertofeijon@mail.com</p>
         </div>
       </div>
     </footer>

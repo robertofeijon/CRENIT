@@ -29,4 +29,4 @@ export const MARKETING_SLUGS = [
   'company/terms',
 ] as const;
 
-export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || 'hello@crenit.co';
+export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || 'robertofeijon@mail.com';

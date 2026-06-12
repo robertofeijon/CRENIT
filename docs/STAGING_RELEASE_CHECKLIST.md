@@ -12,6 +12,12 @@ Run on **staging** before production. Commands assume repo root and `.env` confi
 npm run validate:rls
 ```
 
+**Migration `0035_notifications_realtime.sql` (live in-app notifications):**
+
+| Check | Where |
+|-------|--------|
+| `notifications` on `supabase_realtime` publication | Supabase → Database → Replication |
+
 **Migration `0034_payment_eft_proofs.sql` (required for EFT proof + CI login E2E path):**
 
 | Check | Where |
@@ -61,15 +67,15 @@ SMTP_PORT=587
 SMTP_USER=your@gmail.com
 SMTP_PASS=app-password
 EMAIL_FROM=CRENIT <your@gmail.com>
-EMAIL_CONTACT=hello@crenit.co
-EMAIL_REPLY_TO=hello@crenit.co
+EMAIL_CONTACT=robertofeijon@mail.com
+EMAIL_REPLY_TO=robertofeijon@mail.com
 WEB_URL=https://your-staging-web.vercel.app
 ```
 
 **Web (Vercel / `apps/web/.env.local`):**
 
 ```env
-NEXT_PUBLIC_CONTACT_EMAIL=hello@crenit.co
+NEXT_PUBLIC_CONTACT_EMAIL=robertofeijon@mail.com
 ```
 
 `POST /public/contact` delivers to **`EMAIL_CONTACT`** (falls back to `EMAIL_REPLY_TO` → `SMTP_USER`). The contact page mailto link uses **`NEXT_PUBLIC_CONTACT_EMAIL`**.

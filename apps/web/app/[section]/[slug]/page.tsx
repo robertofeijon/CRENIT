@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { LEGAL_PAGES } from '../../../src/content/legal-pages';
 import { CONTACT_EMAIL, MARKETING_SLUGS } from '../../../src/lib/site';
 
 const pageData: Record<string, { title: string; headline: string; description: string; bullets: string[] }> = {
@@ -81,20 +82,6 @@ const pageData: Record<string, { title: string; headline: string; description: s
       "We're here to answer questions from landlords, tenants, and financial partners. Reach out for onboarding support or partnership inquiries.",
     bullets: ['Sales inquiries', 'Partner support', 'General questions'],
   },
-  'company/privacy': {
-    title: 'Privacy Policy',
-    headline: 'How CRENIT protects your personal data.',
-    description:
-      'We collect only what is needed to verify rent payments, run KYC, and provide credit and market intelligence services. Data is stored securely and used in line with applicable privacy law (including POPIA where applicable).',
-    bullets: ['Purpose-limited collection', 'Encrypted storage', 'GDPR export and anonymisation tools for admins'],
-  },
-  'company/terms': {
-    title: 'Terms of Service',
-    headline: 'Rules for using the CRENIT platform.',
-    description:
-      'By using CRENIT you agree to accurate profile information, lawful use of payment and KYC features, and our market data consent terms where you opt in to aggregated intelligence products.',
-    bullets: ['Account responsibilities', 'Payment verification', 'Market data consent versioning'],
-  },
 };
 
 export function generateStaticParams() {
@@ -104,9 +91,13 @@ export function generateStaticParams() {
   });
 }
 
+function resolvePage(key: string) {
+  return LEGAL_PAGES[key] ?? pageData[key];
+}
+
 export function generateMetadata({ params }: { params: { section: string; slug: string } }): Metadata {
   const key = `${params.section}/${params.slug}`;
-  const page = pageData[key];
+  const page = resolvePage(key);
   if (!page) return { title: 'Not found' };
   return {
     title: page.title,
@@ -117,13 +108,14 @@ export function generateMetadata({ params }: { params: { section: string; slug: 
 
 export default function SectionPage({ params }: { params: { section: string; slug: string } }) {
   const key = `${params.section}/${params.slug}`;
-  const page = pageData[key];
+  const page = resolvePage(key);
 
   if (!page) {
     notFound();
   }
 
   const isContact = key === 'company/contact';
+  const legal = LEGAL_PAGES[key];
 
   return (
     <main className="min-h-[80vh] bg-[#F5F5F5] py-20">
@@ -131,6 +123,9 @@ export default function SectionPage({ params }: { params: { section: string; slu
         <div className="mb-10 rounded-[2rem] bg-white p-10 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
           <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">{page.title}</p>
           <h1 className="mt-4 text-4xl font-semibold text-[#1A1A1A] sm:text-5xl">{page.headline}</h1>
+          {legal?.lastUpdated ? (
+            <p className="mt-3 text-sm text-slate-500">Last updated {legal.lastUpdated}</p>
+          ) : null}
           <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">{page.description}</p>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {page.bullets.map((item) => (
@@ -139,6 +134,26 @@ export default function SectionPage({ params }: { params: { section: string; slu
               </div>
             ))}
           </div>
+          {legal?.sections?.length ? (
+            <div className="prose prose-slate mt-12 max-w-none border-t border-slate-100 pt-10">
+              {legal.sections.map((section) => (
+                <section key={section.heading} className="mb-10">
+                  <h2 className="text-xl font-semibold text-[#1A1A1A]">{section.heading}</h2>
+                  {section.paragraphs.map((paragraph) => (
+                    <p key={paragraph.slice(0, 40)} className="mt-3 text-base leading-7 text-slate-600">
+                      {paragraph}
+                    </p>
+                  ))}
+                </section>
+              ))}
+              <p className="text-sm text-slate-500">
+                Privacy questions:{' '}
+                <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-[#C0392B] hover:underline">
+                  {CONTACT_EMAIL}
+                </a>
+              </p>
+            </div>
+          ) : null}
           {isContact ? (
             <div className="mt-10 rounded-2xl border border-slate-200 bg-[#F8F8F8] p-6">
               <p className="text-sm font-semibold text-[#1A1A1A]">Email us</p>
