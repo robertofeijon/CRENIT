@@ -158,11 +158,11 @@ npm run setup:github-e2e-secrets       # requires gh auth login
 
 ## 7. Deploy checklist
 
-1. **Vercel** — deploy `main` HEAD (`6862240` or later). Verify build log commit SHA (not stale `ff06a95`).
+1. **Vercel** — deploy `main` HEAD (`61a6899` or later). Verify build log commit SHA.
 2. **Render** — set `EMAIL_CONTACT`, redeploy API.
 3. **Vercel env** — set `NEXT_PUBLIC_CONTACT_EMAIL`, redeploy web.
-4. **Supabase** — migrations through `0034` if not already applied.
-5. **GitHub** — fill `.env.staging`, run `npm run setup:github-e2e-secrets`, confirm **web-e2e** shows 5 passed.
+4. **Supabase** — migrations through `0035` if not already applied (`0034` EFT proof + `0035` notifications realtime).
+5. **GitHub** — fill `.env.staging`, run `npm run setup:github-e2e-secrets`, confirm **web-e2e** shows 9+ passed (or 5+ if login secrets missing).
 
 ---
 

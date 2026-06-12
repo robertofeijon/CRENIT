@@ -9,6 +9,7 @@ import {
   LineChart,
   Receipt,
   RefreshCw,
+  Repeat,
   Users,
   Wallet,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { LandlordWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { landlordNavItems } from '../../components/landlord/landlordNav';
+import { countActionableRenewals } from '../../../src/lib/renewalUi';
 
 const WORKSPACE_LINKS = landlordNavItems.filter((item) => item.href !== '/landlord/overview');
 
@@ -33,6 +35,7 @@ export default function LandlordDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [switchRequests, setSwitchRequests] = useState<any[]>([]);
+  const [renewals, setRenewals] = useState<any[]>([]);
 
   useEffect(() => {
     if (!loading && roleReady && !user) router.replace('/auth');
@@ -42,6 +45,7 @@ export default function LandlordDashboard() {
   useEffect(() => {
     if (user && (role === 'LANDLORD' || role === 'ADMIN')) loadOverview();
     if (user && (role === 'LANDLORD' || role === 'ADMIN')) loadSwitchRequests();
+    if (user && (role === 'LANDLORD' || role === 'ADMIN')) loadRenewals();
   }, [user, role]);
 
   const loadOverview = async () => {
@@ -66,6 +70,15 @@ export default function LandlordDashboard() {
     }
   };
 
+  const loadRenewals = async () => {
+    try {
+      const res = await api.get('/landlords/renewals');
+      setRenewals(res.data?.data || []);
+    } catch {
+      setRenewals([]);
+    }
+  };
+
   if (loading || !roleReady || !user) {
     return <LandlordWorkspaceLoading />;
   }
@@ -74,6 +87,7 @@ export default function LandlordDashboard() {
   const statsLoading = isLoading && !dashboard;
   const hasDirectLease = (dashboard?.tenants ?? []).some((tenant: any) => tenant.payment_method === 'DIRECT');
   const pendingApproval = (dashboard?.landlord?.partnerStatus || '').toUpperCase() === 'PENDING_APPROVAL';
+  const pendingRenewalCount = countActionableRenewals(renewals);
   const formatMoney = (v: unknown) => `N$${Number(v || 0).toLocaleString()}`;
   const hrefWhenApproved = (href: string) => (pendingApproval ? '/landlord/onboarding' : href);
 
@@ -144,6 +158,25 @@ export default function LandlordDashboard() {
           <Link href={hrefWhenApproved('/landlord/properties')} className="landlord-btn-primary inline-flex">
             Add property
           </Link>
+        </div>
+      ) : null}
+
+      {pendingRenewalCount > 0 ? (
+        <div className="landlord-panel border-amber-200 bg-amber-50/80">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <Repeat className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden />
+              <div>
+                <p className="text-sm font-semibold text-amber-950">
+                  {pendingRenewalCount === 1 ? 'One lease renewal needs attention' : `${pendingRenewalCount} lease renewals need attention`}
+                </p>
+                <p className="mt-1 text-sm text-amber-900/80">Review proposals or send new terms from the Leases workspace.</p>
+              </div>
+            </div>
+            <Link href={hrefWhenApproved('/landlord/leases')} className="landlord-btn-secondary shrink-0 text-center">
+              Open leases
+            </Link>
+          </div>
         </div>
       ) : null}
 

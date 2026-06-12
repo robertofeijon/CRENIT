@@ -44,7 +44,7 @@ Senior full-stack review of `main` @ June 2026. Use this as the **release gate**
 | 9 | **Landlord partner approval** | Done | UI guard + `assertPartnerApproved` on sensitive APIs |
 | 10 | **TOTP 2FA + admin/landlord step-up** | Done | Enforced when enabled; login → `/auth/verify-2fa` |
 | 11 | **Invite → lease → first payment E2E** | Partial | Code paths exist; needs scripted QA on staging |
-| 12 | **Lease renewal E2E** | Partial | API + tenant home UI; needs staging proof |
+| 12 | **Lease renewal E2E** | Partial | API + tenant/landlord UI + bell; landlord can propose from `/landlord/leases`; needs staging proof |
 | 13 | **Deposit escrow + disputes** | Done | APIs + landlord/tenant/admin UIs |
 | 14 | **Credit score + payment metrics** | Done | Streak + on-time rate on home/credit-score |
 | 15 | **Schedulers (auto-pay, overdue, reminders)** | Partial | In-process crons + `POST /internal/cron/:job` with `CRON_SECRET` for external triggers |
@@ -62,7 +62,7 @@ Senior full-stack review of `main` @ June 2026. Use this as the **release gate**
 |---|------|--------|-------|
 | 21 | **Mandatory 2FA for all admins** | Done | Set `ADMIN_REQUIRE_2FA=true`; `/admin/security` setup gate |
 | 22 | **SMS 2FA** | Missing | TOTP only |
-| 23 | **Real-time notifications** | Missing | Poll/refresh only; no Supabase realtime |
+| 23 | **Real-time notifications** | Done | `NotificationsProvider` + bell on all dashboard shells; migration `0035` |
 | 24 | **E2E monitoring (Sentry/Datadog)** | Partial | Optional `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` on API + web |
 | 25 | **Payment webhook → live provider** | Partial | Generic webhook + signature; not tied to PayToday/etc. |
 | 26 | **EFT proof upload** | Done | `POST /payments/:id/eft-proof`, private `payment-proofs` bucket, landlord view/confirm |

@@ -38,6 +38,8 @@ export default function LandlordLeasesPage() {
   const [updateForm, setUpdateForm] = useState({ monthly_rent: '', end_date: '', status: '' });
   const [counterByRenewal, setCounterByRenewal] = useState<Record<string, { proposed_rent: string; proposed_end_date: string }>>({});
   const [renewalBusyId, setRenewalBusyId] = useState<string | null>(null);
+  const [proposeRenewalForm, setProposeRenewalForm] = useState({ proposed_rent: '', proposed_end_date: '' });
+  const [proposingRenewal, setProposingRenewal] = useState(false);
   const [leaseAgreements, setLeaseAgreements] = useState<any[]>([]);
   const [agreementFile, setAgreementFile] = useState<File | null>(null);
   const [agreementTitle, setAgreementTitle] = useState('');
@@ -166,6 +168,14 @@ export default function LandlordLeasesPage() {
     }
   };
 
+  const defaultProposedEndDate = (endDate?: string | null) => {
+    if (!endDate) return '';
+    const d = new Date(endDate);
+    if (Number.isNaN(d.getTime())) return '';
+    d.setFullYear(d.getFullYear() + 1);
+    return d.toISOString().slice(0, 10);
+  };
+
   const handleSelectLease = (lease: any) => {
     setSelectedLease(lease);
     setUpdateForm({
@@ -173,9 +183,42 @@ export default function LandlordLeasesPage() {
       end_date: lease.end_date || '',
       status: lease.status || 'ACTIVE',
     });
+    setProposeRenewalForm({
+      proposed_rent: lease.monthly_rent?.toString() ?? '',
+      proposed_end_date: defaultProposedEndDate(lease.end_date),
+    });
     setMessage(null);
     setError(null);
     void loadLeaseAgreements(lease.id);
+  };
+
+  const selectedLeaseHasOpenRenewal = selectedLease
+    ? renewals.some(
+        (r) =>
+          r.lease_id === selectedLease.id &&
+          r.status !== 'REJECTED' &&
+          r.status !== 'EXPIRED' &&
+          (r.status === 'PROPOSED' || r.status === 'PENDING_APPROVAL' || r.status === 'APPROVED'),
+      )
+    : false;
+
+  const handleProposeRenewal = async () => {
+    if (!selectedLease?.id) return;
+    setProposingRenewal(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await api.post(`/landlords/leases/${selectedLease.id}/renewals`, {
+        proposed_rent: proposeRenewalForm.proposed_rent ? Number(proposeRenewalForm.proposed_rent) : undefined,
+        proposed_end_date: proposeRenewalForm.proposed_end_date || undefined,
+      });
+      setMessage('Renewal proposal sent — tenant will be notified.');
+      await loadRenewals();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to propose renewal.');
+    } finally {
+      setProposingRenewal(false);
+    }
   };
 
   const loadLeaseAgreements = async (leaseId: string) => {
@@ -387,6 +430,47 @@ export default function LandlordLeasesPage() {
                   Delete lease
                 </button>
               </div>
+              {selectedLease.status === 'ACTIVE' && selectedLease.end_date ? (
+                <div className="rounded-xl border border-[#C0392B]/20 bg-gradient-to-br from-white to-[#FDEDEC]/30 p-4">
+                  <p className="text-sm font-semibold text-[#1A1A1A]">Propose renewal</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Send new terms to the tenant. They can accept, decline, or counter — you will get a notification.
+                  </p>
+                  {selectedLeaseHasOpenRenewal ? (
+                    <p className="mt-3 text-sm text-amber-800">An open renewal already exists for this lease — see proposals below.</p>
+                  ) : (
+                    <>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="Proposed rent"
+                          value={proposeRenewalForm.proposed_rent}
+                          onChange={(e) => setProposeRenewalForm((prev) => ({ ...prev, proposed_rent: e.target.value }))}
+                          className={landlordInputClass}
+                          disabled={proposingRenewal}
+                        />
+                        <input
+                          type="date"
+                          value={proposeRenewalForm.proposed_end_date}
+                          onChange={(e) => setProposeRenewalForm((prev) => ({ ...prev, proposed_end_date: e.target.value }))}
+                          className={landlordInputClass}
+                          aria-label="Proposed end date"
+                          disabled={proposingRenewal}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleProposeRenewal()}
+                        disabled={proposingRenewal || !proposeRenewalForm.proposed_end_date}
+                        className="landlord-btn-primary mt-3"
+                      >
+                        {proposingRenewal ? 'Sending…' : 'Send renewal proposal'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : null}
               <div className="rounded-xl border border-slate-100 bg-[#F3F4F6] p-4">
                 <p className="text-sm font-semibold text-[#1A1A1A]">Lease agreements</p>
                 <p className="mt-1 text-xs text-slate-500">Upload signed leases and addendum documents as separate records.</p>

@@ -236,6 +236,18 @@ export class LandlordsController {
     return { success: true, data: renewals, error: null };
   }
 
+  @Post('leases/:leaseId/renewals')
+  async createRenewalProposal(
+    @Headers('authorization') authHeader: string,
+    @Param('leaseId') leaseId: string,
+    @Body() body: { proposed_rent?: number; proposed_end_date?: string },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    const result = await this.landlordsService.createRenewalProposal(profile.id, leaseId, body);
+    return { success: true, data: result, error: null };
+  }
+
   @Post('renewals/:renewalId/respond')
   async respondToRenewal(
     @Headers('authorization') authHeader: string,

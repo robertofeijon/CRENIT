@@ -666,6 +666,73 @@ export class LandlordsService {
     return data || [];
   }
 
+  async createRenewalProposal(
+    landlordUserId: string,
+    leaseId: string,
+    payload: { proposed_rent?: number; proposed_end_date?: string },
+  ) {
+    const client = this.supabase.getClient();
+    const landlordProfile = await this.ensureLandlordProfile(landlordUserId);
+
+    const { data: lease, error: leaseErr } = await client
+      .from('leases')
+      .select('id, tenant_id, landlord_id, end_date, monthly_rent, status')
+      .eq('id', leaseId)
+      .eq('landlord_id', landlordProfile.id)
+      .single();
+    if (leaseErr || !lease) throw new NotFoundException('Lease not found');
+    if (lease.status !== 'ACTIVE') throw new BadRequestException('Only active leases can receive renewal proposals');
+    if (!lease.end_date) throw new BadRequestException('Lease must have an end date before proposing a renewal');
+
+    const { data: existing } = await client
+      .from('lease_renewals')
+      .select('id')
+      .eq('lease_id', leaseId)
+      .in('status', ['PROPOSED', 'PENDING_APPROVAL', 'APPROVED'])
+      .limit(1);
+    if (existing?.length) {
+      throw new BadRequestException('An open renewal proposal already exists for this lease');
+    }
+
+    const proposedEnd = payload.proposed_end_date
+      ? payload.proposed_end_date
+      : (() => {
+          const d = new Date(lease.end_date);
+          d.setFullYear(d.getFullYear() + 1);
+          return d.toISOString().slice(0, 10);
+        })();
+
+    const { data: created, error: createErr } = await client
+      .from('lease_renewals')
+      .insert([
+        {
+          lease_id: lease.id,
+          tenant_id: lease.tenant_id,
+          landlord_id: lease.landlord_id,
+          current_end_date: lease.end_date,
+          proposed_end_date: proposedEnd,
+          proposed_rent: payload.proposed_rent ?? lease.monthly_rent,
+          status: 'PROPOSED',
+          generated_at: new Date().toISOString(),
+        },
+      ])
+      .select('*')
+      .single();
+    if (createErr || !created) throw createErr || new Error('Unable to create renewal proposal');
+
+    if (lease.tenant_id) {
+      await this.notificationsService.createNotification({
+        user_id: lease.tenant_id,
+        type: 'LEASE_RENEWAL_PROPOSED',
+        title: 'Lease renewal proposed',
+        message: 'Your landlord sent a lease renewal proposal for your review.',
+        metadata: { lease_id: lease.id, renewal_id: created.id, current_end_date: lease.end_date },
+      });
+    }
+
+    return created;
+  }
+
   async respondToRenewal(
     landlordUserId: string,
     renewalId: string,

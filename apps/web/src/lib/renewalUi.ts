@@ -25,12 +25,17 @@ export function renewalStatusLabel(status: string) {
       return 'Awaiting tenant';
     case 'DRAFT':
       return 'Draft';
+    case 'PROPOSED':
+      return 'New proposal';
     default:
       return status.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
   }
 }
 
 export function renewalStatusHint(status: string, role: 'tenant' | 'landlord') {
+  if (status === 'PROPOSED') {
+    return role === 'tenant' ? 'Your landlord proposed new terms — accept, decline, or counter.' : 'Waiting for the tenant to respond to your proposal.';
+  }
   if (status === 'PENDING_APPROVAL') {
     return role === 'tenant' ? 'Your landlord is reviewing your counter or proposal.' : 'Review the tenant response or counter offer.';
   }
