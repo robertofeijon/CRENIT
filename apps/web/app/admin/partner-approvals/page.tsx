@@ -79,9 +79,6 @@ export default function AdminPartnerApprovalsPage() {
     }
   };
 
-  if (loading || !user || role !== 'ADMIN') {
-    return <p className="text-sm text-slate-500">Loading admin workspace...</p>;
-  }
 
   const pendingCount = rows.filter((r) => r.status === 'PENDING_APPROVAL').length;
 

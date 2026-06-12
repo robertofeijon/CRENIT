@@ -61,9 +61,6 @@ export default function AdminSystemHealthPage() {
     }
   }, [user, role, loadHealth]);
 
-  if (loading || !user || role !== 'ADMIN') {
-    return <p className="text-sm text-slate-500">Loading admin workspace...</p>;
-  }
 
   const chartData = snapshot?.error_rate_7d || [];
   const platformOk = snapshot?.platform_status === 'Operational';

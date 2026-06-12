@@ -46,9 +46,6 @@ export default function AdminPaymentsPage() {
     }
   }, [user, role, loadPayments]);
 
-  if (loading || !user || role !== 'ADMIN') {
-    return <p className="text-sm text-slate-500">Loading admin workspace...</p>;
-  }
 
   return (
     <div className="space-y-6">

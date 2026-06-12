@@ -86,9 +86,6 @@ export default function AdminSecurityPage() {
     }
   };
 
-  if (loading || !roleReady || !user || role !== 'ADMIN') {
-    return <p className="text-sm text-slate-500">Loading…</p>;
-  }
 
   return (
     <div className="space-y-6">

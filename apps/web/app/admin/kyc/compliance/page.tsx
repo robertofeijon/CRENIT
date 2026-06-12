@@ -65,9 +65,6 @@ export default function AdminKycCompliancePage() {
     }
   };
 
-  if (loading || !user || role !== 'ADMIN') {
-    return <p className="text-sm text-slate-500">Loading admin workspace...</p>;
-  }
 
   const stats = data?.stats || {};
 

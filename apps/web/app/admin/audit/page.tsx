@@ -58,9 +58,6 @@ export default function AdminAuditPage() {
     return logs.filter((l) => l.action === actionFilter);
   }, [logs, actionFilter]);
 
-  if (loading || !user || role !== 'ADMIN') {
-    return <p className="text-sm text-slate-500">Loading admin workspace...</p>;
-  }
 
   return (
     <div className="space-y-6">

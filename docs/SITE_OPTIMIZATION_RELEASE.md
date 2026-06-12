@@ -179,7 +179,16 @@ npm run setup:github-e2e-secrets       # requires gh auth login
 
 ---
 
-## 9. Deferred (not in this batch)
+## 9. Admin workspace polish
+
+- `AdminWorkspaceLoading` in `WorkspaceLoading.tsx`.
+- `app/admin/loading.tsx` — route-level loader.
+- `app/admin/layout.tsx` — centralized auth gate + skeleton (replaces per-page plain `<p>` tags).
+- Legacy redirects (`/dashboard/tenant`, `/landlord/onboarding`) use workspace loaders.
+
+---
+
+## 10. Deferred (not in this batch)
 
 - Production payment gateway integration
 - SMS 2FA

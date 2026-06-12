@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 
 /** Legacy route — use /tenant/home */
 export default function LegacyTenantDashboardRedirect() {
@@ -9,5 +10,9 @@ export default function LegacyTenantDashboardRedirect() {
   useEffect(() => {
     router.replace('/tenant/home');
   }, [router]);
-  return <p className="p-8 text-sm text-slate-500">Redirecting to tenant home…</p>;
+  return (
+    <div className="p-8">
+      <TenantWorkspaceLoading />
+    </div>
+  );
 }

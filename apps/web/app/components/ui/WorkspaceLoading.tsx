@@ -16,3 +16,7 @@ export function TenantWorkspaceLoading() {
 export function LandlordWorkspaceLoading() {
   return <WorkspaceLoading label="Loading partner workspace…" />;
 }
+
+export function AdminWorkspaceLoading() {
+  return <WorkspaceLoading label="Loading admin workspace…" />;
+}

@@ -343,9 +343,6 @@ export default function DataIntelligencePage() {
     }
   };
 
-  if (loading || !user || role !== 'ADMIN') {
-    return <p className="text-sm text-slate-500">Loading admin workspace...</p>;
-  }
 
   const pipelineLabel = dashboard?.pipeline_updated_at
     ? new Date(dashboard.pipeline_updated_at).toLocaleString()
