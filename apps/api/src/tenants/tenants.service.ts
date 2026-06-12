@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreditScoreService } from '../credit-score/credit-score.service';
+import { brandTierFromScore100 } from '../credit-score/tier-branding';
 import { NotificationsService } from '../notifications/notifications.service';
 import { buildPaymentMetrics } from '../payments/payment-metrics.util';
 
@@ -221,10 +222,16 @@ export class TenantsService {
     ]);
 
     const score = currentScore || (await this.creditScoreService.calculateScore(userId));
+    const score100 =
+      score?.score_100 ??
+      (score?.score != null ? Math.round(((Number(score.score) - 300) / 600) * 1000) / 10 : 0);
+    const brandTier = brandTierFromScore100(score100);
     const formattedScore = score
       ? {
           score: score.score,
+          score_100: score100,
           tier: score.tier,
+          brand_tier: brandTier,
           updatedAt: score.calculation_date ?? score.generated_at ?? new Date().toISOString(),
         }
       : null;

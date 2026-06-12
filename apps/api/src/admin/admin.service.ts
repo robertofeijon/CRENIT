@@ -951,6 +951,59 @@ export class AdminService {
     return { status: 'Operational' as const, record_count: count ?? 0, error: null };
   }
 
+  async getFlywheelMetrics() {
+    const client = this.supabaseService.getClient();
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: paidPayments } = await client
+      .from('payments')
+      .select('created_at, paid_date, confirmed_via, eft_proof_uploaded_at')
+      .eq('status', 'PAID')
+      .gte('paid_date', since);
+
+    const lags: number[] = [];
+    const confirmedVia: Record<string, number> = { MANUAL: 0, AUTO: 0, TOKEN_LINK: 0, UNKNOWN: 0 };
+    for (const p of paidPayments || []) {
+      const startAt = p.eft_proof_uploaded_at || p.created_at;
+      if (startAt && p.paid_date) {
+        lags.push((new Date(p.paid_date).getTime() - new Date(startAt).getTime()) / (3600 * 1000));
+      }
+      const via = p.confirmed_via || 'UNKNOWN';
+      confirmedVia[via] = (confirmedVia[via] || 0) + 1;
+    }
+    lags.sort((a, b) => a - b);
+    const p50Lag = lags.length ? Math.round(lags[Math.floor(lags.length / 2)] * 10) / 10 : null;
+
+    const { count: pendingConfirmations } = await client
+      .from('payments')
+      .select('id', { count: 'exact', head: true })
+      .in('status', ['PENDING', 'PROCESSING', 'OVERDUE'])
+      .is('confirmation_disputed_at', null);
+
+    const { count: reportsShared } = await client
+      .from('report_verifications')
+      .select('id', { count: 'exact', head: true })
+      .gte('generated_at', since);
+
+    const autoTotal = (confirmedVia.AUTO || 0) + (confirmedVia.MANUAL || 0) + (confirmedVia.TOKEN_LINK || 0);
+    const autoRate = autoTotal > 0 ? Math.round(((confirmedVia.AUTO || 0) / autoTotal) * 100) : null;
+
+    return {
+      period_days: 30,
+      confirmation_lag_hours_p50: p50Lag,
+      confirmation_lag_sample_size: lags.length,
+      confirmed_via: confirmedVia,
+      auto_confirm_rate_pct: autoRate,
+      pending_confirmations: pendingConfirmations ?? 0,
+      shareable_reports_30d: reportsShared ?? 0,
+      auto_confirm_window_hours: Number(process.env.PAYMENT_AUTO_CONFIRM_HOURS || 48),
+      targets: {
+        confirmation_lag_hours_p50: 36,
+        auto_confirm_rate_pct: 40,
+      },
+    };
+  }
+
   async getSystemHealthSnapshot() {
     const client = this.supabaseService.getClient();
     const now = new Date().toISOString();
@@ -1061,11 +1114,14 @@ export class AdminService {
       });
     }
 
+    const flywheel = await this.getFlywheelMetrics();
+
     return {
       platform_status: operationalCount === probes.length && alerts.every((a) => a.severity !== 'high') ? 'Operational' : 'Degraded',
       services: probes,
       schedulers: schedulerRuns,
       alerts,
+      flywheel,
       observability: {
         sentry_api: Boolean(process.env.SENTRY_DSN?.trim()),
         sentry_environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',

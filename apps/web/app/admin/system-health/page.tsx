@@ -113,6 +113,46 @@ export default function AdminSystemHealthPage() {
 
       {error ? <ErrorStateCard message={error} onRetry={loadHealth} /> : null}
 
+      {snapshot?.flywheel ? (
+        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="font-semibold text-[#1A1A1A]">Flywheel metrics (30 days)</h2>
+          <p className="mt-1 text-xs text-slate-500">Confirmation lag, auto-confirm rate, pending queue, shared reports.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <AdminStatCard
+              label="Confirm lag (p50)"
+              value={snapshot.flywheel.confirmation_lag_hours_p50 != null ? `${snapshot.flywheel.confirmation_lag_hours_p50}h` : '—'}
+              sub={`Target ≤ ${snapshot.flywheel.targets?.confirmation_lag_hours_p50 ?? 36}h · n=${snapshot.flywheel.confirmation_lag_sample_size}`}
+              icon={Activity}
+              accent={
+                snapshot.flywheel.confirmation_lag_hours_p50 != null &&
+                snapshot.flywheel.confirmation_lag_hours_p50 > (snapshot.flywheel.targets?.confirmation_lag_hours_p50 ?? 36)
+                  ? 'warning'
+                  : 'success'
+              }
+            />
+            <AdminStatCard
+              label="Auto-confirm rate"
+              value={snapshot.flywheel.auto_confirm_rate_pct != null ? `${snapshot.flywheel.auto_confirm_rate_pct}%` : '—'}
+              sub={`Target ≥ ${snapshot.flywheel.targets?.auto_confirm_rate_pct ?? 40}%`}
+              icon={CheckCircle2}
+            />
+            <AdminStatCard
+              label="Pending confirms"
+              value={snapshot.flywheel.pending_confirmations ?? 0}
+              sub={`${snapshot.flywheel.auto_confirm_window_hours}h window`}
+              icon={AlertTriangle}
+              accent={(snapshot.flywheel.pending_confirmations ?? 0) > 0 ? 'warning' : 'default'}
+            />
+            <AdminStatCard
+              label="Reports shared"
+              value={snapshot.flywheel.shareable_reports_30d ?? 0}
+              sub="PDF verifications issued"
+              icon={Server}
+            />
+          </div>
+        </section>
+      ) : null}
+
       {observability || smokeResult?.observability ? (
         <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="font-semibold text-[#1A1A1A]">Observability</h2>

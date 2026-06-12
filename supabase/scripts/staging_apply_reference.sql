@@ -11,10 +11,15 @@
 -- 0032_notification_market_alerts.sql
 -- 0033_two_factor_totp.sql
 -- 0034_payment_eft_proofs.sql
+-- 0035_notifications_realtime.sql
+-- 0036_phase1_trust.sql
 
 -- After apply, verify:
 --   SELECT column_name FROM information_schema.columns
 --   WHERE table_schema = 'public' AND table_name = 'profiles'
 --     AND column_name IN ('partner_approval_status', 'two_factor_verified_until');
+--   SELECT column_name FROM information_schema.columns
+--   WHERE table_schema = 'public' AND table_name = 'payments'
+--     AND column_name IN ('auto_confirm_at', 'confirmed_via', 'confirmation_disputed_at');
 
 -- RLS policies live in migration 0012_rls_policies.sql (re-apply safe via CREATE OR REPLACE policies there).

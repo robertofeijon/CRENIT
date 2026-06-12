@@ -106,7 +106,7 @@ export default function TenantHomePage() {
 
   const name = data?.profile?.full_name ?? user.email?.split('@')[0] ?? 'there';
   const score = data?.score?.score ?? '—';
-  const tier = data?.score?.tier ?? 'BUILDING';
+  const tier = data?.score?.brand_tier?.label ?? data?.score?.tier ?? 'BUILDING';
   const paymentMetrics = data?.paymentMetrics;
   const streak = paymentMetrics?.consecutive_on_time_streak ?? 0;
   const onTime = paymentMetrics?.on_time_rate_pct ?? 0;
