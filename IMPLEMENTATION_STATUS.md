@@ -1,95 +1,61 @@
 # CRENIT Implementation Status
 
-**Last updated:** June 2026 (integrated trunk: KYC + market intelligence + platform trust)
+**Last updated:** June 2026 · **`main` @ `e5e728b`**
+
+**Where we are:** [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) (read this first).
 
 ---
 
-## Integrated release branches
+## Trunk
 
-| Branch | Status | Notes |
-|--------|--------|-------|
-| `feat/kyc-landlord-verification` | Merged into MI | Tenant KYC wizard, landlord verification, `0026`/`0027` |
-| `main` | **Current production trunk** | KYC + MI + TOTP 2FA + tenant metrics + ops smoke (`f1ea96e`+) |
-| `feat/market-intelligence-compliance` | Merged to `main` | Keep for PR history only |
+| Branch | Status |
+|--------|--------|
+| `main` | **Current trunk** — Phase 1 trust + observability + E2E smoke |
 
-**Gap audit:** see **`docs/CRITICAL_GAPS.md`** for P0–P3 launch checklist.
+**Gap audit:** [`docs/CRITICAL_GAPS.md`](docs/CRITICAL_GAPS.md)
 
-**Payment gateway (C):** Deferred — card/mobile initiate remains simulated until a merchant is selected.
+**Payment gateway:** Deferred — card/mobile simulated until merchant selected.
 
 ---
 
-## Implemented (platform)
+## Shipped on `main` (recent)
 
-### Auth & security
-- JWT auth, register/login, `/auth/me` with role from `ADMIN_EMAILS`
-- **TOTP 2FA** (authenticator QR); `POST /auth/2fa/verify-session` for login step-up
-- **Enforcement** on `ADMIN` and `LANDLORD` when 2FA enabled (`TWO_FACTOR_ENFORCEMENT=false` disables in dev)
-- Migration `0033_two_factor_totp.sql` — `two_factor_verified_until`
-- Optional `ADMIN_REQUIRE_2FA=true` — admins must enable 2FA at `/admin/security`
-- External cron triggers: `POST /internal/cron/:job` with `X-Cron-Secret` header
+### Phase 1 — Core product trust (`e296c90`–`e5e728b`)
+- Bronze→Platinum presentation tiers, insights, simulator
+- Shareable credit PDF with expiry + QR verify
+- EFT auto-confirm (48h), one-tap landlord confirm, pending/bulk confirm UI
+- Dispute types, templates, `dispute_events` timeline
+- Flywheel metrics on admin system health
+- Migration `0036_phase1_trust.sql`
 
-### Tenant
-- Dashboard `GET /tenants/me` with onboarding checklist
-- **Payment metrics:** consecutive on-time streak + 12-month on-time rate (`paymentMetrics`)
-- Routes: home, payments, deposit, credit-score, reports, settings, KYC wizard
-- Credit score CRENIT model (50/30/20), history, recalculate
-
-### Landlord
-- Overview, properties, tenants, leases, payments, deposits, reports, market data
-- Partner verification (3-step panel, route guard, API `assertPartnerApproved`)
-- Lease `tenant_residence` for KYC location cross-check
-- Invite flow with unit validation
-
-### Admin
-- KYC queue (tenant + landlord), compliance dashboard, users, payments, disputes, audit
-- Credit score audit, system health with **alerts + scheduler heartbeats**
-- **`POST /admin/system-health/smoke`** — DB/notification/scheduler checks
-- GDPR `/admin/compliance`, data intelligence / B2B tools
-
-### Payments & ops schedulers (Namibia time)
-- Auto-pay 07:00, rent reminders 08:00, overdue 09:00, score recalc 02:00
-- MI rollup/webhook crons; heartbeat recorded per job for health UI
-
-### Market intelligence (on integration branch)
-- B2B reports, webhooks, sale comps ingest, geocode QA, licensable alerts
-
-### Database
-- Core `0001`–`0025`, KYC `0026`–`0027`, MI `0028`–`0032`, 2FA `0033`
+### Platform ops (prior)
+- External cron (GitHub Actions), Sentry hooks, admin health + smoke
+- Staging E2E: invite → KYC → pay → score; renewal flow
+- Realtime notifications (`0035`), auth scope optimization
+- TOTP 2FA, GDPR tools, market intelligence B2B admin
 
 ---
 
-## Still missing / follow-up
+## Database migrations (apply through)
 
-| Item | Priority | Notes |
-|------|----------|-------|
-| Production payment gateway | P1 | Blocked on merchant |
-| Staging deploy + migration runbook | P0 | `docs/MIGRATION_RUNBOOK.md` |
-| Password reset (forgot / reset email) | Done | `/auth/forgot-password`, `/auth/reset-password` |
-| Privacy / Terms marketing pages | Partial | `/company/privacy`, `/company/terms` — legal review still needed |
-| Automated tests (CI) | Done | Vitest payment-metrics + Playwright public pages (`.github/workflows/ci.yml`) |
-| RLS validation on staging | P0 | Release gate in `UPDATED_IMPLEMENTATION_SUMMARY.md` |
-| Real-time Supabase subscriptions | P2 | Dashboards still poll |
-| SMS 2FA | P2 | TOTP only for now |
-| Legacy demo 6-digit 2FA secrets | P3 | Re-setup with authenticator app |
+`0036_phase1_trust.sql` — see [`supabase/scripts/staging_apply_reference.sql`](supabase/scripts/staging_apply_reference.sql)
 
 ---
 
-## Quick verification
+## Not started
 
-1. Apply migrations per `docs/MIGRATION_RUNBOOK.md`
-2. Landlord: enable 2FA in settings → log out/in → `/auth/verify-2fa`
-3. Tenant: pay history → home shows streak + on-time %
-4. Admin: System Health → Run smoke tests
+- Phase 2: waitlist, bring-your-landlord, CSV bulk units, lite landlord tier
+- Phase 3: public `data.crenit.na`, B2B sample API
+- SMS confirm nudges (P1-S7), live payment gateway, legal counsel sign-off
 
 ---
 
-## Sprint / delivery log
+## Quick verification (staging)
 
-| Area | Status |
-|------|--------|
-| Core landlord/tenant/admin portals | Done |
-| V4.1 admin modules (credit audit, health, GDPR) | Done |
-| KYC + landlord verification | Done (merge to main pending) |
-| Market intelligence B2B | Done on feature branch |
-| TOTP 2FA + tenant payment metrics + ops smoke | Done (this pass) |
-| Live payment provider | Not started |
+1. Apply migrations `0035` + `0036`
+2. Redeploy Vercel + Render
+3. `npm run validate:rls` && `npm run smoke:staging`
+4. Admin → System health → Flywheel metrics + smoke tests
+5. Landlord one-tap confirm + tenant share PDF
+
+See [`docs/STAGING_RELEASE_CHECKLIST.md`](docs/STAGING_RELEASE_CHECKLIST.md).

@@ -2,12 +2,14 @@
 
 Run on **staging** before production. Commands assume repo root and `.env` configured.
 
+**Current position:** [`docs/PROJECT_STATUS.md`](PROJECT_STATUS.md) · **`main` @ `e5e728b`**
+
 ---
 
 ## 1. Staging migrations + RLS
 
 ```bash
-# Apply migrations 0026–0034 in Supabase (see supabase/scripts/staging_apply_reference.sql)
+# Apply migrations 0026–0036 in Supabase (see supabase/scripts/staging_apply_reference.sql)
 # Then validate tenant-scoped RLS with anon key:
 npm run validate:rls
 ```
@@ -17,6 +19,14 @@ npm run validate:rls
 | Check | Where |
 |-------|--------|
 | `notifications` on `supabase_realtime` publication | Supabase → Database → Replication |
+
+**Migration `0036_phase1_trust.sql` (auto-confirm, dispute events, report expiry):**
+
+| Check | Where |
+|-------|--------|
+| `payments.auto_confirm_at`, `confirmed_via` columns | `payments` table |
+| `dispute_events`, `dispute_outcomes` tables | Table Editor |
+| `report_verifications.expires_at`, `brand_tier` | `report_verifications` |
 
 **Migration `0034_payment_eft_proofs.sql` (required for EFT proof + CI login E2E path):**
 

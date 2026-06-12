@@ -1,6 +1,7 @@
 # CRENIT — Critical & high-priority gap audit
 
-Senior full-stack review of `main` @ June 2026. Use this as the **release gate** alongside `UPDATED_IMPLEMENTATION_SUMMARY.md`.
+Senior full-stack review of `main` @ June 2026 (`e5e728b`).  
+**Current position:** [`docs/PROJECT_STATUS.md`](PROJECT_STATUS.md). Use this as the **release gate** alongside `UPDATED_IMPLEMENTATION_SUMMARY.md`.
 
 ---
 
@@ -26,7 +27,7 @@ Senior full-stack review of `main` @ June 2026. Use this as the **release gate**
 
 | # | Area | Status | Notes |
 |---|------|--------|-------|
-| 1 | **Supabase migrations applied** | Process | Run `0026`–`0033` on staging then prod (`docs/MIGRATION_RUNBOOK.md`) |
+| 1 | **Supabase migrations applied** | Process | Run `0026`–`0036` on staging then prod (`supabase/scripts/staging_apply_reference.sql`) |
 | 2 | **RLS + service-role smoke** | Process | Policies in `0012_rls_policies.sql`; API uses service role — validate tenant cannot read others’ rows via anon client |
 | 3 | **Production env + secrets** | Process | `JWT_SECRET` ≥32 chars, `ADMIN_EMAILS`, `CORS_ORIGIN`, SMTP/Resend, `WEB_URL` for email links |
 | 4 | **Backup before migrate** | Process | Release gate item |
@@ -47,7 +48,7 @@ Senior full-stack review of `main` @ June 2026. Use this as the **release gate**
 | 12 | **Lease renewal E2E** | Done | Smoke + Playwright: landlord propose → tenant accept |
 | 13 | **Deposit escrow + disputes** | Done | APIs + landlord/tenant/admin UIs |
 | 14 | **Credit score + payment metrics** | Done | Streak + on-time rate on home/credit-score |
-| 15 | **Schedulers (auto-pay, overdue, reminders)** | Done | In-process + GitHub Actions `.github/workflows/cron.yml` + `cron-webhook-retry.yml` → `POST /internal/cron/:job` |
+| 15 | **Schedulers (auto-pay, overdue, reminders)** | Done | In-process + GitHub Actions `cron.yml`, `cron-webhook-retry.yml`, **`cron-auto-confirm.yml`** |
 | 16 | **Privacy / Terms pages** | Partial | `/company/privacy`, `/company/terms` + counsel-review banner; `docs/legal/POPIA_COMPLIANCE_PACK.md` backlog |
 | 17 | **Automated tests** | Done | Vitest payment-metrics + Playwright (public pages + optional tenant login via `E2E_TENANT_*` secrets) + CI |
 | 18 | **Admin operational smoke** | Done | `POST /admin/system-health/smoke` |
@@ -94,12 +95,23 @@ Senior full-stack review of `main` @ June 2026. Use this as the **release gate**
 
 ---
 
+## Phase 1 trust (June 2026)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Bronze–Platinum tiers + simulator | Done | `/tenant/credit-score`, migration N/A |
+| EFT auto-confirm + one-tap link | Done | `0036`; prove on staging |
+| Shareable PDF + verify expiry | Done | `POST /reports/credit-score/share` |
+| Dispute templates + timeline | Partial | Admin `dispute_outcomes` charts pending |
+| Flywheel metrics (admin) | Done | `/admin/system-health` |
+| SMS confirm nudges | Deferred | P1-S7 |
+
 ## Recommended next implementation order
 
-1. **Staging**: migrations + RLS script + invite/renewal/pay smoke checklist  
-2. **CI**: `payment-metrics.util` unit tests + one Playwright login→pay path  
-3. **Ops**: external cron or Render worker so schedulers survive API restarts  
-4. **Legal**: counsel review of privacy/terms copy  
+1. **Staging**: apply `0035`/`0036`, redeploy, smoke + flywheel metrics baseline  
+2. **Phase 1 tail**: dispute outcome admin wiring; optional SMS vendor  
+3. **Legal**: counsel review of privacy/terms copy  
+4. **Phase 2**: landlord readiness checklist, tenant waitlist, BYOL  
 5. **Payments**: merchant integration when provider selected  
 
 ---

@@ -1,8 +1,9 @@
 # CRENIT — System Overview
 
-**Last updated:** June 2026 · **Codebase:** `main` @ `4871ee5`
+**Last updated:** June 2026 · **Codebase:** `main` @ `e5e728b`
 
-This document describes what CRENIT is, what it does, how it works, and where the platform stands today. It is the single narrative reference for product, engineering, and staging sign-off.
+This document describes what CRENIT is, what it does, and how it works.  
+**For current position (phase, staging gates, what’s done):** see **[`docs/PROJECT_STATUS.md`](PROJECT_STATUS.md)**.
 
 ---
 
@@ -288,47 +289,22 @@ CI: `.github/workflows/ci.yml` (lint, build, tests).
 
 ## 8. Current stage (June 2026)
 
+> **Canonical status:** [`docs/PROJECT_STATUS.md`](PROJECT_STATUS.md) — phase, commits, staging checklist, Phase 2/3 queue.
+
 ### Summary
 
-CRENIT is a **feature-complete staging candidate** for a credible v1: full tenant/landlord/admin portals, invite onboarding, KYC, EFT payments with landlord confirm, credit scoring, deposits/disputes, renewals, notifications (realtime), B2B market intelligence foundations, 2FA, GDPR tools, and operational smoke tests.
-
-It is **not yet production-signed-off** for live money or final legal compliance.
-
-### What is done (on `main`)
-
-| Area | Status |
-|------|--------|
-| Invite → lease → KYC → EFT → score | Done (automated smoke) |
-| Lease renewal propose → accept | Done |
-| TOTP 2FA + admin enforcement option | Done |
-| Realtime notification bell | Done (`0035`) |
-| External cron via GitHub Actions | Done |
-| Sentry + admin health dashboard | Done (enable DSN in env) |
-| Password reset | Done |
-| EFT proof upload | Done |
-| GDPR export/anonymise | Done |
-| Legacy `/dashboard/*` routes | Removed (redirects only) |
-| Marketing performance (scoped auth) | Done |
-
-### What is partial or process-only
-
-| Area | Status | Notes |
-|------|--------|-------|
-| **Live payment gateway** | Deferred | Card/mobile simulated; merchant TBD |
-| **Privacy / Terms** | Draft | Counsel review; `docs/legal/POPIA_COMPLIANCE_PACK.md` |
-| **Production deploy** | Process | Migrations, RLS validation, env secrets |
-| **Transactional email** | Verify in prod | SMTP/Resend must be set and tested |
-| **E-sign / lease PDF** | Partial | Reports exist; no DocuSign flow |
-| **SMS 2FA** | Not started | TOTP only |
-| **Multi-region schedulers** | Not started | Heartbeats per API instance |
+- **Phase 1 (Core product trust)** — implemented on `main` (`e296c90`–`e5e728b`): Bronze–Platinum tiers, score insights/simulator, shareable PDF + verify expiry, EFT **auto-confirm** (48h), one-tap landlord confirm, dispute templates/timeline, flywheel metrics on admin health.
+- **Staging validation** — apply migrations **`0035`** + **`0036`**, redeploy, run smoke; prove confirm lag and auto-confirm rate.
+- **Phase 2 / 3** — not started (waitlist, BYOL, public data dashboard).
+- **Production** — not signed off (P0 gates, legal counsel, live payment gateway deferred).
 
 ### P0 release gates (before production)
 
-1. Apply Supabase migrations through **`0035`** on staging then prod.
+1. Apply Supabase migrations through **`0036`** on staging then prod (`supabase/scripts/staging_apply_reference.sql`).
 2. Run `npm run validate:rls` and `npm run smoke:staging` against staging API.
-3. Configure production secrets (`JWT_SECRET`, `ADMIN_EMAILS`, `CORS_ORIGIN`, `WEB_URL`, email, `CRON_SECRET`).
+3. Configure secrets: `JWT_SECRET`, `ADMIN_EMAILS`, `CORS_ORIGIN`, `WEB_URL`, email, `CRON_SECRET`, optional Sentry.
 4. Redeploy Vercel + Render from latest `main`.
-5. Legal counsel sign-off on privacy/terms and POPIA pack.
+5. Legal counsel sign-off on privacy/terms (`docs/legal/POPIA_COMPLIANCE_PACK.md`).
 
 Full checklist: `docs/STAGING_RELEASE_CHECKLIST.md`, `docs/CRITICAL_GAPS.md`, `docs/MIGRATION_RUNBOOK.md`.
 
@@ -373,6 +349,7 @@ npm run dev                   # API :3001 + web :3002
 | `docs/MARKET_INTELLIGENCE.md` | B2B data product deep dive |
 | `docs/legal/POPIA_COMPLIANCE_PACK.md` | Legal backlog tracker |
 | `RENT.MD` | Original product spec (V6) |
+| `docs/PROJECT_STATUS.md` | **Where we are now** — phase, staging gates, sprint checklist |
 | `docs/PRODUCT_ROADMAP_3_PHASES.md` | 3-phase product build + engineering sprint plan |
 
 ---

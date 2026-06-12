@@ -2,6 +2,8 @@
 
 RentCredit is a fintech monorepo scaffold for Namibia. The platform turns rent payments into a verified financial identity — tenants pay rent through the platform, build a credible credit score, and use that score to access loans, mortgages, and property purchases.
 
+**Project status (where we are now):** [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) · `main` @ `e5e728b`
+
 ## Core Platform Features
 
 - **In-Platform Rent Payments** — EFT, card, and mobile money processing with 0.5–1.5% commission
