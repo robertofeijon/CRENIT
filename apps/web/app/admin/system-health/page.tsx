@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Activity, CheckCircle2, AlertTriangle, RefreshCw, ScrollText, Server, Shield } from 'lucide-react';
+import { Activity, CheckCircle2, AlertTriangle, ExternalLink, RefreshCw, ScrollText, Server, Shield } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 
@@ -64,6 +64,8 @@ export default function AdminSystemHealthPage() {
 
   const chartData = snapshot?.error_rate_7d || [];
   const platformOk = snapshot?.platform_status === 'Operational';
+  const observability = snapshot?.observability;
+  const sentryProjectUrl = process.env.NEXT_PUBLIC_SENTRY_PROJECT_URL?.trim();
 
   return (
     <div className="space-y-6">
@@ -110,6 +112,57 @@ export default function AdminSystemHealthPage() {
       </p>
 
       {error ? <ErrorStateCard message={error} onRetry={loadHealth} /> : null}
+
+      {observability || smokeResult?.observability ? (
+        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="font-semibold text-[#1A1A1A]">Observability</h2>
+          <p className="mt-1 text-xs text-slate-500">Sentry, external cron, and email transport flags from the API.</p>
+          <ul className="mt-4 flex flex-wrap gap-3 text-sm">
+            <li
+              className={`rounded-full px-3 py-1 font-medium ${
+                (observability ?? smokeResult?.observability)?.sentry_api
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-amber-100 text-amber-900'
+              }`}
+            >
+              API Sentry {(observability ?? smokeResult?.observability)?.sentry_api ? 'on' : 'off'}
+            </li>
+            <li
+              className={`rounded-full px-3 py-1 font-medium ${
+                (observability ?? smokeResult?.observability)?.cron_secret_configured
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-amber-100 text-amber-900'
+              }`}
+            >
+              CRON_SECRET {(observability ?? smokeResult?.observability)?.cron_secret_configured ? 'set' : 'missing'}
+            </li>
+            {observability?.email_configured != null ? (
+              <li
+                className={`rounded-full px-3 py-1 font-medium ${
+                  observability.email_configured ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
+                }`}
+              >
+                Email {observability.email_configured ? 'configured' : 'not configured'}
+              </li>
+            ) : null}
+          </ul>
+          <div className="mt-4 flex flex-wrap gap-3 text-sm">
+            {sentryProjectUrl ? (
+              <a
+                href={sentryProjectUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-semibold text-[#C0392B] hover:underline"
+              >
+                Open Sentry
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              </a>
+            ) : (
+              <span className="text-slate-500">Set NEXT_PUBLIC_SENTRY_PROJECT_URL on Vercel for a Sentry link.</span>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       {smokeResult ? (
         <section

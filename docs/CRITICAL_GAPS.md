@@ -43,12 +43,12 @@ Senior full-stack review of `main` @ June 2026. Use this as the **release gate**
 | 8 | **KYC before pay** | Done | `assertKycApproved` on payment routes |
 | 9 | **Landlord partner approval** | Done | UI guard + `assertPartnerApproved` on sensitive APIs |
 | 10 | **TOTP 2FA + admin/landlord step-up** | Done | Enforced when enabled; login → `/auth/verify-2fa` |
-| 11 | **Invite → lease → first payment E2E** | Partial | Code paths exist; needs scripted QA on staging |
-| 12 | **Lease renewal E2E** | Partial | API + tenant/landlord UI + bell; landlord can propose from `/landlord/leases`; needs staging proof |
+| 11 | **Invite → lease → first payment E2E** | Done | `scripts/smoke-staging-e2e.mjs` + `e2e/staging-lifecycle.spec.ts` (invite accept → KYC → approve → EFT confirm → score) |
+| 12 | **Lease renewal E2E** | Done | Smoke + Playwright: landlord propose → tenant accept |
 | 13 | **Deposit escrow + disputes** | Done | APIs + landlord/tenant/admin UIs |
 | 14 | **Credit score + payment metrics** | Done | Streak + on-time rate on home/credit-score |
-| 15 | **Schedulers (auto-pay, overdue, reminders)** | Partial | In-process crons + `POST /internal/cron/:job` with `CRON_SECRET` for external triggers |
-| 16 | **Privacy / Terms pages** | Partial | `/company/privacy`, `/company/terms` (summary pages; legal review still required) |
+| 15 | **Schedulers (auto-pay, overdue, reminders)** | Done | In-process + GitHub Actions `.github/workflows/cron.yml` + `cron-webhook-retry.yml` → `POST /internal/cron/:job` |
+| 16 | **Privacy / Terms pages** | Partial | `/company/privacy`, `/company/terms` + counsel-review banner; `docs/legal/POPIA_COMPLIANCE_PACK.md` backlog |
 | 17 | **Automated tests** | Done | Vitest payment-metrics + Playwright (public pages + optional tenant login via `E2E_TENANT_*` secrets) + CI |
 | 18 | **Admin operational smoke** | Done | `POST /admin/system-health/smoke` |
 | 19 | **GDPR export/anonymise** | Done | `/admin/compliance` |
@@ -63,7 +63,7 @@ Senior full-stack review of `main` @ June 2026. Use this as the **release gate**
 | 21 | **Mandatory 2FA for all admins** | Done | Set `ADMIN_REQUIRE_2FA=true`; `/admin/security` setup gate |
 | 22 | **SMS 2FA** | Missing | TOTP only |
 | 23 | **Real-time notifications** | Done | `NotificationsProvider` + bell on all dashboard shells; migration `0035` |
-| 24 | **E2E monitoring (Sentry/Datadog)** | Partial | Optional `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` on API + web |
+| 24 | **E2E monitoring (Sentry/Datadog)** | Done | Sentry wired (API + web); admin health dashboard + `docs/OBSERVABILITY.md`; set DSN on Render/Vercel |
 | 25 | **Payment webhook → live provider** | Partial | Generic webhook + signature; not tied to PayToday/etc. |
 | 26 | **EFT proof upload** | Done | `POST /payments/:id/eft-proof`, private `payment-proofs` bucket, landlord view/confirm |
 | 27 | **E-sign / lease PDF generation** | Partial | Attachments + reports; no DocuSign-style flow |

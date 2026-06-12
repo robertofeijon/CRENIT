@@ -81,13 +81,30 @@ if (!existsSync(legacyDashboard)) {
   fail('Legacy /dashboard pages', 'app/dashboard still exists — remove or redirect only');
 }
 
+for (const wf of ['cron.yml', 'cron-webhook-retry.yml']) {
+  const path = join(root, '.github', 'workflows', wf);
+  if (existsSync(path)) {
+    pass(`Cron workflow ${wf}`, 'external scheduler wired');
+  } else {
+    fail(`Cron workflow ${wf}`, 'missing — schedulers only run in-process');
+  }
+}
+
+if (existsSync(join(root, 'docs/OBSERVABILITY.md'))) {
+  pass('Observability docs', 'docs/OBSERVABILITY.md');
+} else {
+  fail('Observability docs', 'missing docs/OBSERVABILITY.md');
+}
+
 console.log('\n--- Remote gates (manual) ---\n');
 console.log('1. Vercel — redeploy apps/web from main HEAD; confirm build SHA matches git HEAD');
 console.log('2. Render — redeploy API; EMAIL_CONTACT + CORS_ORIGIN include web URL');
 console.log('3. Supabase — SQL Editor: run 0034 + 0035 if not applied; verify notifications on supabase_realtime');
 console.log('4. GitHub Actions — web-e2e job: 9+ passed (or 5+ public if E2E secrets unset)');
 console.log('   https://github.com/robertofeijon/CRENIT/actions/workflows/ci.yml');
-console.log('5. Smoke — docs/STAGING_RELEASE_CHECKLIST.md §10 (bell + renewals)\n');
+console.log('5. Smoke — docs/STAGING_RELEASE_CHECKLIST.md §10 (bell + renewals)');
+console.log('6. GitHub secrets — CRON_SECRET + API_URL for cron workflows; optional SENTRY_DSN / NEXT_PUBLIC_SENTRY_DSN');
+console.log('7. Observability — docs/OBSERVABILITY.md; admin /admin/system-health\n');
 
 const failed = checks.filter((c) => !c.ok).length;
 if (failed) {

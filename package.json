@@ -22,6 +22,7 @@
     "test:e2e": "npm run test:e2e -w crenit-web",
     "email:test": "node scripts/send-test-email.mjs",
     "configure:contact-env": "node scripts/configure-contact-env.mjs",
+    "configure:sentry-env": "node scripts/configure-sentry-env.mjs",
     "setup:github-e2e-secrets": "node scripts/setup-github-e2e-secrets.mjs",
     "verify:deploy-gates": "node scripts/verify-deploy-gates.mjs"
   },

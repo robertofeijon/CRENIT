@@ -126,6 +126,18 @@ export default function SectionPage({ params }: { params: { section: string; slu
           {legal?.lastUpdated ? (
             <p className="mt-3 text-sm text-slate-500">Last updated {legal.lastUpdated}</p>
           ) : null}
+          {legal?.counselReview ? (
+            <div
+              className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-950"
+              role="note"
+            >
+              <p className="font-semibold text-amber-900">Draft — pending legal counsel review</p>
+              <p className="mt-1 leading-6">
+                This page is a product summary for staging. Do not treat it as final legal advice or a production
+                sign-off. See our POPIA compliance backlog for counsel deliverables.
+              </p>
+            </div>
+          ) : null}
           <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">{page.description}</p>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {page.bullets.map((item) => (

@@ -1,7 +1,8 @@
 /**
- * Staging E2E smoke: invite → tenant dashboard → payments → admin health smoke.
- * Usage: node scripts/smoke-staging-e2e.mjs
- * Requires API on API_URL (default http://localhost:3001) and demo seed.
+ * Staging E2E smoke: invite → accept → KYC → approve → EFT confirm → score; renewal; cron probe.
+ * Usage: API_URL=https://your-api npm run smoke:staging
+ * Optional: CRON_SECRET to probe GET /internal/cron/jobs
+ * Requires API running and demo seed (or staging).
  */
 
 const API = process.env.API_URL ?? 'http://localhost:3001';
@@ -56,6 +57,14 @@ async function main() {
   let adminToken;
   let landlordToken;
   let tenantToken;
+  let inviteToken;
+  let inviteEmail;
+  let lifecycleTenantToken;
+  let lifecycleTenantId;
+
+  const FAKE_PNG_BASE64 =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const LIFECYCLE_PASSWORD = 'E2eLifecycle123!';
 
   await run('Login admin', async () => {
     const { token } = await login(DEMO.admin.email, DEMO.admin.password);
@@ -82,6 +91,7 @@ async function main() {
     if (!propsRes.res.ok) throw new Error(propsRes.body?.message || 'properties failed');
     const unit = (propsRes.body?.data || []).flatMap((p) => p.units || [])[0];
     const email = `e2e.${Date.now()}@rentcredit.demo`;
+    inviteEmail = email;
     const { res, body } = await jsonFetch(`${API}/landlords/invite`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${landlordToken}`, 'Content-Type': 'application/json' },
@@ -89,6 +99,90 @@ async function main() {
     });
     if (!res.ok) throw new Error(body?.message || `HTTP ${res.status}`);
     if (!body?.data?.invite?.token) throw new Error('No invite token');
+    inviteToken = body.data.invite.token;
+  });
+
+  await run('Invite accept → lease + pending payment', async () => {
+    if (!inviteToken) throw new Error('No invite token');
+    const { res, body } = await jsonFetch(`${API}/auth/invite/${inviteToken}/accept`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ full_name: 'E2E Lifecycle', password: LIFECYCLE_PASSWORD }),
+    });
+    if (!res.ok) throw new Error(body?.message || 'invite accept failed');
+    lifecycleTenantId = body?.data?.tenant_id;
+    if (!lifecycleTenantId) throw new Error('No tenant_id after accept');
+  });
+
+  await run('New tenant KYC submit → admin approve', async () => {
+    const { token } = await login(inviteEmail, LIFECYCLE_PASSWORD);
+    lifecycleTenantToken = token;
+    const fakeDoc = { filename: 'e2e.png', fileBase64: FAKE_PNG_BASE64 };
+    const kycRes = await jsonFetch(`${API}/kyc/wizard/submit`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${lifecycleTenantToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        personal: {
+          first_name: 'E2E',
+          surname: 'Lifecycle',
+          phone: '+264811000999',
+          date_of_birth: '1990-01-15',
+          gender: 'OTHER',
+          nationality: 'Namibian',
+          national_id_number: `E2E${Date.now()}`,
+        },
+        residence: {
+          country: 'Namibia',
+          region: 'Khomas',
+          city: 'Windhoek',
+          street_address: '123 Test Street',
+          postal_code: '10001',
+          residential_status: 'TENANT',
+        },
+        documents: {
+          government_id: fakeDoc,
+          selfie: fakeDoc,
+          income_proof: fakeDoc,
+          proof_of_address: fakeDoc,
+        },
+      }),
+    });
+    if (!kycRes.res.ok) throw new Error(kycRes.body?.message || 'KYC wizard submit failed');
+    const approveRes = await jsonFetch(`${API}/admin/kyc/review/${lifecycleTenantId}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'approve' }),
+    });
+    if (!approveRes.res.ok) throw new Error(approveRes.body?.message || 'KYC approve failed');
+  });
+
+  await run('New tenant EFT pending → landlord confirm → score', async () => {
+    if (!lifecycleTenantToken) throw new Error('Lifecycle tenant not logged in');
+    const upcomingRes = await jsonFetch(`${API}/payments/upcoming`, {
+      headers: { Authorization: `Bearer ${lifecycleTenantToken}` },
+    });
+    if (!upcomingRes.res.ok) throw new Error(upcomingRes.body?.message || 'upcoming payments failed');
+    const listRes = await jsonFetch(`${API}/landlords/payments?status=PENDING&limit=30`, {
+      headers: { Authorization: `Bearer ${landlordToken}` },
+    });
+    if (!listRes.res.ok) throw new Error(listRes.body?.message || 'landlord payments failed');
+    const payments = listRes.body?.data?.payments ?? listRes.body?.data ?? [];
+    const pending = (Array.isArray(payments) ? payments : []).find((p) => p.tenant_id === lifecycleTenantId);
+    if (!pending?.id) {
+      console.log('  (no pending payment for lifecycle tenant — skip confirm)');
+      return;
+    }
+    const confirmRes = await jsonFetch(`${API}/landlords/payments/${pending.id}/confirm`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${landlordToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ received_date: new Date().toISOString().slice(0, 10) }),
+    });
+    if (!confirmRes.res.ok) throw new Error(confirmRes.body?.message || 'payment confirm failed');
+    const scoreRes = await jsonFetch(`${API}/credit-score/me`, {
+      headers: { Authorization: `Bearer ${lifecycleTenantToken}` },
+    });
+    if (!scoreRes.res.ok) throw new Error(scoreRes.body?.message || 'credit score failed');
+    if (scoreRes.body?.data?.score == null) throw new Error('No score after payment confirm');
   });
 
   await run('Tenant /tenants/me + paymentMetrics', async () => {
@@ -164,6 +258,62 @@ async function main() {
     });
     if (!res.ok) throw new Error(body?.message || `HTTP ${res.status}`);
     if (!Array.isArray(body?.data?.checks)) throw new Error('Missing checks array');
+    const obs = body?.data?.observability;
+    if (obs) {
+      console.log(`  observability: sentry=${obs.sentry_api ? 'on' : 'off'}, cron=${obs.cron_secret_configured ? 'on' : 'off'}`);
+    }
+  });
+
+  await run('Landlord propose lease renewal', async () => {
+    const leasesRes = await jsonFetch(`${API}/landlords/leases`, {
+      headers: { Authorization: `Bearer ${landlordToken}` },
+    });
+    if (!leasesRes.res.ok) throw new Error(leasesRes.body?.message || 'leases list failed');
+    const lease = (leasesRes.body?.data || []).find((l) => l.status === 'ACTIVE' && l.end_date);
+    if (!lease) {
+      console.log('  (no active lease with end_date — skip renewal propose)');
+      return;
+    }
+    const proposeRes = await jsonFetch(`${API}/landlords/leases/${lease.id}/renewals`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${landlordToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proposed_rent: lease.monthly_rent }),
+    });
+    if (!proposeRes.res.ok && !proposeRes.body?.message?.includes('already exists')) {
+      throw new Error(proposeRes.body?.message || 'renewal propose failed');
+    }
+  });
+
+  await run('Tenant accept lease renewal', async () => {
+    const renewalsRes = await jsonFetch(`${API}/tenants/renewals`, {
+      headers: { Authorization: `Bearer ${tenantToken}` },
+    });
+    if (!renewalsRes.res.ok) throw new Error(renewalsRes.body?.message || 'renewals list failed');
+    const renewal = (renewalsRes.body?.data || []).find((r) => r.status !== 'APPROVED' && r.status !== 'REJECTED');
+    if (!renewal) {
+      console.log('  (no pending renewal — skip tenant accept)');
+      return;
+    }
+    const respondRes = await jsonFetch(`${API}/tenants/renewals/respond`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tenantToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ renewal_id: renewal.id, action: 'APPROVE' }),
+    });
+    if (!respondRes.res.ok) throw new Error(respondRes.body?.message || 'tenant renewal accept failed');
+  });
+
+  await run('External cron job registry', async () => {
+    const secret = process.env.CRON_SECRET?.trim();
+    if (!secret) {
+      console.log('  (skip — set CRON_SECRET to probe /internal/cron/jobs)');
+      return;
+    }
+    const { res, body } = await jsonFetch(`${API}/internal/cron/jobs`, {
+      headers: { 'X-Cron-Secret': secret },
+    });
+    if (!res.ok) throw new Error(body?.message || body?.error || 'cron jobs list failed');
+    if (!Array.isArray(body?.data?.jobs) || !body.data.jobs.length) throw new Error('No cron jobs returned');
+    console.log(`  jobs: ${body.data.jobs.join(', ')}`);
   });
 
   const passed = results.filter((r) => r.ok).length;

@@ -153,6 +153,36 @@ export default function AdminPage() {
 
       {error ? <ErrorStateCard message={error} onRetry={loadDashboard} /> : null}
 
+      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-[#1A1A1A]">Health & observability</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              DB probes, scheduler heartbeats, smoke tests, Sentry, and cron configuration.
+            </p>
+          </div>
+          <Link
+            href="/admin/system-health"
+            className="inline-flex items-center gap-2 rounded-full bg-[#1A1A1A] px-5 py-2.5 text-sm font-semibold text-white hover:bg-black"
+          >
+            <Activity className="h-4 w-4" aria-hidden />
+            Open system health
+          </Link>
+        </div>
+        {process.env.NEXT_PUBLIC_SENTRY_PROJECT_URL ? (
+          <p className="mt-3 text-sm">
+            <a
+              href={process.env.NEXT_PUBLIC_SENTRY_PROJECT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-[#C0392B] hover:underline"
+            >
+              View errors in Sentry →
+            </a>
+          </p>
+        ) : null}
+      </section>
+
       {isLoading ? (
         <SkeletonBlocks rows={4} />
       ) : stats ? (

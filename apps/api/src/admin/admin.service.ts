@@ -1037,6 +1037,22 @@ export class AdminService {
       });
     }
 
+    if (!process.env.SENTRY_DSN?.trim()) {
+      alerts.push({
+        severity: 'low',
+        code: 'SENTRY_NOT_CONFIGURED',
+        message: 'SENTRY_DSN is unset — API errors are not forwarded to Sentry.',
+      });
+    }
+
+    if (!process.env.CRON_SECRET?.trim()) {
+      alerts.push({
+        severity: 'medium',
+        code: 'CRON_SECRET_MISSING',
+        message: 'CRON_SECRET is unset — external schedulers cannot trigger /internal/cron jobs.',
+      });
+    }
+
     if (operationalCount < probes.length) {
       alerts.push({
         severity: 'high',
@@ -1050,6 +1066,13 @@ export class AdminService {
       services: probes,
       schedulers: schedulerRuns,
       alerts,
+      observability: {
+        sentry_api: Boolean(process.env.SENTRY_DSN?.trim()),
+        sentry_environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
+        cron_secret_configured: Boolean(process.env.CRON_SECRET?.trim()),
+        cron_jobs_endpoint: '/internal/cron/jobs',
+        email_configured: Boolean(process.env.SMTP_HOST || process.env.RESEND_API_KEY),
+      },
       summary: {
         services_operational: operationalCount,
         services_total: probes.length,
@@ -1125,14 +1148,34 @@ export class AdminService {
       detail: overdueErr ? overdueErr.message : 'Overdue payment query OK',
     });
 
+    const sentryConfigured = Boolean(process.env.SENTRY_DSN?.trim());
+    checks.push({
+      name: 'sentry_api',
+      pass: sentryConfigured,
+      detail: sentryConfigured ? 'SENTRY_DSN configured' : 'Optional — set SENTRY_DSN on Render for error tracking',
+    });
+
+    const cronConfigured = Boolean(process.env.CRON_SECRET?.trim());
+    checks.push({
+      name: 'cron_secret',
+      pass: cronConfigured,
+      detail: cronConfigured ? 'CRON_SECRET configured for /internal/cron' : 'Set CRON_SECRET + GitHub Actions cron workflow',
+    });
+
     const passCount = checks.filter((c) => c.pass).length;
+    const requiredPass = checks.filter((c) => !['sentry_api', 'cron_secret'].includes(c.name) && c.pass).length;
+    const requiredTotal = checks.filter((c) => !['sentry_api', 'cron_secret'].includes(c.name)).length;
     return {
-      passed: passCount === checks.length,
+      passed: requiredPass === requiredTotal,
       pass_count: passCount,
       total: checks.length,
       checked_at: new Date().toISOString(),
       checks,
       schedulers,
+      observability: {
+        sentry_api: sentryConfigured,
+        cron_secret_configured: cronConfigured,
+      },
     };
   }
 

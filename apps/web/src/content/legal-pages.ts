@@ -6,6 +6,8 @@ export type LegalPageContent = {
   description: string;
   bullets: string[];
   lastUpdated: string;
+  /** Shown until external counsel signs off — see docs/legal/POPIA_COMPLIANCE_PACK.md */
+  counselReview?: boolean;
   sections: LegalSection[];
 };
 
@@ -17,6 +19,7 @@ export const LEGAL_PAGES: Record<string, LegalPageContent> = {
       'CRENIT processes personal information to verify rent payments, run KYC, and provide rental credit and market intelligence services. This policy explains what we collect, why, and your rights.',
     bullets: ['Purpose-limited collection', 'Encrypted storage', 'Export & erasure tools'],
     lastUpdated: 'June 2026',
+    counselReview: true,
     sections: [
       {
         heading: 'Who we are',
@@ -95,6 +98,7 @@ export const LEGAL_PAGES: Record<string, LegalPageContent> = {
       'These terms govern access to CRENIT web applications, APIs, and related services. By creating an account or using the platform you agree to them.',
     bullets: ['Accurate accounts', 'Verified payments only', 'Market data consent'],
     lastUpdated: 'June 2026',
+    counselReview: true,
     sections: [
       {
         heading: 'Acceptance',

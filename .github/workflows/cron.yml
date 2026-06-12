@@ -1,0 +1,52 @@
+# Daily API scheduler batch (~07:00 Namibia / 05:00 UTC). Secrets: CRON_SECRET, API_URL.
+
+name: Cron daily jobs
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Cron job key
+        required: false
+        default: all-daily
+        type: choice
+        options:
+          - all-daily
+          - payments-autopay
+          - notifications-rent-reminder
+          - payments-overdue
+          - credit-score-recalc
+          - notifications-kyc-renewal
+          - mi-snapshot-rollup
+          - mi-licensable-webhooks
+
+jobs:
+  run-daily:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - payments-autopay
+          - notifications-rent-reminder
+          - payments-overdue
+          - credit-score-recalc
+          - notifications-kyc-renewal
+          - mi-snapshot-rollup
+          - mi-licensable-webhooks
+    steps:
+      - name: Run ${{ matrix.job }}
+        if: github.event_name == 'schedule' || github.event.inputs.job == 'all-daily' || github.event.inputs.job == matrix.job
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          API_URL: ${{ secrets.API_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ] || [ -z "$API_URL" ]; then
+            echo "Skip: CRON_SECRET or API_URL not configured."
+            exit 0
+          fi
+          curl -sfS -X POST \
+            -H "X-Cron-Secret: ${CRON_SECRET}" \
+            "${API_URL}/internal/cron/${{ matrix.job }}"
