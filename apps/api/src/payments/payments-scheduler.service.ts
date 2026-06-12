@@ -38,6 +38,19 @@ export class PaymentsSchedulerService {
     }
   }
 
+  @Cron('0 * * * *', { timeZone: 'Africa/Windhoek' })
+  async handleAutoConfirmJob() {
+    this.logger.log('Running payment auto-confirm and reminder job');
+    try {
+      await this.paymentsService.sendConfirmationReminders();
+      await this.paymentsService.processAutoConfirmations();
+      this.schedulerHeartbeat.record('payments_auto_confirm', true);
+    } catch (error) {
+      this.schedulerHeartbeat.record('payments_auto_confirm', false, (error as Error).message);
+      this.logger.error('Payment auto-confirm job failed', error as any);
+    }
+  }
+
   @Cron('0 2 * * *', { timeZone: 'Africa/Windhoek' })
   async handleNightlyScoreRecalculation() {
     this.logger.log('Running nightly tenant credit score recalculation for recent payment updates');

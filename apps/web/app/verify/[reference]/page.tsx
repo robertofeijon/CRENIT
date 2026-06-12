@@ -6,7 +6,10 @@ type VerifyResult = {
   message?: string;
   score?: number;
   tier?: string;
+  brand_tier?: string;
+  score_100?: number;
   generated_at?: string;
+  expires_at?: string;
 };
 
 async function fetchVerification(reference: string): Promise<VerifyResult | null> {
@@ -37,8 +40,11 @@ export default async function VerifyReportPage({ params }: { params: { reference
         {result?.authentic ? (
           <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
             <p className="font-semibold text-emerald-800">{result.message ?? 'This report is authentic.'}</p>
-            <p className="mt-2 text-sm text-emerald-900">Score: {result.score}</p>
-            <p className="text-sm text-emerald-900">Tier: {result.tier}</p>
+            <p className="mt-2 text-sm text-emerald-900">Score: {result.score_100 ?? result.score}/100</p>
+            <p className="text-sm text-emerald-900">Tier: {result.brand_tier ?? result.tier}</p>
+            {result.expires_at ? (
+              <p className="text-sm text-emerald-900">Valid until: {new Date(result.expires_at).toLocaleDateString()}</p>
+            ) : null}
             <p className="text-sm text-emerald-900">
               Generated: {result.generated_at ? new Date(result.generated_at).toLocaleString() : '—'}
             </p>
@@ -46,8 +52,8 @@ export default async function VerifyReportPage({ params }: { params: { reference
           </div>
         ) : (
           <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-5">
-            <p className="font-semibold text-rose-800">Report not found.</p>
-            <p className="mt-2 text-sm text-rose-900">This reference could not be verified. Check the code on the PDF and try again.</p>
+            <p className="font-semibold text-rose-800">{result?.message ?? 'Report not found.'}</p>
+            <p className="mt-2 text-sm text-rose-900">Check the reference on the PDF or ask the tenant for a new share link.</p>
           </div>
         )}
       </div>

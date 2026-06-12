@@ -11,6 +11,7 @@ import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { formatN$, statusPillClass, tenantInputClass, tenantSelectClass } from '../../components/tenant/tenantUi';
+import { NAMIBIAN_BANK_REF_HINTS } from '../../../src/lib/namibia-locale';
 
 export default function TenantPaymentsPage() {
   const { user, loading, roleReady } = useAuth();
@@ -229,6 +230,7 @@ export default function TenantPaymentsPage() {
             <div className="sm:col-span-2">
               <dt className="text-slate-500">Payment reference</dt>
               <dd className="font-mono font-semibold text-[#C0392B]">{pendingEft.reference}</dd>
+              <p className="mt-1 text-xs text-slate-500">{NAMIBIAN_BANK_REF_HINTS.FNB}</p>
             </div>
           </dl>
           <div className="mt-4 space-y-3">

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { DISPUTE_TEMPLATES, DISPUTE_TYPES, type DisputeType } from './dispute-templates';
 
 @Injectable()
 export class DepositsService {
@@ -15,6 +16,39 @@ export class DepositsService {
 
   private getClient() {
     return this.supabaseService.getClient();
+  }
+
+  getDisputeTemplates() {
+    return DISPUTE_TEMPLATES;
+  }
+
+  private async logDisputeEvent(
+    disputeId: string,
+    eventType: string,
+    actorId: string | null,
+    message: string,
+    metadata: Record<string, unknown> = {},
+  ) {
+    const client = this.getClient();
+    await client.from('dispute_events').insert([
+      {
+        dispute_id: disputeId,
+        event_type: eventType,
+        actor_id: actorId,
+        message,
+        metadata,
+      },
+    ]);
+  }
+
+  private async loadDisputeTimeline(disputeId: string) {
+    const client = this.getClient();
+    const { data } = await client
+      .from('dispute_events')
+      .select('event_type, message, metadata, created_at, actor_id')
+      .eq('dispute_id', disputeId)
+      .order('created_at', { ascending: true });
+    return data || [];
   }
 
   private async ensureEscrowAccount(deposit: any) {
@@ -80,7 +114,19 @@ export class DepositsService {
 
   async fileDispute(
     tenantId: string,
-    { depositId, reason, description, requestedAmount }: { depositId: string; reason: string; description: string; requestedAmount: number },
+    {
+      depositId,
+      reason,
+      description,
+      requestedAmount,
+      disputeType,
+    }: {
+      depositId: string;
+      reason: string;
+      description: string;
+      requestedAmount: number;
+      disputeType?: DisputeType;
+    },
     evidenceFiles: any[] = [],
   ) {
     const client = this.getClient();
@@ -92,10 +138,13 @@ export class DepositsService {
       throw new BadRequestException('Only the tenant may file a dispute for this deposit');
     }
 
+    const type: DisputeType = disputeType && DISPUTE_TYPES.includes(disputeType) ? disputeType : 'OTHER';
+    const template = DISPUTE_TEMPLATES[type];
     const { data: disputeData, error: disputeError } = await client.from('disputes').insert([
       {
         deposit_id: depositId,
         raised_by: tenantId,
+        dispute_type: type,
         claim_description: `${reason}: ${description}`,
         status: 'OPEN',
         opened_at: new Date().toISOString(),
@@ -107,6 +156,13 @@ export class DepositsService {
     }
 
     const dispute = disputeData[0];
+    await this.logDisputeEvent(
+      dispute.id,
+      'OPENED',
+      tenantId,
+      `Dispute opened: ${template.label}`,
+      { dispute_type: type, eta_days: template.eta_days, requested_amount: requestedAmount },
+    );
     if (evidenceFiles.length) {
       const evidenceRecords = evidenceFiles.map((file) => ({
         dispute_id: dispute.id,
@@ -142,7 +198,7 @@ export class DepositsService {
         });
       }
     }
-    return dispute;
+    return { ...dispute, template, estimated_resolution_days: template.eta_days };
   }
 
   async getDispute(userId: string, disputeId: string) {
@@ -163,7 +219,25 @@ export class DepositsService {
       throw new BadRequestException('Not authorized to view this dispute');
     }
 
-    return { ...dispute, evidence: evidence || [] };
+    const timeline = await this.loadDisputeTimeline(disputeId);
+    const disputeType = (dispute.dispute_type as DisputeType) || 'OTHER';
+    const template = DISPUTE_TEMPLATES[disputeType] || DISPUTE_TEMPLATES.OTHER;
+    const openedAt = new Date(dispute.opened_at || dispute.created_at || Date.now());
+    const etaDate = new Date(openedAt.getTime() + template.eta_days * 86400000);
+
+    return {
+      ...dispute,
+      evidence: evidence || [],
+      timeline,
+      template,
+      next_step:
+        dispute.status === 'OPEN'
+          ? 'Landlord review'
+          : dispute.status === 'UNDER_REVIEW'
+            ? 'Admin or settlement review'
+            : 'Case closed',
+      estimated_resolution_by: etaDate.toISOString(),
+    };
   }
 
   async landlordRespond(

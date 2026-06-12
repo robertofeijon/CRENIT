@@ -26,6 +26,8 @@ export default function LandlordPaymentsPage() {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [confirmPopover, setConfirmPopover] = useState<{ id: string; received_date: string; amount: string } | null>(null);
+  const [pendingSummary, setPendingSummary] = useState<any>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/auth');
@@ -55,6 +57,8 @@ export default function LandlordPaymentsPage() {
       });
       setPayments(response.data.data?.payments || []);
       setSummary(response.data.data?.summary || null);
+      const pendingRes = await api.get('/landlords/payment-confirmations/pending').catch(() => null);
+      setPendingSummary(pendingRes?.data?.data ?? null);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to load payments.');
     } finally {
@@ -65,6 +69,21 @@ export default function LandlordPaymentsPage() {
   useEffect(() => {
     if (user && (role === 'LANDLORD' || role === 'ADMIN')) void loadPayments();
   }, [user, role, loadPayments]);
+
+  const handleBulkConfirm = async () => {
+    const ids = (pendingSummary?.payments || []).map((p: any) => p.id);
+    if (!ids.length) return;
+    setBulkLoading(true);
+    try {
+      await api.post('/landlords/payment-confirmations/bulk-confirm', { payment_ids: ids });
+      setActionMessage(`Confirmed ${ids.length} payment(s).`);
+      await loadPayments();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Bulk confirm failed.');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
 
   const handleViewEftProof = async (paymentId: string) => {
     setError(null);
@@ -143,7 +162,36 @@ export default function LandlordPaymentsPage() {
         />
       </section>
 
-      {pendingDirect > 0 ? (
+      {pendingSummary?.pending_count > 0 ? (
+        <section className="landlord-panel border-amber-200 bg-amber-50/80">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-amber-950">
+                {pendingSummary.pending_count} payment{pendingSummary.pending_count === 1 ? '' : 's'} awaiting confirmation
+              </p>
+              <p className="mt-1 text-xs text-amber-900/90">
+                Auto-confirms after {pendingSummary.auto_confirm_hours}h unless disputed.{' '}
+                {pendingSummary.overdue_confirm_count > 0
+                  ? `${pendingSummary.overdue_confirm_count} overdue for review.`
+                  : ''}
+              </p>
+            </div>
+            <button type="button" className="landlord-btn-primary" disabled={bulkLoading} onClick={() => void handleBulkConfirm()}>
+              {bulkLoading ? 'Confirming…' : 'Confirm all uncontested'}
+            </button>
+          </div>
+          <ul className="mt-4 space-y-2 text-sm">
+            {(pendingSummary.payments || []).slice(0, 5).map((p: any) => (
+              <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/80 px-3 py-2">
+                <span>N${Number(p.amount_gross || 0).toLocaleString()} · {p.aging_hours}h waiting</span>
+                <a href={p.confirm_url} className="font-semibold text-[#C0392B] hover:underline">
+                  One-tap confirm →
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : pendingDirect > 0 ? (
         <div className="landlord-panel border-amber-200 bg-amber-50/80">
           <p className="text-sm font-semibold text-amber-950">
             {pendingDirect} direct payment{pendingDirect === 1 ? '' : 's'} awaiting your confirmation

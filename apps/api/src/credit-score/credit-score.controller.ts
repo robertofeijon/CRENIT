@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Headers, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Headers, UnauthorizedException } from '@nestjs/common';
 import { CreditScoreService } from './credit-score.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { getUserProfileFromAuthHeader, assertRole } from '../supabase/supabase.utils';
@@ -29,8 +29,9 @@ export class CreditScoreController {
         .order('due_date', { ascending: false });
       const paymentMetrics = buildPaymentMetrics(payments || []);
       const result = await this.creditScoreService.getCurrentScoreDetails(profile.id);
+      const enriched = this.creditScoreService.enrichWithBrandTier(result);
       const milestone = this.creditScoreService.getMilestoneGuidance(result.score);
-      return { success: true, data: { ...result, milestone, paymentMetrics }, error: null };
+      return { success: true, data: { ...enriched, milestone, paymentMetrics }, error: null };
     } catch (error: any) {
       throw new UnauthorizedException(error?.message || 'Unable to load credit score');
     }
@@ -58,6 +59,30 @@ export class CreditScoreController {
       return { success: true, data: { ...result, milestone }, error: null };
     } catch (error: any) {
       throw new UnauthorizedException(error?.message || 'Unable to recalculate score');
+    }
+  }
+
+  @Get('insights')
+  async insights(@Headers('authorization') authHeader: string) {
+    try {
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+      assertRole(profile, 'TENANT');
+      const data = await this.creditScoreService.getInsights(profile.id);
+      return { success: true, data, error: null };
+    } catch (error: any) {
+      throw new UnauthorizedException(error?.message || 'Unable to load score insights');
+    }
+  }
+
+  @Post('simulate')
+  async simulate(@Headers('authorization') authHeader: string, @Body() body: { months_on_time?: number }) {
+    try {
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+      assertRole(profile, 'TENANT');
+      const data = await this.creditScoreService.simulateScore(profile.id, Number(body?.months_on_time ?? 0));
+      return { success: true, data, error: null };
+    } catch (error: any) {
+      throw new UnauthorizedException(error?.message || 'Unable to simulate score');
     }
   }
 

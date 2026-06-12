@@ -9,6 +9,7 @@ import { statusPillClass } from '../../components/tenant/tenantUi';
 import KycDocumentUploadField from '../../components/kyc/KycDocumentUploadField';
 import KycWizardProgress from '../../components/kyc/KycWizardProgress';
 import WorkspaceLoading from '../../components/ui/WorkspaceLoading';
+import PopiaTrustBadge from '../../components/trust/PopiaTrustBadge';
 
 type KycDocType = 'government_id' | 'selfie' | 'income_proof' | 'proof_of_address';
 
@@ -271,6 +272,7 @@ export default function TenantKycPage() {
           <p className="text-sm leading-7 text-slate-600">
             Complete three steps. Your location is checked against your landlord&apos;s records on final submission.
           </p>
+          {showWizard ? <PopiaTrustBadge /> : null}
           <span className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${statusPillClass(kycStatus)}`}>
             Status: {kycStatus === 'PENDING' ? 'PENDING_REVIEW' : kycStatus}
           </span>

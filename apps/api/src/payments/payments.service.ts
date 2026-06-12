@@ -5,8 +5,10 @@ import { CreditScoreService } from '../credit-score/credit-score.service';
 import { MarketIntelligenceCaptureService } from '../market-intelligence/market-intelligence-capture.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { createSignedStorageUrl, sanitizeStorageFileName } from '../supabase/storage.utils';
+import { PaymentConfirmTokenService } from './payment-confirm-token.service';
 
 const PAYMENT_PROOFS_BUCKET = 'payment-proofs';
+const DEFAULT_AUTO_CONFIRM_HOURS = Number(process.env.PAYMENT_AUTO_CONFIRM_HOURS || 48);
 const EFT_PROOF_MAX_BYTES = Number(process.env.MAX_EFT_PROOF_UPLOAD_BYTES || 5 * 1024 * 1024);
 const EFT_PROOF_MIME_TYPES = new Set([
   'image/jpeg',
@@ -33,7 +35,30 @@ export class PaymentsService {
     private readonly creditScoreService: CreditScoreService,
     private readonly marketCapture: MarketIntelligenceCaptureService,
     private readonly notificationsService: NotificationsService,
+    private readonly confirmTokenService: PaymentConfirmTokenService,
   ) {}
+
+  private autoConfirmAtFromNow(): string {
+    return new Date(Date.now() + DEFAULT_AUTO_CONFIRM_HOURS * 60 * 60 * 1000).toISOString();
+  }
+
+  async scheduleAutoConfirm(paymentId: string) {
+    const client = this.getClient();
+    const at = this.autoConfirmAtFromNow();
+    await client
+      .from('payments')
+      .update({ auto_confirm_at: at, updated_at: new Date().toISOString() })
+      .eq('id', paymentId)
+      .in('status', ['PENDING', 'PROCESSING', 'OVERDUE'])
+      .is('confirmation_disputed_at', null);
+    return at;
+  }
+
+  buildConfirmLink(landlordUserId: string, paymentId: string): string {
+    const token = this.confirmTokenService.sign(paymentId, landlordUserId);
+    const base = (process.env.WEB_URL || process.env.APP_BASE_URL || 'http://localhost:3002').replace(/\/$/, '');
+    return `${base}/confirm-payment/${token}`;
+  }
 
   private async onPaymentConfirmed(payment: Record<string, unknown> | null) {
     if (!payment || payment.status !== 'PAID') return;
@@ -272,6 +297,21 @@ export class PaymentsService {
         days_overdue: daysOverdue,
       });
 
+      if (payment?.id) {
+        await this.scheduleAutoConfirm(payment.id);
+        const landlordUserId = await this.getLandlordUserIdForPayment(lease.landlord_id);
+        if (landlordUserId) {
+          const confirmUrl = this.buildConfirmLink(landlordUserId, payment.id);
+          await this.notificationsService.createNotification({
+            user_id: landlordUserId,
+            type: 'PAYMENT_PENDING_CONFIRM',
+            title: 'Rent payment awaiting confirmation',
+            message: `A tenant initiated an EFT payment (N$${Number(body.amount || 0).toLocaleString()}). Confirm or dispute within ${DEFAULT_AUTO_CONFIRM_HOURS}h.`,
+            metadata: { payment_id: payment.id, confirm_url: confirmUrl },
+          });
+        }
+      }
+
       return {
         payment_id: payment?.id,
         status: 'pending_confirmation',
@@ -467,14 +507,19 @@ export class PaymentsService {
       });
     }
 
+    if (row?.id) {
+      await this.scheduleAutoConfirm(row.id);
+    }
+
     const landlordUserId = await this.getLandlordUserIdForPayment(payment.landlord_id);
     if (landlordUserId) {
+      const confirmUrl = this.buildConfirmLink(landlordUserId, paymentId);
       await this.notificationsService.createNotification({
         user_id: landlordUserId,
         type: 'EFT_PROOF_UPLOADED',
         title: 'EFT proof received',
-        message: `A tenant uploaded proof of payment (N$${Number(payment.amount_gross || 0).toLocaleString()}). Review and confirm receipt.`,
-        metadata: { payment_id: paymentId, lease_id: payment.lease_id },
+        message: `A tenant uploaded proof (N$${Number(payment.amount_gross || 0).toLocaleString()}). Tap to confirm or dispute — auto-confirms in ${DEFAULT_AUTO_CONFIRM_HOURS}h if uncontested.`,
+        metadata: { payment_id: paymentId, lease_id: payment.lease_id, confirm_url: confirmUrl },
       });
     }
 
@@ -773,6 +818,7 @@ export class PaymentsService {
     landlordUserId: string,
     paymentId: string,
     payload?: { received_date?: string; amount?: number },
+    options?: { confirmedVia?: 'MANUAL' | 'AUTO' | 'TOKEN_LINK' },
   ) {
     const client = this.getClient();
     const landlordProfileId = await this.getLandlordProfileId(landlordUserId);
@@ -797,6 +843,7 @@ export class PaymentsService {
     const transactionType = daysOverdue > 0 ? 'rent_late' : 'rent_on_time';
     const commission = this.calculateCommission(effectiveAmount, transactionType);
 
+    const confirmedVia = options?.confirmedVia ?? 'MANUAL';
     const { data: updated, error: updateError } = await client
       .from('payments')
       .update({
@@ -806,6 +853,8 @@ export class PaymentsService {
         commission_rate: commission.commissionRate / 100,
         commission_amount: commission.commissionAmount,
         amount_net: commission.netAmount,
+        confirmed_via: confirmedVia,
+        auto_confirm_at: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', paymentId)
@@ -918,6 +967,163 @@ export class PaymentsService {
       total: payments.length,
       page: filters.page,
     };
+  }
+
+  async getPendingConfirmationsSummary(landlordUserId: string) {
+    const client = this.getClient();
+    const landlordProfileId = await this.getLandlordProfileId(landlordUserId);
+    const { data, error } = await client
+      .from('payments')
+      .select('id, status, amount_gross, due_date, auto_confirm_at, eft_proof_uploaded_at, created_at, tenant_id')
+      .eq('landlord_id', landlordProfileId)
+      .in('status', ['PENDING', 'PROCESSING', 'OVERDUE'])
+      .is('confirmation_disputed_at', null)
+      .order('auto_confirm_at', { ascending: true, nullsFirst: false });
+    if (error) throw error;
+    const now = Date.now();
+    const rows = (data || []).map((p: any) => {
+      const autoAt = p.auto_confirm_at ? new Date(p.auto_confirm_at).getTime() : null;
+      const hoursUntilAuto = autoAt ? Math.max(0, Math.round((autoAt - now) / (3600 * 1000))) : null;
+      const agingHours = Math.round((now - new Date(p.eft_proof_uploaded_at || p.created_at).getTime()) / (3600 * 1000));
+      return { ...p, hours_until_auto_confirm: hoursUntilAuto, aging_hours: agingHours, confirm_url: this.buildConfirmLink(landlordUserId, p.id) };
+    });
+    return {
+      pending_count: rows.length,
+      overdue_confirm_count: rows.filter((r) => r.aging_hours >= DEFAULT_AUTO_CONFIRM_HOURS).length,
+      auto_confirm_hours: DEFAULT_AUTO_CONFIRM_HOURS,
+      payments: rows,
+    };
+  }
+
+  async bulkConfirmLandlordPayments(landlordUserId: string, paymentIds: string[]) {
+    const confirmed = [];
+    for (const id of paymentIds) {
+      try {
+        const row = await this.confirmLandlordPayment(landlordUserId, id, {}, { confirmedVia: 'MANUAL' });
+        confirmed.push(row);
+      } catch (e) {
+        this.logger.warn(`Bulk confirm skip ${id}: ${(e as Error).message}`);
+      }
+    }
+    return { confirmed_count: confirmed.length, payments: confirmed };
+  }
+
+  async disputePaymentConfirmation(landlordUserId: string, paymentId: string, reason?: string) {
+    const client = this.getClient();
+    const landlordProfileId = await this.getLandlordProfileId(landlordUserId);
+    const { data: payment, error } = await client.from('payments').select('*').eq('id', paymentId).single();
+    if (error || !payment) throw new NotFoundException('Payment not found');
+    if (payment.landlord_id !== landlordProfileId) {
+      throw new BadRequestException('Payment does not belong to this landlord');
+    }
+    const now = new Date().toISOString();
+    await client
+      .from('payments')
+      .update({
+        confirmation_disputed_at: now,
+        auto_confirm_at: null,
+        notes: JSON.stringify({ dispute_reason: reason || 'Landlord disputed receipt', disputed_at: now }),
+        updated_at: now,
+      })
+      .eq('id', paymentId);
+    if (payment.tenant_id) {
+      await this.notificationsService.createNotification({
+        user_id: payment.tenant_id,
+        type: 'PAYMENT_DISPUTED',
+        title: 'Payment disputed',
+        message: reason || 'Your landlord flagged an issue with this payment. Please contact them or upload corrected proof.',
+        metadata: { payment_id: paymentId },
+      });
+    }
+    return { payment_id: paymentId, disputed_at: now };
+  }
+
+  async getPaymentConfirmPreview(token: string) {
+    const payload = this.confirmTokenService.verify(token);
+    const client = this.getClient();
+    const { data: payment, error } = await client
+      .from('payments')
+      .select('id, amount_gross, status, due_date, payment_method, tenant_id, landlord_id, confirmation_disputed_at')
+      .eq('id', payload.paymentId)
+      .single();
+    if (error || !payment) throw new NotFoundException('Payment not found');
+    const landlordProfileId = await this.getLandlordProfileId(payload.landlordUserId);
+    if (payment.landlord_id !== landlordProfileId) {
+      throw new BadRequestException('Invalid confirmation link for this payment');
+    }
+    return {
+      payment_id: payment.id,
+      amount_gross: payment.amount_gross,
+      status: payment.status,
+      due_date: payment.due_date,
+      payment_method: payment.payment_method,
+      can_confirm: ['PENDING', 'PROCESSING', 'OVERDUE'].includes(payment.status) && !payment.confirmation_disputed_at,
+    };
+  }
+
+  async actOnPaymentConfirmToken(token: string, action: 'confirm' | 'dispute', reason?: string) {
+    const payload = this.confirmTokenService.verify(token);
+    if (action === 'confirm') {
+      return this.confirmLandlordPayment(payload.landlordUserId, payload.paymentId, {}, { confirmedVia: 'TOKEN_LINK' });
+    }
+    return this.disputePaymentConfirmation(payload.landlordUserId, payload.paymentId, reason);
+  }
+
+  async processAutoConfirmations() {
+    const client = this.getClient();
+    const now = new Date().toISOString();
+    const { data: due, error } = await client
+      .from('payments')
+      .select('id, landlord_id, tenant_id, amount_gross')
+      .in('status', ['PENDING', 'PROCESSING', 'OVERDUE'])
+      .is('confirmation_disputed_at', null)
+      .not('auto_confirm_at', 'is', null)
+      .lte('auto_confirm_at', now);
+    if (error) throw error;
+    let confirmed = 0;
+    for (const payment of due || []) {
+      try {
+        const landlordUserId = await this.getLandlordUserIdForPayment(payment.landlord_id);
+        if (!landlordUserId) continue;
+        await this.confirmLandlordPayment(landlordUserId, payment.id, {}, { confirmedVia: 'AUTO' });
+        confirmed += 1;
+      } catch (e) {
+        this.logger.warn(`Auto-confirm failed for ${payment.id}: ${(e as Error).message}`);
+      }
+    }
+    return { confirmed, checked_at: now };
+  }
+
+  async sendConfirmationReminders() {
+    const client = this.getClient();
+    const now = Date.now();
+    const reminderBeforeMs = 24 * 60 * 60 * 1000;
+    const { data, error } = await client
+      .from('payments')
+      .select('id, landlord_id, amount_gross, auto_confirm_at')
+      .in('status', ['PENDING', 'PROCESSING', 'OVERDUE'])
+      .is('confirmation_disputed_at', null)
+      .is('confirmation_reminder_sent_at', null)
+      .not('auto_confirm_at', 'is', null);
+    if (error) throw error;
+    let sent = 0;
+    for (const payment of data || []) {
+      const autoAt = new Date(payment.auto_confirm_at).getTime();
+      if (autoAt - now > reminderBeforeMs || autoAt <= now) continue;
+      const landlordUserId = await this.getLandlordUserIdForPayment(payment.landlord_id);
+      if (!landlordUserId) continue;
+      const confirmUrl = this.buildConfirmLink(landlordUserId, payment.id);
+      await this.notificationsService.createNotification({
+        user_id: landlordUserId,
+        type: 'PAYMENT_CONFIRM_REMINDER',
+        title: 'Reminder: confirm rent payment',
+        message: `N$${Number(payment.amount_gross || 0).toLocaleString()} will auto-confirm within 24 hours unless you dispute.`,
+        metadata: { payment_id: payment.id, confirm_url: confirmUrl },
+      });
+      await client.from('payments').update({ confirmation_reminder_sent_at: new Date().toISOString() }).eq('id', payment.id);
+      sent += 1;
+    }
+    return { reminders_sent: sent };
   }
 
   async recordOverduePayments() {

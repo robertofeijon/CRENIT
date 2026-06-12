@@ -21,6 +21,7 @@ const JOB_HANDLERS: Record<string, keyof CronInternalController> = {
   'mi-snapshot-rollup': 'runMiSnapshotRollup',
   'mi-licensable-webhooks': 'runMiLicensableWebhooks',
   'mi-webhook-retry': 'runMiWebhookRetry',
+  'payments-auto-confirm': 'runPaymentsAutoConfirm',
 };
 
 @Controller('internal/cron')
@@ -96,5 +97,9 @@ export class CronInternalController {
 
   async runMiWebhookRetry() {
     await this.miScheduler.retryFailedWebhooks();
+  }
+
+  async runPaymentsAutoConfirm() {
+    await this.paymentsScheduler.handleAutoConfirmJob();
   }
 }

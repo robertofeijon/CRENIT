@@ -19,6 +19,8 @@ export default function TenantDepositPage() {
   const [deposit, setDeposit] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [disputeType, setDisputeType] = useState('DAMAGE_CLAIM');
+  const [templates, setTemplates] = useState<Record<string, any>>({});
   const [reason, setReason] = useState('');
   const [description, setDescription] = useState('');
   const [requestedAmount, setRequestedAmount] = useState('');
@@ -33,6 +35,7 @@ export default function TenantDepositPage() {
   useEffect(() => {
     if (!loading && roleReady && !user) router.replace('/auth');
     if (!loading && roleReady && user) void loadDeposit();
+    api.get('/disputes/templates').then((res) => setTemplates(res.data?.data || {})).catch(() => null);
   }, [loading, roleReady, user, router]);
 
   const loadDeposit = useCallback(async () => {
@@ -62,6 +65,7 @@ export default function TenantDepositPage() {
     try {
       const formData = new FormData();
       formData.append('deposit_id', deposit.id);
+      formData.append('dispute_type', disputeType);
       formData.append('reason', reason);
       formData.append('description', description);
       formData.append('requested_amount', String(Number(requestedAmount)));
@@ -185,6 +189,31 @@ export default function TenantDepositPage() {
           <p className="mt-2 text-sm text-slate-500">Submit a dispute with optional supporting evidence.</p>
           <div className="mt-6 space-y-4">
             <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Dispute type</label>
+              <select value={disputeType} onChange={(e) => setDisputeType(e.target.value)} className={tenantInputClass}>
+                {Object.entries(templates).map(([key, tpl]: [string, any]) => (
+                  <option key={key} value={key}>
+                    {tpl.label}
+                  </option>
+                ))}
+                {!Object.keys(templates).length ? (
+                  <>
+                    <option value="DAMAGE_CLAIM">Property damage</option>
+                    <option value="UNPAID_UTILITIES">Unpaid utilities</option>
+                    <option value="EARLY_EXIT">Early exit</option>
+                    <option value="OTHER">Other</option>
+                  </>
+                ) : null}
+              </select>
+              {templates[disputeType] ? (
+                <ul className="mt-2 list-inside list-disc text-xs text-slate-500">
+                  {(templates[disputeType].checklist || []).map((item: string) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Reason</label>
               <input value={reason} onChange={(e) => setReason(e.target.value)} className={tenantInputClass} placeholder="Why are you disputing?" />
             </div>
@@ -246,8 +275,20 @@ export default function TenantDepositPage() {
                 <p className="mt-2 text-slate-600">
                   Status: <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusPillClass(dispute.status)}`}>{dispute.status}</span>
                 </p>
-                <p className="mt-2 text-slate-600">Requested: {formatN$(dispute.requested_amount)}</p>
-                <p className="mt-1 text-slate-600">Reason: {dispute.reason}</p>
+                {dispute.next_step ? <p className="mt-2 text-slate-600">Next: {dispute.next_step}</p> : null}
+                {dispute.estimated_resolution_by ? (
+                  <p className="text-xs text-slate-500">Est. resolution by {new Date(dispute.estimated_resolution_by).toLocaleDateString()}</p>
+                ) : null}
+                {(dispute.timeline || []).length ? (
+                  <ul className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                    {dispute.timeline.map((ev: any, i: number) => (
+                      <li key={`${ev.created_at}-${i}`} className="text-xs text-slate-600">
+                        <span className="font-semibold text-[#1A1A1A]">{ev.event_type}</span> — {ev.message}
+                        <span className="block text-slate-400">{new Date(ev.created_at).toLocaleString()}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
             ) : null}
           </div>

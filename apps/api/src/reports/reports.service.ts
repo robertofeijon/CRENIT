@@ -3,6 +3,7 @@ import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
 import { randomUUID } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
+import { brandTierFromScore100 } from '../credit-score/tier-branding';
 
 @Injectable()
 export class ReportsService {
@@ -18,18 +19,43 @@ export class ReportsService {
     const client = this.supabaseService.getClient();
     const { data, error } = await client
       .from('report_verifications')
-      .select('report_reference, score, tier, generated_at')
+      .select('report_reference, score, tier, brand_tier, score_100, generated_at, expires_at, revoked_at')
       .eq('report_reference', reference)
       .maybeSingle();
     if (error) throw error;
-    return data || null;
+    if (!data) return null;
+    if (data.revoked_at) {
+      return { ...data, invalid_reason: 'revoked' };
+    }
+    if (data.expires_at && new Date(data.expires_at).getTime() < Date.now()) {
+      return { ...data, invalid_reason: 'expired' };
+    }
+    return data;
+  }
+
+  async generateShareableCreditReport(tenantId: string, expiryDays = 30): Promise<{ buffer: Buffer; reference: string; expires_at: string }> {
+    const days = Math.min(90, Math.max(7, Math.floor(expiryDays)));
+    const buffer = await this.generateTenantReport(tenantId, { expiryDays: days });
+    const client = this.supabaseService.getClient();
+    const { data: latest } = await client
+      .from('report_verifications')
+      .select('report_reference, expires_at')
+      .eq('tenant_id', tenantId)
+      .order('generated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return {
+      buffer,
+      reference: latest?.report_reference || '',
+      expires_at: latest?.expires_at || new Date(Date.now() + days * 86400000).toISOString(),
+    };
   }
 
   getReportStatus(): string {
     return 'Reports module is available.';
   }
 
-  async generateTenantReport(tenantId: string): Promise<Buffer> {
+  async generateTenantReport(tenantId: string, options?: { expiryDays?: number }): Promise<Buffer> {
     const client = this.supabaseService.getClient();
 
     const [profileRes, leasesRes, paymentsRes, depositsRes, scoreRes] = await Promise.all([
@@ -75,14 +101,29 @@ export class ReportsService {
     const generatedAt = new Date().toISOString();
     const reportReference = this.buildReportReference();
     const verifyUrl = `${process.env.APP_BASE_URL || process.env.WEB_URL || 'https://crenit.co'}/verify/${reportReference}`;
+    const displayScore = Number(score?.score || 0);
+    const score100 = Math.round(((displayScore - 300) / 600) * 1000) / 10;
+    const brand = brandTierFromScore100(score100);
+    const expiryDays = options?.expiryDays ?? 30;
+    const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: historyRows } = await client
+      .from('score_history')
+      .select('score, recorded_at')
+      .eq('tenant_id', tenantId)
+      .order('recorded_at', { ascending: true })
+      .limit(12);
 
     await client.from('report_verifications').insert([
       {
         report_reference: reportReference,
         tenant_id: tenantId,
-        score: Number(score?.score || 0),
+        score: displayScore,
         tier: score?.tier || 'BUILDING',
+        brand_tier: brand.id,
+        score_100: score100,
         generated_at: generatedAt,
+        expires_at: expiresAt,
         score_calculation_date: score?.calculation_date || null,
         verified_payment_records: verifiedPaymentRecords,
         tenancy_months: tenancyMonths,
@@ -101,10 +142,12 @@ export class ReportsService {
       doc.on('error', (err: Error) => reject(err));
     });
 
-    doc.fontSize(18).font('Helvetica-Bold').text('CRENIT Tenant Report', { align: 'center' });
-    doc.moveDown(0.5);
+    doc.fontSize(20).font('Helvetica-Bold').fillColor('#C0392B').text('CRENIT Credit Report', { align: 'center' });
+    doc.moveDown(0.25);
+    doc.fontSize(11).font('Helvetica-Bold').fillColor('#1A1A1A').text(`${brand.label} tier`, { align: 'center' });
     doc.fontSize(10).font('Helvetica').fillColor('#666').text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
-    doc.text(`Report Reference: ${reportReference}`, { align: 'center' });
+    doc.text(`Valid until: ${new Date(expiresAt).toLocaleDateString()}`, { align: 'center' });
+    doc.text(`Reference: ${reportReference}`, { align: 'center' });
     doc.moveDown();
 
     doc.fillColor('#000').fontSize(12).font('Helvetica-Bold').text('Tenant Details');
@@ -117,14 +160,27 @@ export class ReportsService {
 
     doc.font('Helvetica-Bold').fontSize(12).text('Credit Score Summary');
     doc.moveDown(0.25);
-    doc.font('Helvetica').fontSize(10).text(`Score: ${score?.score ?? 'N/A'}`);
-    doc.text(`Tier: ${score?.tier ?? 'N/A'}`);
+    doc.font('Helvetica').fontSize(10).text(`CRENIT score: ${score100}/100 (${brand.label})`);
+    doc.text(`Display score: ${score?.score ?? 'N/A'}`);
+    doc.text(`Legacy tier: ${score?.tier ?? 'N/A'}`);
+    doc.text(`Profile: ${brand.tagline}`);
     if (score?.calculation_date) {
       doc.text(`Calculated: ${new Date(score.calculation_date).toLocaleDateString()}`);
     }
     doc.text(`Verified payment records: ${verifiedPaymentRecords}`);
     doc.text(`Tenancy history months used: ${tenancyMonths}`);
     doc.moveDown();
+
+    if ((historyRows || []).length) {
+      doc.font('Helvetica-Bold').fontSize(12).text('Score history (recent)');
+      doc.moveDown(0.25);
+      (historyRows || []).slice(-6).forEach((row: any) => {
+        doc.font('Helvetica').fontSize(10).text(
+          `${new Date(row.recorded_at).toLocaleDateString()}: ${row.score}`,
+        );
+      });
+      doc.moveDown();
+    }
 
     if (factors.length) {
       doc.font('Helvetica-Bold').fontSize(12).text('Score Factor Breakdown');
@@ -175,10 +231,13 @@ export class ReportsService {
     }
 
     doc.moveDown();
-    doc.font('Helvetica-Bold').fontSize(12).text('Report Verification');
+    doc.font('Helvetica-Bold').fontSize(12).text('Verification & methodology');
     doc.moveDown(0.25);
-    doc.font('Helvetica').fontSize(10).text(`Verified by CRENIT · crenit.co · ${reportReference}`);
-    doc.text(`Verify online: ${verifyUrl}`);
+    doc.font('Helvetica').fontSize(10).text(
+      'This report is generated from verified rent payments on CRENIT. Scan the QR code or visit the URL to confirm authenticity.',
+    );
+    doc.text(`Verify: ${verifyUrl}`);
+    doc.text(`Model: payment history 50% · defaults 30% · history length 20%.`);
     doc.image(qrImageBuffer, { width: 110 });
 
     doc.end();

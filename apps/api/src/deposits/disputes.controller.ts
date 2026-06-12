@@ -11,11 +11,24 @@ export class DisputesController {
     private readonly supabaseService: SupabaseService,
   ) {}
 
+  @Get('templates')
+  async templates() {
+    const data = this.depositsService.getDisputeTemplates();
+    return { success: true, data, error: null };
+  }
+
   @Post('file')
   @UseInterceptors(FileFieldsInterceptor([{ name: 'evidence', maxCount: 10 }]))
   async fileDispute(
     @Headers('authorization') authHeader: string,
-    @Body() body: { deposit_id: string; reason: string; description: string; requested_amount: number },
+    @Body()
+    body: {
+      deposit_id: string;
+      reason: string;
+      description: string;
+      requested_amount: number;
+      dispute_type?: string;
+    },
     @UploadedFiles() files: { evidence?: any[] },
   ) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
@@ -25,12 +38,17 @@ export class DisputesController {
       throw new BadRequestException('deposit_id, reason, description, and requested_amount are required');
     }
 
-    const dispute = await this.depositsService.fileDispute(profile.id, {
-      depositId: body.deposit_id,
-      reason: body.reason,
-      description: body.description,
-      requestedAmount: Number(body.requested_amount),
-    }, files?.evidence || []);
+    const dispute = await this.depositsService.fileDispute(
+      profile.id,
+      {
+        depositId: body.deposit_id,
+        reason: body.reason,
+        description: body.description,
+        requestedAmount: Number(body.requested_amount),
+        disputeType: body.dispute_type as any,
+      },
+      files?.evidence || [],
+    );
 
     return {
       success: true,

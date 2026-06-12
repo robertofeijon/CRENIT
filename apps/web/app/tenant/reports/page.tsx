@@ -33,6 +33,8 @@ export default function TenantReportsPage() {
   const [latestReport, setLatestReport] = useState<ReportMeta | null>(null);
   const [downloadLoading, setDownloadLoading] = useState(false);
   const [creditLoading, setCreditLoading] = useState(false);
+  const [shareExpiryDays, setShareExpiryDays] = useState(30);
+  const [shareRef, setShareRef] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
@@ -75,10 +77,14 @@ export default function TenantReportsPage() {
     setCreditLoading(true);
     setError(null);
     setMessage(null);
+    setShareRef(null);
     try {
-      const response = await api.get('/reports/credit-score', { responseType: 'blob' });
-      downloadPdf(new Blob([response.data], { type: 'application/pdf' }), 'crenit-score-report.pdf');
-      setMessage('Credit score report downloaded.');
+      const response = await api.post('/reports/credit-score/share', { expiry_days: shareExpiryDays }, { responseType: 'blob' });
+      downloadPdf(new Blob([response.data], { type: 'application/pdf' }), 'crenit-credit-report.pdf');
+      const ref = response.headers?.['x-report-reference'];
+      const exp = response.headers?.['x-report-expires-at'];
+      setShareRef(ref ? `Reference ${ref}${exp ? ` · valid until ${new Date(exp).toLocaleDateString()}` : ''}` : null);
+      setMessage('Shareable credit report downloaded — includes verification QR.');
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
       setError(apiErr?.response?.data?.message || apiErr?.message || 'Unable to download credit score report.');
@@ -144,7 +150,21 @@ export default function TenantReportsPage() {
             <FileText className="h-5 w-5 text-[#C0392B]" aria-hidden />
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Credit score report</p>
           </div>
-          <p className="mt-3 text-sm text-slate-600">Score breakdown by factor, tier, and recent history for financial partners.</p>
+          <p className="mt-3 text-sm text-slate-600">Polished PDF with tier badge, QR verification, and expiry for landlords or lenders.</p>
+          <label className="mt-4 block text-sm text-slate-600">
+            Link valid for (days):{' '}
+            <select
+              value={shareExpiryDays}
+              onChange={(e) => setShareExpiryDays(Number(e.target.value))}
+              className="ml-2 rounded-lg border border-slate-300 px-2 py-1"
+            >
+              <option value={14}>14</option>
+              <option value={30}>30</option>
+              <option value={60}>60</option>
+              <option value={90}>90</option>
+            </select>
+          </label>
+          {shareRef ? <p className="mt-2 text-xs text-emerald-800">{shareRef}</p> : null}
           <button
             type="button"
             onClick={() => void handleDownloadCreditReport()}

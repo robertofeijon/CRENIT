@@ -81,7 +81,7 @@ if (!existsSync(legacyDashboard)) {
   fail('Legacy /dashboard pages', 'app/dashboard still exists — remove or redirect only');
 }
 
-for (const wf of ['cron.yml', 'cron-webhook-retry.yml']) {
+for (const wf of ['cron.yml', 'cron-webhook-retry.yml', 'cron-auto-confirm.yml']) {
   const path = join(root, '.github', 'workflows', wf);
   if (existsSync(path)) {
     pass(`Cron workflow ${wf}`, 'external scheduler wired');

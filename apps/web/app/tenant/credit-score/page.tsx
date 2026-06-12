@@ -10,6 +10,8 @@ import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import RentalCreditModelCard from '../../components/credit/RentalCreditModelCard';
+import ScoreTierProgress from '../../components/credit/ScoreTierProgress';
+import { BRAND_TIER_COLORS, type BrandTier } from '../../../src/lib/tier-branding';
 
 const FACTOR_LABELS: Record<string, { label: string; weight: string }> = {
   payment_history: { label: 'Payment history', weight: '50%' },
@@ -31,6 +33,10 @@ export default function TenantCreditScorePage() {
   const [history, setHistory] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [recalcLoading, setRecalcLoading] = useState(false);
+  const [insights, setInsights] = useState<any>(null);
+  const [simMonths, setSimMonths] = useState(6);
+  const [simulation, setSimulation] = useState<any>(null);
+  const [simLoading, setSimLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,9 +48,14 @@ export default function TenantCreditScorePage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [scoreRes, historyRes] = await Promise.all([api.get('/credit-score/me'), api.get('/credit-score/history')]);
+      const [scoreRes, historyRes, insightsRes] = await Promise.all([
+        api.get('/credit-score/me'),
+        api.get('/credit-score/history'),
+        api.get('/credit-score/insights'),
+      ]);
       setScoreData(scoreRes.data.data);
       setHistory(historyRes.data.data || []);
+      setInsights(insightsRes.data.data);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to load credit score.');
     } finally {
@@ -69,6 +80,20 @@ export default function TenantCreditScorePage() {
   const score = scoreData?.score ?? 0;
   const score100 = scoreData?.score_100 ?? Math.round(((score - 300) / 600) * 1000) / 10;
   const riskTier = scoreData?.risk_tier ?? 'MODERATE';
+  const brandTier = scoreData?.brand_tier ?? insights?.brand_tier;
+  const tierProgress = scoreData?.tier_progress ?? insights?.tier_progress;
+
+  const runSimulation = async () => {
+    setSimLoading(true);
+    try {
+      const res = await api.post('/credit-score/simulate', { months_on_time: simMonths });
+      setSimulation(res.data.data);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Simulation failed');
+    } finally {
+      setSimLoading(false);
+    }
+  };
   const gaugePercent = useMemo(() => Math.min(100, Math.max(0, score100)), [score100]);
   const breakdown = scoreData?.breakdown;
   const paymentMetrics = scoreData?.paymentMetrics;
@@ -125,6 +150,50 @@ export default function TenantCreditScorePage() {
             </section>
           ) : null}
 
+          <ScoreTierProgress brandTier={brandTier} tierProgress={tierProgress} />
+
+          {insights?.holding_back?.length ? (
+            <section className="tenant-panel">
+              <h2 className="text-lg font-semibold text-[#1A1A1A]">What&apos;s holding your score back</h2>
+              <ul className="mt-4 space-y-2 text-sm text-slate-700">
+                {insights.holding_back.map((line: string) => (
+                  <li key={line.slice(0, 48)} className="rounded-xl bg-amber-50 px-4 py-3 text-amber-950">
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          <section className="tenant-panel">
+            <h2 className="text-lg font-semibold text-[#1A1A1A]">Score simulator</h2>
+            <p className="mt-2 text-sm text-slate-600">If you pay on time for the next few months, your tier could improve.</p>
+            <div className="mt-4 flex flex-wrap items-center gap-4">
+              <label className="text-sm font-medium text-slate-700">
+                Months on-time:{' '}
+                <input
+                  type="range"
+                  min={0}
+                  max={12}
+                  value={simMonths}
+                  onChange={(e) => setSimMonths(Number(e.target.value))}
+                  className="ml-2 align-middle"
+                />
+                <span className="ml-2 font-semibold">{simMonths}</span>
+              </label>
+              <button type="button" className="tenant-btn-secondary" disabled={simLoading} onClick={() => void runSimulation()}>
+                {simLoading ? 'Calculating…' : 'Project score'}
+              </button>
+            </div>
+            {simulation ? (
+              <p className="mt-4 rounded-xl bg-[#F3F4F6] px-4 py-3 text-sm text-slate-700">
+                {simulation.current.brand_tier.label} ({simulation.current.score_100}) →{' '}
+                <span className="font-semibold">{simulation.projected.brand_tier.label}</span> ({simulation.projected.score_100}
+                , +{simulation.projected.points_gain} pts). <span className="text-slate-500">{simulation.disclaimer}</span>
+              </p>
+            ) : null}
+          </section>
+
           <RentalCreditModelCard
             breakdown={{
               score100,
@@ -157,9 +226,15 @@ export default function TenantCreditScorePage() {
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-4xl font-bold text-[#1A1A1A]">{score100}</span>
                     <span className="text-xs text-slate-500">/ 100</span>
-                    <span className={`mt-1 text-sm font-semibold uppercase ${tierColors[scoreData?.tier] || 'text-slate-600'}`}>
-                      {riskTier.replace('_', ' ')}
-                    </span>
+                    {brandTier ? (
+                      <span className={`mt-1 rounded-full px-2 py-0.5 text-xs font-bold ${BRAND_TIER_COLORS[brandTier.id as BrandTier]}`}>
+                        {brandTier.label}
+                      </span>
+                    ) : (
+                      <span className={`mt-1 text-sm font-semibold uppercase ${tierColors[scoreData?.tier] || 'text-slate-600'}`}>
+                        {riskTier.replace('_', ' ')}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <button type="button" className="tenant-btn-secondary mt-6" disabled={recalcLoading} onClick={() => void handleRecalculate()}>
