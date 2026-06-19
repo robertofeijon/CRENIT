@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Lock, RefreshCw, Scale, Wallet } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
@@ -12,6 +13,7 @@ import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { LandlordWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { formatN$, landlordInputClass, landlordSelectClass, statusPillClass } from '../../components/landlord/landlordUi';
+import DisputeDetailPanel from '../../components/disputes/DisputeDetailPanel';
 
 export default function LandlordDepositsPage() {
   const { user, role, loading } = useAuth();
@@ -30,6 +32,7 @@ export default function LandlordDepositsPage() {
   const [proposedAmount, setProposedAmount] = useState('');
   const [reason, setReason] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [openDisputes, setOpenDisputes] = useState<any[]>([]);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/auth');
@@ -58,12 +61,22 @@ export default function LandlordDepositsPage() {
     }
   }, []);
 
+  const loadOpenDisputes = useCallback(async () => {
+    try {
+      const res = await api.get('/deposits/landlord/disputes');
+      setOpenDisputes(res.data.data || []);
+    } catch {
+      setOpenDisputes([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (user && (role === 'LANDLORD' || role === 'ADMIN')) {
       void loadDeposits();
       void loadTenants();
+      void loadOpenDisputes();
     }
-  }, [user, role, loadDeposits, loadTenants]);
+  }, [user, role, loadDeposits, loadTenants, loadOpenDisputes]);
 
   const depositStats = useMemo(() => {
     const held = deposits.filter((d) => d.status === 'HELD');
@@ -121,13 +134,15 @@ export default function LandlordDepositsPage() {
     }
   };
 
-  const handleLoadDispute = async () => {
-    if (!disputeId) return;
+  const handleLoadDispute = async (id?: string) => {
+    const targetId = id || disputeId;
+    if (!targetId) return;
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.get(`/disputes/${disputeId}`);
+      const response = await api.get(`/disputes/${targetId}`);
       setDispute(response.data.data);
+      setDisputeId(targetId);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to load dispute.');
     } finally {
@@ -147,6 +162,7 @@ export default function LandlordDepositsPage() {
       await api.post(`/disputes/${disputeId}/respond`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setMessage('Dispute response submitted.');
       await handleLoadDispute();
+      await loadOpenDisputes();
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to respond to dispute.');
     } finally {
@@ -254,23 +270,45 @@ export default function LandlordDepositsPage() {
       </section>
 
       <section className="landlord-panel">
+        <h2 className="text-lg font-semibold text-[#1A1A1A]">Open disputes</h2>
+        <p className="mt-1 text-sm text-slate-500">Disputes awaiting your review — <Link href="/landlord/disputes" className="font-semibold text-[#C0392B] hover:underline">open disputes workspace</Link>.</p>
+        {openDisputes.length ? (
+          <div className="mt-4 space-y-3">
+            {openDisputes.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => void handleLoadDispute(item.id)}
+                className={`w-full rounded-xl border p-4 text-left transition ${
+                  disputeId === item.id ? 'border-[#C0392B] bg-[#FDEDEC]' : 'border-slate-100 bg-[#F3F4F6] hover:border-slate-200'
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-semibold text-[#1A1A1A]">{item.tenant_name}</p>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusPillClass(item.status)}`}>{item.status}</span>
+                </div>
+                <p className="mt-1 line-clamp-2 text-sm text-slate-600">{item.claim_description}</p>
+                {item.next_step ? <p className="mt-2 text-xs text-slate-500">Next: {item.next_step}</p> : null}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-slate-500">No open disputes — great news for your portfolio.</p>
+        )}
+      </section>
+
+      <section className="landlord-panel">
         <h2 className="text-lg font-semibold text-[#1A1A1A]">Dispute tools</h2>
         <p className="mt-1 text-sm text-slate-500">Load a dispute by ID and submit your response with evidence.</p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
           <input value={disputeId} onChange={(e) => setDisputeId(e.target.value)} placeholder="Dispute ID" className={`${landlordInputClass} flex-1`} />
-          <button type="button" onClick={handleLoadDispute} className="landlord-btn-secondary">
+          <button type="button" onClick={() => void handleLoadDispute()} className="landlord-btn-secondary">
             Load dispute
           </button>
         </div>
         {dispute ? (
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <div className="rounded-xl border border-slate-100 bg-[#F3F4F6] p-4 text-sm text-slate-700">
-              <p>
-                Status:{' '}
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusPillClass(dispute.status)}`}>{dispute.status}</span>
-              </p>
-              <p className="mt-2">{dispute.claim_description}</p>
-            </div>
+            <DisputeDetailPanel dispute={dispute} />
             <div className="space-y-3">
               <select value={responseType} onChange={(e) => setResponseType(e.target.value as typeof responseType)} className={landlordSelectClass}>
                 <option value="accept_full">Accept full</option>

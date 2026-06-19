@@ -64,7 +64,7 @@ export class DisputesController {
   @Get(':disputeId')
   async getDispute(@Headers('authorization') authHeader: string, @Param('disputeId') disputeId: string) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
-    const dispute = await this.depositsService.getDispute(profile.id, disputeId);
+    const dispute = await this.depositsService.getDispute(profile.id, disputeId, profile.role?.toString());
     return { success: true, data: dispute, error: null };
   }
 
@@ -93,6 +93,19 @@ export class DisputesController {
     assertKycApproved(profile);
 
     const result = await this.depositsService.tenantAcceptSettlement(profile.id, disputeId, body.accept);
+    return { success: true, data: result, error: null };
+  }
+
+  @Post(':disputeId/appeal')
+  async appeal(
+    @Headers('authorization') authHeader: string,
+    @Param('disputeId') disputeId: string,
+    @Body() body: { reason: string },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertKycApproved(profile);
+
+    const result = await this.depositsService.fileDisputeAppeal(profile.id, disputeId, body.reason);
     return { success: true, data: result, error: null };
   }
 }

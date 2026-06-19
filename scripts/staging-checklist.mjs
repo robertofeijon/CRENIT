@@ -11,6 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 
 const steps = [
+  { name: 'Deploy gates (local)', script: 'verify-deploy-gates.mjs' },
   { name: 'RLS validation', script: 'validate-rls.mjs' },
   { name: 'Staging E2E smoke', script: 'smoke-staging-e2e.mjs' },
 ];

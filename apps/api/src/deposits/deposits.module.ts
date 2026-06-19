@@ -5,9 +5,10 @@ import { AdminDisputesController } from './admin-disputes.controller';
 import { DepositsService } from './deposits.service';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { CreditScoreModule } from '../credit-score/credit-score.module';
 
 @Module({
-  imports: [SupabaseModule, NotificationsModule],
+  imports: [SupabaseModule, NotificationsModule, CreditScoreModule],
   controllers: [DepositsController, DisputesController, AdminDisputesController],
   providers: [DepositsService],
   exports: [DepositsService],

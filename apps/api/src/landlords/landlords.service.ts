@@ -177,6 +177,82 @@ export class LandlordsService {
     };
   }
 
+  async buildReadinessChecklist(userId: string) {
+    const client = this.supabase.getClient();
+    const landlordProfile = await this.ensureLandlordProfile(userId);
+    const { data: profile } = await client
+      .from('profiles')
+      .select('kyc_status, partner_approval_status, landlord_tier')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const partnerStatus =
+      profile?.partner_approval_status?.toString().toUpperCase() ||
+      landlordProfile.partner_status?.toString().toUpperCase() ||
+      'UNVERIFIED';
+    const kycApproved = isKycApproved(profile || {});
+    const partnerApproved = partnerStatus === 'APPROVED';
+
+    const [propertiesRes, invitesRes] = await Promise.all([
+      client.from('properties').select('id, units(id, monthly_rent)').eq('landlord_id', landlordProfile.id),
+      client.from('tenant_invitations').select('id').eq('landlord_id', landlordProfile.id).limit(1),
+    ]);
+
+    const properties = propertiesRes.data || [];
+    const hasProperty = properties.length > 0;
+    const hasConfiguredUnit = properties.some((p: any) =>
+      (p.units || []).some((u: any) => Number(u.monthly_rent) > 0),
+    );
+    const hasBank = Boolean(landlordProfile.bank_account_number && landlordProfile.bank_name);
+    const hasInvite = (invitesRes.data || []).length > 0;
+
+    type StepStatus = 'done' | 'pending' | 'blocked';
+    const step = (
+      id: string,
+      label: string,
+      done: boolean,
+      pendingWhen: boolean,
+      etaDays: number,
+      href: string,
+      blocking: boolean,
+    ) => ({
+      id,
+      label,
+      status: (done ? 'done' : pendingWhen ? 'pending' : 'blocked') as StepStatus,
+      eta_days: done ? 0 : etaDays,
+      href,
+      blocking,
+    });
+
+    const steps = [
+      step('kyc', 'Complete landlord KYC', kycApproved, true, 2, '/landlord/overview?verify=1', !kycApproved),
+      step('partner', 'Partner approval', partnerApproved, kycApproved, 3, '/landlord/overview', !partnerApproved),
+      step('property', 'Add your first property', hasProperty, partnerApproved, 0, '/landlord/properties', !hasProperty),
+      step(
+        'unit',
+        'Set unit rent & due details',
+        hasConfiguredUnit,
+        hasProperty,
+        0,
+        '/landlord/properties',
+        !hasConfiguredUnit,
+      ),
+      step('bank', 'Add bank payout details', hasBank, true, 0, '/landlord/settings', false),
+      step('invite', 'Invite your first tenant', hasInvite, hasConfiguredUnit, 0, '/landlord/tenants', false),
+    ];
+
+    const completed = steps.filter((s) => s.status === 'done').length;
+
+    return {
+      steps,
+      completed,
+      total: steps.length,
+      ready: kycApproved && partnerApproved && hasProperty && hasConfiguredUnit,
+      partner_status: partnerStatus,
+      landlord_tier: profile?.landlord_tier || null,
+    };
+  }
+
   async listTenants(landlordUserId: string) {
     const client = this.supabase.getClient();
     const landlordProfile = await this.ensureLandlordProfile(landlordUserId);

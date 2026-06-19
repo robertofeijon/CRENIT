@@ -23,6 +23,23 @@ export class DepositsController {
     return { success: true, data: deposit, error: null };
   }
 
+  @Get('landlord/disputes')
+  async landlordOpenDisputes(@Headers('authorization') authHeader: string) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    assertPartnerApproved(profile, 'Your landlord account is under review. Dispute tools are locked until approval.');
+    const disputes = await this.depositsService.listLandlordOpenDisputes(profile.id);
+    return { success: true, data: disputes, error: null };
+  }
+
+  @Get('landlord/dispute-risk')
+  async landlordDisputeRisk(@Headers('authorization') authHeader: string) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    const risk = await this.depositsService.getLandlordDisputeRisk(profile.id);
+    return { success: true, data: risk, error: null };
+  }
+
   @Get('landlord')
   async landlordDeposits(@Headers('authorization') authHeader: string) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);

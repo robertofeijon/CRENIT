@@ -172,4 +172,44 @@ export class AuthController {
       throw new BadRequestException(error?.message || 'Invalid 2FA code');
     }
   }
+
+  @Post('2fa/sms/setup')
+  async setupSmsTwoFactor(@Headers('authorization') authHeader: string) {
+    try {
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader, {
+        skipTwoFactor: true,
+      });
+      const data = await this.authService.setupSmsTwoFactor(profile.id);
+      return { success: true, data, error: null };
+    } catch (error: any) {
+      throw new BadRequestException(error?.message || 'Unable to start SMS 2FA');
+    }
+  }
+
+  @Post('2fa/sms/confirm')
+  async confirmSmsTwoFactor(@Headers('authorization') authHeader: string, @Body() body: { code: string }) {
+    try {
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader, {
+        skipTwoFactor: true,
+      });
+      if (!body?.code) throw new BadRequestException('code is required');
+      const data = await this.authService.confirmSmsTwoFactor(profile.id, body.code.trim());
+      return { success: true, data, error: null };
+    } catch (error: any) {
+      throw new BadRequestException(error?.message || 'Unable to confirm SMS 2FA');
+    }
+  }
+
+  @Post('2fa/sms/send-challenge')
+  async sendSmsTwoFactorChallenge(@Headers('authorization') authHeader: string) {
+    try {
+      const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader, {
+        skipTwoFactor: true,
+      });
+      const data = await this.authService.sendSmsTwoFactorChallenge(profile.id);
+      return { success: true, data, error: null };
+    } catch (error: any) {
+      throw new BadRequestException(error?.message || 'Unable to send SMS code');
+    }
+  }
 }

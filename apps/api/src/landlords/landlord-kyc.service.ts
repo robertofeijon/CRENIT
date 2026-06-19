@@ -1,6 +1,11 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { createSignedStorageUrl, sanitizeStorageFileName } from '../supabase/storage.utils';
+import {
+  FULL_LANDLORD_CONSENT_VERSION,
+  LITE_LANDLORD_CONSENT_VERSION,
+  resolveLandlordTierFromManagedCount,
+} from './lite-landlord.util';
 
 const KYC_BUCKET = 'kyc-documents';
 const MAX_BYTES = Number(process.env.MAX_KYC_UPLOAD_BYTES || 8 * 1024 * 1024);
@@ -260,11 +265,17 @@ export class LandlordKycService {
       rejected_steps: [] as number[],
     };
 
+    const landlordTier = resolveLandlordTierFromManagedCount(payload.step2.properties_managed_count);
+    const consentVersion =
+      payload.consent_text_version ||
+      (landlordTier === 'LITE' ? LITE_LANDLORD_CONSENT_VERSION : FULL_LANDLORD_CONSENT_VERSION);
+
     await client.from('profiles').update({
       kyc_status: 'PENDING_REVIEW',
       partner_approval_status: 'PENDING_REVIEW',
       kyc_submitted_at: now,
       kyc_rejection_reason: null,
+      landlord_tier: landlordTier,
     }).eq('id', landlordUserId);
 
     await client.from('landlord_profiles').update({
@@ -272,11 +283,11 @@ export class LandlordKycService {
       landlord_kyc_draft: null,
     }).eq('user_id', landlordUserId);
 
-    if (payload.consent_text_version) {
+    if (consentVersion) {
       await client.from('partner_consents').insert([
         {
           landlord_id: landlordUserId,
-          consent_text_version: payload.consent_text_version,
+          consent_text_version: consentVersion,
         },
       ]);
     }

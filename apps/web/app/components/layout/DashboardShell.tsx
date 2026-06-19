@@ -11,6 +11,7 @@ import { NotificationsProvider } from '../../../src/contexts/NotificationsContex
 import MarketingNav from './MarketingNav';
 import Logo from '../ui/Logo';
 import NotificationBell from '../ui/NotificationBell';
+import ThemeToggle from '../ui/ThemeToggle';
 
 export type NavItem = {
   label: string;
@@ -84,7 +85,7 @@ export default function DashboardShell({
   const sidebar = (
     <aside
       className={`flex h-full w-[260px] flex-col border-r ${
-        isPolishedShell ? 'border-slate-200 bg-white' : 'border-gray-200 bg-[#F9FAFB]'
+        isPolishedShell ? 'border-[var(--rc-border)] bg-[var(--rc-card)]' : 'border-gray-200 bg-[var(--rc-card-alt)]'
       }`}
     >
       <div className={`border-b p-5 ${isPolishedShell ? 'border-slate-200' : 'border-gray-200'}`}>
@@ -170,10 +171,10 @@ export default function DashboardShell({
 
   return (
     <NotificationsProvider>
-    <div className="min-h-screen bg-[#F3F4F6]">
+    <div className="min-h-screen bg-[var(--rc-bg,#F3F4F6)]">
       <header
         className={`fixed left-0 right-0 top-0 z-50 h-16 border-b backdrop-blur ${
-          isPolishedShell ? 'border-slate-200/80 bg-[#F3F4F6]/95' : 'border-gray-200 bg-white'
+          isPolishedShell ? 'border-[var(--rc-border)] bg-[var(--rc-bg)]/95' : 'border-[var(--rc-border)] bg-[var(--rc-card)]'
         }`}
       >
         <div className="flex h-full items-center justify-between gap-4 px-4 lg:px-6">
@@ -193,6 +194,7 @@ export default function DashboardShell({
           </div>
           <div className="flex items-center gap-2">
             {headerBadge}
+            <ThemeToggle compact />
             {isPolishedShell ? <NotificationBell role={role} /> : null}
             <Link href={pill.href} className={`rounded-full px-4 py-2 text-sm font-semibold ${pill.className}`}>
               {pill.label}

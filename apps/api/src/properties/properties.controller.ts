@@ -85,4 +85,18 @@ export class PropertiesController {
     const unit = await this.propertiesService.updateUnit(profile.id, unitId, body);
     return { success: true, data: unit, error: null };
   }
+
+  @Post('import-csv')
+  async importCsv(@Headers('authorization') authHeader: string, @Body() body: { csv?: string }) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    assertPartnerApproved(profile, 'Your landlord account is under review. Bulk import is locked until approval.');
+
+    if (!body?.csv?.trim()) {
+      throw new BadRequestException('csv text is required');
+    }
+
+    const result = await this.propertiesService.importUnitsFromCsv(profile.id, body.csv);
+    return { success: true, data: result, error: null };
+  }
 }

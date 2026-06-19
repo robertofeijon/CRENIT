@@ -12,10 +12,18 @@
   --rc-navy-hover: #16213e;
   --rc-bg: #f3f4f6;
   --rc-card: #ffffff;
+  --rc-card-alt: #f8fafc;
+  --rc-elevated: #ffffff;
   --rc-border: #e5e7eb;
   --rc-text: #111827;
-  --rc-text-secondary: #6b7280;
-  --rc-text-muted: #9ca3af;
+  --rc-text-secondary: #64748b;
+  --rc-text-muted: #94a3b8;
+  --rc-accent-surface: #fdedec;
+  --rc-hover: #f8fafc;
+}
+
+html.dark {
+  color-scheme: dark;
 }
 
 html {
@@ -26,9 +34,10 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: Inter, system-ui, sans-serif;
-  background: #f3f4f6;
-  color: #111827;
+  background: var(--rc-bg);
+  color: var(--rc-text);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 * {
@@ -37,11 +46,16 @@ body {
 
 @layer components {
   .rc-card {
-    @apply rounded-2xl border border-gray-100 bg-white p-6 shadow-sm;
+    @apply rounded-2xl border p-6 shadow-sm;
+    border-color: var(--rc-border);
+    background: var(--rc-card);
   }
 
   .rc-input {
-    @apply w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#C0392B];
+    @apply w-full rounded-lg border px-4 py-2 text-sm transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#C0392B];
+    border-color: var(--rc-border);
+    background: var(--rc-card);
+    color: var(--rc-text);
   }
 
   .rc-btn-primary {
@@ -49,7 +63,14 @@ body {
   }
 
   .rc-btn-outline {
-    @apply inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-gray-50;
+    @apply inline-flex items-center justify-center rounded-lg border px-4 py-2 text-sm font-semibold transition;
+    border-color: var(--rc-border);
+    background: var(--rc-card);
+    color: var(--rc-text);
+  }
+
+  .rc-btn-outline:hover {
+    background: var(--rc-hover);
   }
 
   .rc-btn-navy {
@@ -57,7 +78,9 @@ body {
   }
 
   .landlord-panel {
-    @apply rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6;
+    @apply rounded-[1.5rem] border p-5 shadow-sm sm:p-6;
+    border-color: var(--rc-border);
+    background: var(--rc-card);
   }
 
   .landlord-btn-primary {
@@ -65,11 +88,20 @@ body {
   }
 
   .landlord-btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-[#1A1A1A] transition hover:bg-slate-50 disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition disabled:opacity-60;
+    border-color: var(--rc-border);
+    background: var(--rc-card);
+    color: var(--rc-text);
+  }
+
+  .landlord-btn-secondary:hover {
+    background: var(--rc-hover);
   }
 
   .tenant-panel {
-    @apply rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6;
+    @apply rounded-[1.5rem] border p-5 shadow-sm sm:p-6;
+    border-color: var(--rc-border);
+    background: var(--rc-card);
   }
 
   .tenant-btn-primary {
@@ -77,7 +109,14 @@ body {
   }
 
   .tenant-btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-[#1A1A1A] transition hover:bg-slate-50 disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition disabled:opacity-60;
+    border-color: var(--rc-border);
+    background: var(--rc-card);
+    color: var(--rc-text);
+  }
+
+  .tenant-btn-secondary:hover {
+    background: var(--rc-hover);
   }
 
   .stat-grid {
@@ -86,7 +125,9 @@ body {
   }
 
   .stat-card {
-    @apply rounded-3xl border border-slate-200 bg-[#FCFCFC] p-5;
+    @apply rounded-3xl border p-5;
+    border-color: var(--rc-border);
+    background: var(--rc-card-alt);
     min-width: 0;
   }
 
@@ -105,7 +146,8 @@ body {
   }
 
   .stat-value {
-    @apply mt-4 text-3xl font-semibold text-[#1A1A1A];
+    @apply mt-4 text-3xl font-semibold;
+    color: var(--rc-text);
     font-variant-numeric: tabular-nums;
   }
 
@@ -118,7 +160,8 @@ body {
   }
 
   .marketing-section-muted {
-    @apply bg-[#F8F9FB] py-12 sm:py-16;
+    @apply py-12 sm:py-16;
+    background: var(--rc-card-alt);
   }
 
   .marketing-eyebrow {
@@ -127,7 +170,8 @@ body {
 
   .marketing-h1 {
     font-family: 'Instrument Serif', Georgia, serif;
-    @apply text-4xl font-normal leading-[1.12] tracking-tight text-[#1A1A1A] sm:text-5xl lg:text-[3.5rem];
+    @apply text-4xl font-normal leading-[1.12] tracking-tight sm:text-5xl lg:text-[3.5rem];
+    color: var(--rc-text);
   }
 
   .marketing-h1 em {
@@ -135,20 +179,18 @@ body {
   }
 
   .marketing-page {
-    @apply min-h-screen bg-[#F3F4F6] text-[#1A1A1A];
+    @apply min-h-screen;
+    background: var(--rc-bg);
+    color: var(--rc-text);
   }
 
   .marketing-metal-card {
     position: relative;
     overflow: hidden;
     border-radius: 1.25rem;
-    border: 1px solid rgba(148, 163, 184, 0.28);
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(241, 245, 249, 0.92));
-    box-shadow:
-      7px 7px 14px rgba(15, 23, 42, 0.18),
-      -7px -7px 14px rgba(255, 255, 255, 0.7),
-      inset 1px 1px 3px rgba(255, 255, 255, 0.7),
-      inset -1px -1px 3px rgba(15, 23, 42, 0.2);
+    border: 1px solid var(--rc-border);
+    background: linear-gradient(135deg, var(--rc-card), var(--rc-card-alt));
+    box-shadow: 7px 7px 14px rgba(0, 0, 0, 0.12);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
@@ -169,11 +211,13 @@ body {
   }
 
   .marketing-h2 {
-    @apply text-3xl font-semibold tracking-tight text-[#1A1A1A] sm:text-4xl;
+    @apply text-3xl font-semibold tracking-tight sm:text-4xl;
+    color: var(--rc-text);
   }
 
   .marketing-lead {
-    @apply text-lg leading-8 text-slate-600 sm:text-xl;
+    @apply text-lg leading-8 sm:text-xl;
+    color: var(--rc-text-secondary);
   }
 
   .marketing-btn-primary {
@@ -181,11 +225,23 @@ body {
   }
 
   .marketing-btn-outline {
-    @apply inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-[#1A1A1A] transition hover:border-slate-400 hover:bg-slate-50;
+    @apply inline-flex items-center justify-center rounded-full border px-6 py-3 text-sm font-semibold transition;
+    border-color: var(--rc-border);
+    background: var(--rc-card);
+    color: var(--rc-text);
+  }
+
+  .marketing-btn-outline:hover {
+    background: var(--rc-hover);
   }
 
   .marketing-btn-ghost {
-    @apply inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold text-[#1A1A1A] transition hover:bg-slate-100;
+    @apply inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold transition;
+    color: var(--rc-text);
+  }
+
+  .marketing-btn-ghost:hover {
+    background: var(--rc-hover);
   }
 
   .marketing-service-tab {
@@ -193,25 +249,121 @@ body {
   }
 
   .marketing-service-tab-active {
-    @apply border-[#1A1A1A] bg-[#1A1A1A] text-white;
+    @apply border-[var(--rc-text)] bg-[var(--rc-text)] text-[var(--rc-card)];
   }
 
   .marketing-service-tab-inactive {
-    @apply border-transparent bg-transparent text-slate-600 hover:bg-slate-100 hover:text-[#1A1A1A];
+    @apply border-transparent bg-transparent transition;
+    color: var(--rc-text-secondary);
+  }
+
+  .marketing-service-tab-inactive:hover {
+    background: var(--rc-hover);
+    color: var(--rc-text);
   }
 
   .marketing-stat-value {
-    @apply text-4xl font-semibold tracking-tight text-[#1A1A1A] sm:text-5xl;
+    @apply text-4xl font-semibold tracking-tight sm:text-5xl;
+    color: var(--rc-text);
     font-variant-numeric: tabular-nums;
   }
 
   .marketing-product-frame {
-    @apply overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)];
+    @apply overflow-hidden rounded-2xl border shadow-lg;
+    border-color: var(--rc-border);
+    background: var(--rc-card);
   }
 
   .marketing-logo-pill {
-    @apply flex h-12 min-w-[120px] items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold uppercase tracking-wide text-slate-500;
+    @apply flex h-12 min-w-[120px] items-center justify-center rounded-lg border px-4 text-xs font-semibold uppercase tracking-wide;
+    border-color: var(--rc-border);
+    background: var(--rc-card);
+    color: var(--rc-text-muted);
   }
+
+  .marketing-footer {
+    background: #0a0a0a;
+  }
+}
+
+/* Dark mode — remap hardcoded utility colors across dashboards & marketing */
+html.dark .bg-white,
+html.dark [class*='bg-white'] {
+  background-color: var(--rc-card) !important;
+}
+
+html.dark .bg-black {
+  background-color: var(--rc-bg) !important;
+}
+
+html.dark [class*='bg-[#F3F4F6]'],
+html.dark [class*='bg-[#FCFCFC]'],
+html.dark [class*='bg-[#F8F8F8]'],
+html.dark [class*='bg-[#F8F9FB]'],
+html.dark [class*='bg-[#F9FAFB]'],
+html.dark [class*='bg-[#F5F5F5]'],
+html.dark .bg-slate-50,
+html.dark .bg-gray-50 {
+  background-color: var(--rc-bg) !important;
+}
+
+html.dark [class*='bg-[#FDEDEC]'] {
+  background-color: var(--rc-accent-surface) !important;
+}
+
+html.dark [class*='text-[#1A1A1A]'],
+html.dark .text-gray-900,
+html.dark .text-slate-900 {
+  color: var(--rc-text) !important;
+}
+
+html.dark .text-slate-500,
+html.dark .text-slate-600,
+html.dark .text-slate-700,
+html.dark .text-slate-800,
+html.dark .text-gray-500,
+html.dark .text-gray-600,
+html.dark .text-gray-700 {
+  color: var(--rc-text-secondary) !important;
+}
+
+html.dark .text-slate-400,
+html.dark .text-gray-400 {
+  color: var(--rc-text-muted) !important;
+}
+
+html.dark .border-slate-200,
+html.dark .border-slate-100,
+html.dark .border-gray-200,
+html.dark .border-gray-100,
+html.dark [class*='border-slate-200'],
+html.dark [class*='border-gray-200'] {
+  border-color: var(--rc-border) !important;
+}
+
+html.dark .hover\:bg-slate-50:hover,
+html.dark .hover\:bg-gray-50:hover,
+html.dark .hover\:bg-slate-100:hover {
+  background-color: var(--rc-hover) !important;
+}
+
+html.dark .hover\:bg-\[\#FDEDEC\]:hover {
+  background-color: var(--rc-accent-surface) !important;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: var(--rc-card-alt);
+  color: var(--rc-text);
+  border-color: var(--rc-border);
+}
+
+html.dark .shadow-sm,
+html.dark .shadow-md,
+html.dark .shadow-lg,
+html.dark .shadow-xl {
+  --tw-shadow-color: rgba(0, 0, 0, 0.35);
 }
 
 /* Respect system motion settings and reduce jank on lower-end devices */

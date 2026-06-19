@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Activity, CheckCircle2, AlertTriangle, ExternalLink, RefreshCw, ScrollText, Server, Shield } from 'lucide-react';
+import { Activity, CheckCircle2, AlertTriangle, ExternalLink, RefreshCw, ScrollText, Server, Shield, Mail } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 
@@ -27,6 +27,11 @@ export default function AdminSystemHealthPage() {
   const [loadingSnapshot, setLoadingSnapshot] = useState(false);
   const [smokeResult, setSmokeResult] = useState<any>(null);
   const [loadingSmoke, setLoadingSmoke] = useState(false);
+  const [failedEmails, setFailedEmails] = useState<any[]>([]);
+  const [loadingFailedEmails, setLoadingFailedEmails] = useState(false);
+  const [emailTestTo, setEmailTestTo] = useState('');
+  const [emailTestResult, setEmailTestResult] = useState<any>(null);
+  const [loadingEmailTest, setLoadingEmailTest] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/auth');
@@ -55,16 +60,51 @@ export default function AdminSystemHealthPage() {
       .finally(() => setLoadingSnapshot(false));
   }, []);
 
+  const loadFailedEmails = useCallback(() => {
+    setLoadingFailedEmails(true);
+    api
+      .get('/admin/email-delivery/failed')
+      .then((res) => setFailedEmails(res.data?.data?.deliveries || []))
+      .catch(() => setFailedEmails([]))
+      .finally(() => setLoadingFailedEmails(false));
+  }, []);
+
+  const runEmailTest = useCallback(() => {
+    const to = emailTestTo.trim();
+    if (!to) {
+      setEmailTestResult({ sent: false, error: 'Enter a recipient email address.' });
+      return;
+    }
+    setLoadingEmailTest(true);
+    setEmailTestResult(null);
+    api
+      .post('/admin/system-health/email-test', { to })
+      .then((res) => setEmailTestResult(res.data?.data || { sent: res.data?.success }))
+      .catch((err: any) =>
+        setEmailTestResult({
+          sent: false,
+          error: err?.response?.data?.error || err?.response?.data?.message || 'Email test failed.',
+        }),
+      )
+      .finally(() => {
+        setLoadingEmailTest(false);
+        loadFailedEmails();
+        loadHealth();
+      });
+  }, [emailTestTo, loadFailedEmails, loadHealth]);
+
   useEffect(() => {
     if (user && role === 'ADMIN') {
       loadHealth();
+      loadFailedEmails();
     }
-  }, [user, role, loadHealth]);
+  }, [user, role, loadHealth, loadFailedEmails]);
 
 
   const chartData = snapshot?.error_rate_7d || [];
   const platformOk = snapshot?.platform_status === 'Operational';
   const observability = snapshot?.observability;
+  const emailHealth = observability?.email || snapshot?.email;
   const sentryProjectUrl = process.env.NEXT_PUBLIC_SENTRY_PROJECT_URL?.trim();
 
   return (
@@ -153,6 +193,102 @@ export default function AdminSystemHealthPage() {
         </section>
       ) : null}
 
+      {emailHealth ? (
+        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 font-semibold text-[#1A1A1A]">
+                <Mail className="h-5 w-5 text-[#C0392B]" aria-hidden />
+                Transactional email
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Delivery health, retry queue, and explicit smoke test — failed sends are never silent.
+              </p>
+            </div>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                emailHealth.configured ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-900'
+              }`}
+            >
+              {emailHealth.configured ? `${emailHealth.provider} ready` : 'Misconfigured'}
+            </span>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <AdminStatCard label="Pending retries" value={emailHealth.pending_retries ?? 0} icon={RefreshCw} accent={(emailHealth.pending_retries ?? 0) > 0 ? 'warning' : 'default'} />
+            <AdminStatCard label="Failed (24h)" value={emailHealth.failed_24h ?? 0} icon={AlertTriangle} accent={(emailHealth.failed_24h ?? 0) > 0 ? 'warning' : 'default'} />
+            <AdminStatCard label="Dead letter (24h)" value={emailHealth.dead_24h ?? 0} icon={AlertTriangle} accent={(emailHealth.dead_24h ?? 0) > 0 ? 'warning' : 'default'} />
+            <AdminStatCard
+              label="Last sent"
+              value={emailHealth.last_sent_at ? new Date(emailHealth.last_sent_at).toLocaleString() : '—'}
+              icon={Mail}
+            />
+          </div>
+          {!emailHealth.configured && emailHealth.issues?.length ? (
+            <ul className="mt-4 space-y-1 rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-900">
+              {emailHealth.issues.map((issue: any) => (
+                <li key={issue.code}>
+                  <span className="font-semibold">{issue.code}</span> — {issue.message}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+            <label className="flex-1 text-sm">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Send real test email</span>
+              <input
+                type="email"
+                value={emailTestTo}
+                onChange={(e) => setEmailTestTo(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={runEmailTest}
+              disabled={loadingEmailTest}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#C0392B] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {loadingEmailTest ? 'Sending…' : 'Send test email'}
+            </button>
+          </div>
+          {emailTestResult ? (
+            <p
+              className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+                emailTestResult.sent ? 'bg-emerald-50 text-emerald-900' : 'bg-amber-50 text-amber-950'
+              }`}
+            >
+              {emailTestResult.sent
+                ? emailTestResult.message || 'Test email delivered successfully.'
+                : `Failed: ${emailTestResult.error || emailTestResult.message || 'unknown error'}`}
+            </p>
+          ) : null}
+          <div className="mt-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-[#1A1A1A]">Failed delivery log</h3>
+              <button type="button" onClick={loadFailedEmails} disabled={loadingFailedEmails} className="text-xs font-semibold text-[#C0392B] hover:underline">
+                {loadingFailedEmails ? 'Refreshing…' : 'Refresh log'}
+              </button>
+            </div>
+            <div className="mt-3 max-h-64 space-y-2 overflow-auto">
+              {failedEmails.map((row: any) => (
+                <div key={row.id} className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                  <p className="font-semibold">{row.subject}</p>
+                  <p>
+                    To {row.recipient} · {row.status} · retries {row.retry_count}/{row.max_retries}
+                  </p>
+                  {row.last_error ? <p className="mt-1 text-rose-800">{row.last_error}</p> : null}
+                  <p className="mt-1 text-slate-500">{row.created_at ? new Date(row.created_at).toLocaleString() : ''}</p>
+                </div>
+              ))}
+              {!failedEmails.length && !loadingFailedEmails ? (
+                <p className="text-sm text-slate-500">No failed or dead-letter deliveries in the recent log.</p>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {observability || smokeResult?.observability ? (
         <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="font-semibold text-[#1A1A1A]">Observability</h2>
@@ -176,13 +312,15 @@ export default function AdminSystemHealthPage() {
             >
               CRON_SECRET {(observability ?? smokeResult?.observability)?.cron_secret_configured ? 'set' : 'missing'}
             </li>
-            {observability?.email_configured != null ? (
+            {(observability?.email?.configured ?? observability?.email_configured) != null ? (
               <li
                 className={`rounded-full px-3 py-1 font-medium ${
-                  observability.email_configured ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
+                  (observability?.email?.configured ?? observability?.email_configured)
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-amber-100 text-amber-900'
                 }`}
               >
-                Email {observability.email_configured ? 'configured' : 'not configured'}
+                Email {(observability?.email?.configured ?? observability?.email_configured) ? 'configured' : 'not configured'}
               </li>
             ) : null}
           </ul>

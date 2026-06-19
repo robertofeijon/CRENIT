@@ -12,6 +12,8 @@ import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { LandlordWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { formatN$, landlordInputClass, landlordSelectClass } from '../../components/landlord/landlordUi';
+import PropertiesBulkImport from '../../components/landlord/PropertiesBulkImport';
+import { WINDHOEK_SUBURBS } from '../../../src/lib/namibia-locale';
 
 const PROPERTY_TYPES = ['APARTMENT', 'HOUSE', 'FLAT', 'TOWNHOUSE', 'ROOM', 'COMMERCIAL'];
 
@@ -205,7 +207,18 @@ export default function LandlordPropertiesPage() {
               ))}
             </select>
             <input placeholder="Street address *" value={form.address_street} onChange={(e) => setForm({ ...form, address_street: e.target.value })} className={`${landlordInputClass} sm:col-span-2`} />
-            <input placeholder="Suburb *" value={form.address_suburb} onChange={(e) => setForm({ ...form, address_suburb: e.target.value })} className={landlordInputClass} />
+            <input
+              placeholder="Suburb *"
+              list="windhoek-suburbs"
+              value={form.address_suburb}
+              onChange={(e) => setForm({ ...form, address_suburb: e.target.value })}
+              className={landlordInputClass}
+            />
+            <datalist id="windhoek-suburbs">
+              {WINDHOEK_SUBURBS.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
             <input placeholder="City *" value={form.address_city} onChange={(e) => setForm({ ...form, address_city: e.target.value })} className={landlordInputClass} />
             <input placeholder="Postcode" value={form.address_postcode} onChange={(e) => setForm({ ...form, address_postcode: e.target.value })} className={landlordInputClass} />
             <input placeholder="First unit ID (optional)" value={form.unit_identifier} onChange={(e) => setForm({ ...form, unit_identifier: e.target.value })} className={landlordInputClass} />
@@ -223,6 +236,8 @@ export default function LandlordPropertiesPage() {
           </button>
         </section>
       ) : null}
+
+      <PropertiesBulkImport onImported={() => void loadProperties()} />
 
       <section className="landlord-panel">
         <h2 className="text-lg font-semibold text-[#1A1A1A]">Your portfolio</h2>

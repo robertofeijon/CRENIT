@@ -32,6 +32,17 @@ export class LandlordsController {
     }
   }
 
+  @Get('readiness-checklist')
+  async readinessChecklist(@Headers('authorization') authHeader: string) {
+    try {
+      const user = await getUserFromAuthHeader(this.supabaseService.getClient(), authHeader);
+      const result = await this.landlordsService.buildReadinessChecklist(user.id);
+      return { success: true, data: result, error: null };
+    } catch (error: any) {
+      throw new UnauthorizedException(error?.message || 'Unauthorized');
+    }
+  }
+
   @Get('tenants')
   async listTenants(@Headers('authorization') authHeader: string) {
     try {

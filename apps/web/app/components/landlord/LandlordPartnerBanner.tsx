@@ -62,8 +62,8 @@ export default function LandlordPartnerBanner({
           <div className="flex gap-3">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-sky-800" aria-hidden />
             <p className="text-sm font-medium text-sky-950">
-              {state.awaitingDirectConfirmations} direct payment
-              {state.awaitingDirectConfirmations === 1 ? '' : 's'} need your confirmation.
+              {state.awaitingDirectConfirmations} payment
+              {state.awaitingDirectConfirmations === 1 ? '' : 's'} ready for your review — confirm when funds arrive.
             </p>
           </div>
           <Link

@@ -26,7 +26,8 @@ export const MARKETING_SLUGS = [
   'company/how-it-works',
   'company/contact',
   'company/privacy',
+  'company/popia-summary',
   'company/terms',
 ] as const;
 
-export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || 'robertofeijon@mail.com';
+export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || 'robertofeijon@gmail.com';

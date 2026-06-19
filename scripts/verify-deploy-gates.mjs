@@ -13,7 +13,16 @@ import { execSync } from 'child_process';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 
-const REQUIRED_MIGRATIONS = ['0034_payment_eft_proofs.sql', '0035_notifications_realtime.sql'];
+const REQUIRED_MIGRATIONS = [
+  '0034_payment_eft_proofs.sql',
+  '0035_notifications_realtime.sql',
+  '0036_phase1_trust.sql',
+  '0039_email_delivery_reliability.sql',
+  '0040_fraud_detection.sql',
+  '0043_phase3_b2b_demo_dataset.sql',
+  '0044_phase2_tail.sql',
+  '0045_sms_2fa.sql',
+];
 const MIN_COMMIT = '6edfdf8';
 
 function git(cmd) {
@@ -99,7 +108,8 @@ if (existsSync(join(root, 'docs/OBSERVABILITY.md'))) {
 console.log('\n--- Remote gates (manual) ---\n');
 console.log('1. Vercel — redeploy apps/web from main HEAD; confirm build SHA matches git HEAD');
 console.log('2. Render — redeploy API; EMAIL_CONTACT + CORS_ORIGIN include web URL');
-console.log('3. Supabase — SQL Editor: run 0034 + 0035 if not applied; verify notifications on supabase_realtime');
+console.log('3. Supabase — SQL Editor: run 0034–0045 per supabase/scripts/staging_apply_reference.sql');
+console.log('   Then run supabase/scripts/staging_post_apply_verify.sql');
 console.log('4. GitHub Actions — web-e2e job: 9+ passed (or 5+ public if E2E secrets unset)');
 console.log('   https://github.com/robertofeijon/CRENIT/actions/workflows/ci.yml');
 console.log('5. Smoke — docs/STAGING_RELEASE_CHECKLIST.md §10 (bell + renewals)');

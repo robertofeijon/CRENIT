@@ -21,6 +21,7 @@ import { SettingsModule } from './settings/settings.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OpsModule } from './ops/ops.module';
 import { PublicModule } from './public/public.module';
+import { FraudDetectionModule } from './fraud-detection/fraud-detection.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { PublicModule } from './public/public.module';
     SettingsModule,
     NotificationsModule,
     PublicModule,
+    FraudDetectionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

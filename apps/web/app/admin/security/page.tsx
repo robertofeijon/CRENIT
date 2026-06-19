@@ -122,6 +122,58 @@ export default function AdminSecurityPage() {
           primaryButtonClass="rounded-full bg-[#C0392B] px-5 py-2.5 text-sm font-semibold text-white"
         />
       </section>
+
+      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-[#1A1A1A]">SMS two-factor (optional)</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Requires SMS_ENABLED on API and a phone on your profile.
+          {!twoFactor?.sms_available ? ' SMS is disabled in this environment.' : ''}
+        </p>
+        {twoFactor?.enabled && twoFactor?.method === 'sms' ? (
+          <p className="mt-2 text-sm text-emerald-700">SMS 2FA active{twoFactor.phone_masked ? ` · ${twoFactor.phone_masked}` : ''}.</p>
+        ) : (
+          <button
+            type="button"
+            disabled={busy || !twoFactor?.sms_available}
+            onClick={async () => {
+              setBusy(true);
+              setError(null);
+              try {
+                await api.post('/auth/2fa/sms/setup');
+                setMessage('SMS code sent — enter below and confirm.');
+              } catch (err: any) {
+                setError(err?.response?.data?.message || 'SMS setup failed.');
+              } finally {
+                setBusy(false);
+              }
+            }}
+            className="mt-4 rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold"
+          >
+            Send SMS setup code
+          </button>
+        )}
+        {!twoFactor?.enabled && twoFactor?.method === 'sms' ? (
+          <button
+            type="button"
+            disabled={busy || confirmCode.length < 6}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await api.post('/auth/2fa/sms/confirm', { code: confirmCode });
+                setMessage('SMS 2FA enabled.');
+                await loadStatus();
+              } catch (err: any) {
+                setError(err?.response?.data?.message || 'Invalid code.');
+              } finally {
+                setBusy(false);
+              }
+            }}
+            className="mt-3 rounded-full bg-[#C0392B] px-5 py-2.5 text-sm font-semibold text-white"
+          >
+            Confirm SMS 2FA
+          </button>
+        ) : null}
+      </section>
     </div>
   );
 }

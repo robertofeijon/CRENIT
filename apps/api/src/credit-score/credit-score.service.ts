@@ -1,9 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { brandTierFromScore100, brandTierProgress } from './tier-branding';
+import { buildScoreAnnotation, type ScoreEventType } from './score-narrative.util';
+import {
+  aggregatePeerRatesFromMarketRecords,
+  buildPeerComparisonMessage,
+  percentileBetterThanPeers,
+  shouldSuppressPeerComparison,
+} from './score-peer-comparison.util';
+import { hashUserId } from '../market-intelligence/market-intelligence.utils';
+import { suburbsMatch } from '../market-intelligence/market-intelligence-geocode.util';
+import { computeOnTimeRatePct } from '../payments/payment-metrics.util';
 
 /** CRENIT rental credit model — score out of 100 */
 export type CrenitRiskTier = 'LOW' | 'MODERATE' | 'HIGH' | 'VERY_HIGH';
+
+export type ScoreEventContext = {
+  event_type: ScoreEventType;
+  due_date?: string | null;
+  paid_date?: string | null;
+  dispute_type?: string | null;
+  decision?: string | null;
+  payment_id?: string | null;
+  lease_id?: string | null;
+};
 
 @Injectable()
 export class CreditScoreService {
@@ -55,8 +75,9 @@ export class CreditScoreService {
     return Math.round(300 + (score100 / 100) * 600);
   }
 
-  async calculateScore(tenantId: string) {
+  async calculateScore(tenantId: string, event?: ScoreEventContext) {
     const client = this.supabase.getClient();
+    const previousScore = await this.getPreviousDisplayScore(tenantId);
 
     const { data: payments } = await client
       .from('payments')
@@ -151,15 +172,32 @@ export class CreditScoreService {
     }
 
     try {
-      await client.from('score_history').insert([
-        {
-          tenant_id: tenantId,
-          score: displayScore,
-          tier,
-          recorded_at: new Date().toISOString(),
-          event_type: 'CALCULATED',
-        },
-      ]);
+      const scoreDelta = previousScore != null ? displayScore - previousScore : 0;
+      const shouldRecord = Boolean(event) || scoreDelta !== 0;
+      if (shouldRecord) {
+        const eventType = event?.event_type ?? (scoreDelta !== 0 ? 'CALCULATED' : 'CALCULATED');
+        const annotation = buildScoreAnnotation({
+          event_type: eventType,
+          score_delta: scoreDelta,
+          due_date: event?.due_date,
+          paid_date: event?.paid_date,
+          dispute_type: event?.dispute_type,
+          decision: event?.decision,
+        });
+        const metadata = await this.buildScoreHistoryMetadata(tenantId, event);
+        await client.from('score_history').insert([
+          {
+            tenant_id: tenantId,
+            score: displayScore,
+            tier,
+            recorded_at: new Date().toISOString(),
+            event_type: eventType,
+            event_reason: annotation,
+            score_delta: previousScore != null ? scoreDelta : null,
+            metadata,
+          },
+        ]);
+      }
     } catch (e) {
       this.logger.warn(`Could not persist score history: ${(e as Error).message}`);
     }
@@ -255,13 +293,24 @@ export class CreditScoreService {
     return { tenant_count: tenantIds.length, recalculated_at: new Date().toISOString() };
   }
 
+  private async getPreviousDisplayScore(tenantId: string): Promise<number | null> {
+    const client = this.supabase.getClient();
+    const { data } = await client
+      .from('credit_scores')
+      .select('score')
+      .eq('tenant_id', tenantId)
+      .eq('is_current', true)
+      .maybeSingle();
+    return data?.score != null ? Number(data.score) : null;
+  }
+
   async getScoreHistory(tenantId: string, limit = 12) {
     const client = this.supabase.getClient();
     const { data, error } = await client
       .from('score_history')
-      .select('score, tier, recorded_at')
+      .select('score, tier, recorded_at, event_type, event_reason, score_delta, metadata')
       .eq('tenant_id', tenantId)
-      .order('recorded_at', { ascending: true })
+      .order('recorded_at', { ascending: false })
       .limit(limit);
 
     if (error) {
@@ -277,7 +326,7 @@ export class CreditScoreService {
         recorded_at: row.calculation_date,
       }));
     }
-    return data || [];
+    return (data || []).slice().reverse();
   }
 
   getMilestoneGuidance(score: number) {
@@ -392,11 +441,43 @@ export class CreditScoreService {
       holdingBack.push('You are on track — keep paying on time each month to maintain or grow your tier.');
     }
 
+    const history = (await this.getScoreHistory(tenantId, 24)) as Array<{
+      recorded_at: string;
+      score: number;
+      score_delta?: number | null;
+      event_type?: string | null;
+      event_reason?: string | null;
+      metadata?: Record<string, unknown> | null;
+    }>;
+    const narrative_timeline = history
+      .filter((row) => Boolean(row.event_reason))
+      .map((row) => ({
+        recorded_at: row.recorded_at,
+        score: row.score,
+        score_delta: row.score_delta,
+        event_type: row.event_type,
+        annotation: row.event_reason,
+        lease_id: row.metadata?.lease_id ?? null,
+        landlord_name: row.metadata?.landlord_name ?? null,
+        property_label: row.metadata?.property_label ?? null,
+        suburb: row.metadata?.suburb ?? null,
+      }))
+      .reverse();
+
+    const [peer_comparison, lease_summaries] = await Promise.all([
+      this.getPeerComparison(tenantId),
+      this.getTenantLeaseSummaries(tenantId),
+    ]);
+
     return {
       score_100: score100,
       brand_tier: brand,
       tier_progress: progress,
       holding_back: holdingBack,
+      narrative_timeline,
+      peer_comparison,
+      lease_summaries,
+      unified_timeline: narrative_timeline,
       factors_summary: {
         on_time_rate_pct: inputs.totalPayments ? Math.round(onTimeRate * 100) : 100,
         months_active: inputs.monthsActive,
@@ -444,5 +525,226 @@ export class CreditScoreService {
       brand_tier: brand,
       tier_progress: progress,
     };
+  }
+
+  private async buildScoreHistoryMetadata(tenantId: string, event?: ScoreEventContext) {
+    let leaseId = event?.lease_id || null;
+    if (!leaseId && event?.payment_id) {
+      const client = this.supabase.getClient();
+      const { data: payment } = await client.from('payments').select('lease_id').eq('id', event.payment_id).maybeSingle();
+      leaseId = payment?.lease_id || null;
+    }
+    if (!leaseId) return {};
+    const context = await this.resolveLeaseDisplayContext(leaseId, tenantId);
+    return context || {};
+  }
+
+  private async resolveLeaseDisplayContext(leaseId: string, tenantId: string) {
+    const client = this.supabase.getClient();
+    const { data: lease } = await client
+      .from('leases')
+      .select('id, tenant_id, landlord_id, unit_id, status, start_date')
+      .eq('id', leaseId)
+      .maybeSingle();
+    if (!lease || lease.tenant_id !== tenantId) return null;
+
+    const [{ data: unit }, { data: landlordProfile }] = await Promise.all([
+      lease.unit_id
+        ? client.from('units').select('property_id, unit_identifier').eq('id', lease.unit_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      lease.landlord_id
+        ? client.from('landlord_profiles').select('user_id, business_name').eq('id', lease.landlord_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    let property: { address_suburb?: string; address_street?: string; address_city?: string } | null = null;
+    if (unit?.property_id) {
+      const { data } = await client
+        .from('properties')
+        .select('address_suburb, address_street, address_city')
+        .eq('id', unit.property_id)
+        .maybeSingle();
+      property = data;
+    }
+
+    let landlordName = landlordProfile?.business_name || 'Landlord';
+    if (landlordProfile?.user_id) {
+      const { data: profile } = await client.from('profiles').select('full_name').eq('id', landlordProfile.user_id).maybeSingle();
+      if (profile?.full_name) landlordName = profile.full_name;
+    }
+
+    const propertyLabel = [property?.address_street, property?.address_suburb].filter(Boolean).join(', ') || 'Rental property';
+
+    return {
+      lease_id: lease.id,
+      lease_status: lease.status,
+      landlord_name: landlordName,
+      property_label: propertyLabel,
+      suburb: property?.address_suburb || null,
+      unit_identifier: unit?.unit_identifier || null,
+    };
+  }
+
+  private async resolveTenantSuburb(tenantId: string): Promise<{ suburb: string; city: string } | null> {
+    const client = this.supabase.getClient();
+    const { data: leases } = await client
+      .from('leases')
+      .select('id, unit_id, status, start_date')
+      .eq('tenant_id', tenantId)
+      .order('start_date', { ascending: false });
+    const lease = (leases || []).find((l) => l.status === 'ACTIVE') || leases?.[0];
+    if (!lease?.unit_id) return null;
+
+    const { data: unit } = await client.from('units').select('property_id').eq('id', lease.unit_id).maybeSingle();
+    if (!unit?.property_id) return null;
+
+    const { data: property } = await client
+      .from('properties')
+      .select('address_suburb, address_city')
+      .eq('id', unit.property_id)
+      .maybeSingle();
+    if (!property?.address_suburb) return null;
+    return { suburb: property.address_suburb, city: property.address_city || 'Windhoek' };
+  }
+
+  async getTenantLeaseSummaries(tenantId: string) {
+    const client = this.supabase.getClient();
+    const { data: leases } = await client
+      .from('leases')
+      .select('id, status, start_date, end_date, landlord_id, unit_id')
+      .eq('tenant_id', tenantId)
+      .order('start_date', { ascending: false });
+    if (!leases?.length) return [];
+
+    const summaries = [];
+    for (const lease of leases) {
+      const context = await this.resolveLeaseDisplayContext(lease.id, tenantId);
+      const { count } = await client
+        .from('payments')
+        .select('id', { count: 'exact', head: true })
+        .eq('lease_id', lease.id)
+        .eq('status', 'PAID');
+      summaries.push({
+        lease_id: lease.id,
+        status: lease.status,
+        start_date: lease.start_date,
+        end_date: lease.end_date,
+        landlord_name: context?.landlord_name || 'Landlord',
+        property_label: context?.property_label || 'Rental property',
+        suburb: context?.suburb || null,
+        confirmed_payments: count ?? 0,
+      });
+    }
+    return summaries;
+  }
+
+  async getPeerComparison(tenantId: string) {
+    const suburbInfo = await this.resolveTenantSuburb(tenantId);
+    if (!suburbInfo) {
+      return { available: false, suppressed: true, reason: 'no_suburb' };
+    }
+
+    const yourRate = computeOnTimeRatePct(await this.loadTenantPaymentsForMetrics(tenantId), 12);
+
+    const client = this.supabase.getClient();
+    let peerRows: Array<{ tenant_hash: string; on_time_rate_pct: number }> = [];
+
+    try {
+      const { data: miRecords } = await client
+        .schema('market_intelligence')
+        .from('market_data_records')
+        .select('tenant_hash, payment_status, suburb')
+        .ilike('suburb', `%${suburbInfo.suburb.split(' ')[0]}%`);
+
+      peerRows = aggregatePeerRatesFromMarketRecords(miRecords || [], (recordSuburb) =>
+        suburbsMatch(recordSuburb, suburbInfo.suburb),
+      );
+    } catch (e) {
+      this.logger.warn(`Peer comparison MI fetch failed: ${(e as Error).message}`);
+    }
+
+    let dataSource: 'market_data_records' | 'platform_payments' = 'market_data_records';
+    if (shouldSuppressPeerComparison(peerRows.length)) {
+      const fallbackRates = await this.computeSuburbPeerRatesFromPayments(suburbInfo.suburb);
+      if (shouldSuppressPeerComparison(fallbackRates.length)) {
+        return {
+          available: false,
+          suppressed: true,
+          reason: 'insufficient_sample',
+          suburb: suburbInfo.suburb,
+          required_minimum_sample: 5,
+          your_on_time_rate_pct: yourRate,
+        };
+      }
+      peerRows = fallbackRates.map((row) => ({
+        tenant_hash: row.tenant_id,
+        on_time_rate_pct: row.on_time_rate_pct,
+      }));
+      dataSource = 'platform_payments';
+    }
+
+    const tenantHash = hashUserId(tenantId);
+    const peerRatesExcludingSelf = peerRows
+      .filter((row) => row.tenant_hash !== tenantHash)
+      .map((row) => row.on_time_rate_pct);
+
+    if (shouldSuppressPeerComparison(peerRatesExcludingSelf.length + 1)) {
+      return {
+        available: false,
+        suppressed: true,
+        reason: 'insufficient_sample',
+        suburb: suburbInfo.suburb,
+        required_minimum_sample: 5,
+        your_on_time_rate_pct: yourRate,
+      };
+    }
+
+    const percentile = percentileBetterThanPeers(yourRate, peerRatesExcludingSelf);
+    return {
+      available: true,
+      suppressed: false,
+      suburb: suburbInfo.suburb,
+      your_on_time_rate_pct: yourRate,
+      percentile_better_than: percentile,
+      sample_size: peerRatesExcludingSelf.length + 1,
+      message: buildPeerComparisonMessage(yourRate, percentile, suburbInfo.suburb, peerRatesExcludingSelf.length + 1),
+      data_source: dataSource,
+    };
+  }
+
+  private async loadTenantPaymentsForMetrics(tenantId: string) {
+    const client = this.supabase.getClient();
+    const { data } = await client
+      .from('payments')
+      .select('status, due_date, paid_date, days_overdue')
+      .eq('tenant_id', tenantId)
+      .order('due_date', { ascending: false });
+    return data || [];
+  }
+
+  private async computeSuburbPeerRatesFromPayments(suburb: string) {
+    const client = this.supabase.getClient();
+    const { data: properties } = await client.from('properties').select('id, address_suburb');
+    const propertyIds = (properties || [])
+      .filter((p) => suburbsMatch(p.address_suburb, suburb))
+      .map((p) => p.id);
+    if (!propertyIds.length) return [];
+
+    const { data: units } = await client.from('units').select('id, property_id').in('property_id', propertyIds);
+    const unitIds = (units || []).map((u) => u.id);
+    if (!unitIds.length) return [];
+
+    const { data: leases } = await client.from('leases').select('id, tenant_id, unit_id').in('unit_id', unitIds);
+    const tenantIds = [...new Set((leases || []).map((l) => l.tenant_id).filter(Boolean))] as string[];
+    if (!tenantIds.length) return [];
+
+    const rates: Array<{ tenant_id: string; on_time_rate_pct: number }> = [];
+    for (const tenantId of tenantIds) {
+      const payments = await this.loadTenantPaymentsForMetrics(tenantId);
+      const settled = payments.filter((p) => p.status === 'PAID' || p.paid_date);
+      if (!settled.length) continue;
+      rates.push({ tenant_id: tenantId, on_time_rate_pct: computeOnTimeRatePct(payments, 12) });
+    }
+    return rates;
   }
 }

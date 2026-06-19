@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailDeliveryService } from '../notifications/email-delivery.service';
 import { SchedulerHeartbeatService } from '../ops/scheduler-heartbeat.service';
 import { buildAuthEmailMap, buildAuthUserMap } from '../supabase/supabase.utils';
 import { DOC_TYPE_TO_DB, KycService, REQUIRED_KYC_DOCUMENT_TYPES, type KycDocumentType } from '../kyc/kyc.service';
@@ -30,6 +31,7 @@ export class AdminService {
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly notificationsService: NotificationsService,
+    private readonly emailDelivery: EmailDeliveryService,
     private readonly kycService: KycService,
     private readonly schedulerHeartbeat: SchedulerHeartbeatService,
   ) {}
@@ -1090,6 +1092,32 @@ export class AdminService {
       });
     }
 
+    const emailHealth = await this.emailDelivery.getHealthSnapshot();
+    if (!emailHealth.configured) {
+      alerts.push({
+        severity: 'high',
+        code: 'EMAIL_MISCONFIGURED',
+        message: `Transactional email misconfigured: ${emailHealth.issues
+          .filter((i) => i.severity === 'critical')
+          .map((i) => i.code)
+          .join(', ') || 'unknown'}`,
+      });
+    }
+    if (emailHealth.dead_24h > 0) {
+      alerts.push({
+        severity: 'high',
+        code: 'EMAIL_DEAD_LETTER',
+        message: `${emailHealth.dead_24h} email(s) reached max retries in the last 24h — check failed delivery log.`,
+      });
+    }
+    if (emailHealth.pending_retries > 10) {
+      alerts.push({
+        severity: 'medium',
+        code: 'EMAIL_RETRY_BACKLOG',
+        message: `${emailHealth.pending_retries} email(s) queued for retry.`,
+      });
+    }
+
     if (!process.env.SENTRY_DSN?.trim()) {
       alerts.push({
         severity: 'low',
@@ -1127,7 +1155,7 @@ export class AdminService {
         sentry_environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
         cron_secret_configured: Boolean(process.env.CRON_SECRET?.trim()),
         cron_jobs_endpoint: '/internal/cron/jobs',
-        email_configured: Boolean(process.env.SMTP_HOST || process.env.RESEND_API_KEY),
+        email: emailHealth,
       },
       summary: {
         services_operational: operationalCount,
@@ -1166,11 +1194,14 @@ export class AdminService {
       });
     }
 
-    const smtpConfigured = Boolean(process.env.SMTP_HOST || process.env.RESEND_API_KEY);
+    const smtpConfigured = this.emailDelivery.isConfigured();
+    const emailHealth = await this.emailDelivery.getHealthSnapshot();
     checks.push({
       name: 'email_transport',
       pass: smtpConfigured,
-      detail: smtpConfigured ? 'SMTP or Resend configured' : 'No SMTP_HOST / RESEND_API_KEY',
+      detail: smtpConfigured
+        ? `${emailHealth.provider} configured; pending retries: ${emailHealth.pending_retries}`
+        : emailHealth.issues.map((i) => i.code).join(', ') || 'not configured',
     });
 
     const schedulers = this.schedulerHeartbeat.snapshot();

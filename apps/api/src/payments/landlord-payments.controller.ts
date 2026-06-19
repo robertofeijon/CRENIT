@@ -1,7 +1,9 @@
-import { Controller, Get, Post, Param, Query, Headers, BadRequestException, Body } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Headers, BadRequestException, Body, Req } from '@nestjs/common';
+import { Request } from 'express';
 import { PaymentsService } from './payments.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { getUserProfileFromAuthHeader, assertRole, assertPartnerApproved } from '../supabase/supabase.utils';
+import { extractClientIp, extractUserAgent } from '../common/request-client.util';
 
 @Controller('landlords/payments')
 export class LandlordPaymentsController {
@@ -60,6 +62,7 @@ export class LandlordPaymentsController {
     @Headers('authorization') authHeader: string,
     @Param('paymentId') paymentId: string,
     @Body() body: { received_date?: string; amount?: number },
+    @Req() req: Request,
   ) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'LANDLORD');
@@ -69,7 +72,10 @@ export class LandlordPaymentsController {
       throw new BadRequestException('paymentId is required');
     }
 
-    const payment = await this.paymentsService.confirmLandlordPayment(profile.id, paymentId, body || {});
+    const payment = await this.paymentsService.confirmLandlordPayment(profile.id, paymentId, body || {}, {
+      client_ip: extractClientIp(req),
+      user_agent: extractUserAgent(req),
+    });
     return { success: true, data: payment, error: null };
   }
 }

@@ -10,6 +10,7 @@ import AdminStatCard from '../../components/ui/AdminStatCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
+import AdminPaymentHistoryImportsPanel from './AdminPaymentHistoryImportsPanel';
 
 export default function AdminPaymentsPage() {
   const { user, role, loading } = useAuth();
@@ -143,6 +144,8 @@ export default function AdminPaymentsPage() {
           description="Run supabase/seed.sql or npm run seed:demo to create sample payment history."
         />
       )}
+
+      <AdminPaymentHistoryImportsPanel />
     </div>
   );
 }

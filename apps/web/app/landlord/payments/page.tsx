@@ -27,6 +27,7 @@ export default function LandlordPaymentsPage() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [confirmPopover, setConfirmPopover] = useState<{ id: string; received_date: string; amount: string } | null>(null);
   const [pendingSummary, setPendingSummary] = useState<any>(null);
+  const [confirmAnalytics, setConfirmAnalytics] = useState<any>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
 
   useEffect(() => {
@@ -59,6 +60,8 @@ export default function LandlordPaymentsPage() {
       setSummary(response.data.data?.summary || null);
       const pendingRes = await api.get('/landlords/payment-confirmations/pending').catch(() => null);
       setPendingSummary(pendingRes?.data?.data ?? null);
+      const analyticsRes = await api.get('/landlords/payment-confirmations/analytics').catch(() => null);
+      setConfirmAnalytics(analyticsRes?.data?.data ?? null);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to load payments.');
     } finally {
@@ -162,6 +165,25 @@ export default function LandlordPaymentsPage() {
         />
       </section>
 
+      {confirmAnalytics?.eft_confirmed_count > 0 ? (
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: 'Avg confirm time', value: `${confirmAnalytics.avg_confirmation_hours}h` },
+            {
+              label: 'Platform median',
+              value: confirmAnalytics.platform_median_hours != null ? `${confirmAnalytics.platform_median_hours}h` : '—',
+            },
+            { label: 'Auto-confirm rate', value: `${confirmAnalytics.auto_confirm_rate_pct}%` },
+            { label: 'Dispute rate', value: `${confirmAnalytics.dispute_rate_pct}%` },
+          ].map((stat) => (
+            <div key={stat.label} className="stat-card">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{stat.label}</p>
+              <p className="stat-value text-2xl">{stat.value}</p>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
       {pendingSummary?.pending_count > 0 ? (
         <section className="landlord-panel border-amber-200 bg-amber-50/80">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -170,20 +192,23 @@ export default function LandlordPaymentsPage() {
                 {pendingSummary.pending_count} payment{pendingSummary.pending_count === 1 ? '' : 's'} awaiting confirmation
               </p>
               <p className="mt-1 text-xs text-amber-900/90">
-                Auto-confirms after {pendingSummary.auto_confirm_hours}h unless disputed.{' '}
+                {pendingSummary.nudge_summary ||
+                  `${pendingSummary.pending_count} payment${pendingSummary.pending_count === 1 ? '' : 's'} in your review queue.`}
                 {pendingSummary.overdue_confirm_count > 0
-                  ? `${pendingSummary.overdue_confirm_count} overdue for review.`
+                  ? ` ${pendingSummary.overdue_confirm_count} past the usual review window.`
                   : ''}
               </p>
             </div>
             <button type="button" className="landlord-btn-primary" disabled={bulkLoading} onClick={() => void handleBulkConfirm()}>
-              {bulkLoading ? 'Confirming…' : 'Confirm all uncontested'}
+              {bulkLoading ? 'Confirming…' : 'Confirm all reviewed'}
             </button>
           </div>
           <ul className="mt-4 space-y-2 text-sm">
             {(pendingSummary.payments || []).slice(0, 5).map((p: any) => (
               <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/80 px-3 py-2">
-                <span>N${Number(p.amount_gross || 0).toLocaleString()} · {p.aging_hours}h waiting</span>
+                <span>
+                  N${Number(p.amount_gross || 0).toLocaleString()} · auto-confirms in {p.hours_until_auto_confirm ?? '—'}h
+                </span>
                 <a href={p.confirm_url} className="font-semibold text-[#C0392B] hover:underline">
                   One-tap confirm →
                 </a>
@@ -196,7 +221,7 @@ export default function LandlordPaymentsPage() {
           <p className="text-sm font-semibold text-amber-950">
             {pendingDirect} direct payment{pendingDirect === 1 ? '' : 's'} awaiting your confirmation
           </p>
-          <p className="mt-1 text-xs text-amber-900/90">Confirm receipt so tenant credit scores update correctly.</p>
+          <p className="mt-1 text-xs text-amber-900/90">Confirm when funds arrive so tenant scores update on time.</p>
         </div>
       ) : null}
       {pendingEftProof > 0 ? (
@@ -204,7 +229,7 @@ export default function LandlordPaymentsPage() {
           <p className="text-sm font-semibold text-sky-950">
             {pendingEftProof} EFT payment{pendingEftProof === 1 ? '' : 's'} with proof awaiting confirmation
           </p>
-          <p className="mt-1 text-xs text-sky-900/90">Review the uploaded proof, then mark as received.</p>
+          <p className="mt-1 text-xs text-sky-900/90">Review the proof when convenient — auto-confirm runs after the review window.</p>
         </div>
       ) : null}
 

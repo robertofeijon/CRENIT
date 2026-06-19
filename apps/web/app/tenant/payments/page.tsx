@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CreditCard, Download, RefreshCw, Wallet } from 'lucide-react';
 import api from '../../../src/lib/api';
@@ -11,7 +12,7 @@ import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { formatN$, statusPillClass, tenantInputClass, tenantSelectClass } from '../../components/tenant/tenantUi';
-import { NAMIBIAN_BANK_REF_HINTS } from '../../../src/lib/namibia-locale';
+import { BANK_INTEGRATION_COMING_SOON_NOTE, NAMIBIAN_BANK_REF_HINTS, NAMIBIAN_BANK_OPTIONS } from '../../../src/lib/namibia-locale';
 
 export default function TenantPaymentsPage() {
   const { user, loading, roleReady } = useAuth();
@@ -38,6 +39,8 @@ export default function TenantPaymentsPage() {
   } | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofUploading, setProofUploading] = useState(false);
+  const [eftBankCode, setEftBankCode] = useState<string>('FNB');
+  const [eftReference, setEftReference] = useState('');
 
   useEffect(() => {
     if (!loading && roleReady && !user) router.replace('/auth');
@@ -111,6 +114,8 @@ export default function TenantPaymentsPage() {
           expires_at: data.payment_details.expires_at,
         });
         setProofFile(null);
+        setEftReference(data.payment_details.reference || '');
+        setEftBankCode('FNB');
       } else {
         setPendingEft(null);
       }
@@ -149,11 +154,17 @@ export default function TenantPaymentsPage() {
       setError('Select a proof file (PDF or image) after your bank transfer.');
       return;
     }
+    if (!eftReference.trim()) {
+      setError('Enter the bank reference you used on the transfer.');
+      return;
+    }
     setProofUploading(true);
     setError(null);
     try {
       const form = new FormData();
       form.append('file', proofFile);
+      form.append('bank_code', eftBankCode);
+      form.append('payment_reference', eftReference.trim());
       await api.post(`/payments/${pendingEft.payment_id}/eft-proof`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -230,9 +241,36 @@ export default function TenantPaymentsPage() {
             <div className="sm:col-span-2">
               <dt className="text-slate-500">Payment reference</dt>
               <dd className="font-mono font-semibold text-[#C0392B]">{pendingEft.reference}</dd>
-              <p className="mt-1 text-xs text-slate-500">{NAMIBIAN_BANK_REF_HINTS.FNB}</p>
             </div>
           </dl>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Your bank</label>
+              <select value={eftBankCode} onChange={(e) => setEftBankCode(e.target.value)} className={tenantSelectClass}>
+                {NAMIBIAN_BANK_OPTIONS.map((bank) => (
+                  <option key={bank.code} value={bank.code}>
+                    {bank.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">{NAMIBIAN_BANK_REF_HINTS[eftBankCode]}</p>
+              <p className="mt-2 text-xs text-slate-500">
+                {BANK_INTEGRATION_COMING_SOON_NOTE}{' '}
+                <Link href="/solutions/for-banks-lenders" className="font-semibold text-[#C0392B] hover:underline">
+                  Learn more
+                </Link>
+              </p>
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Reference used</label>
+              <input
+                value={eftReference}
+                onChange={(e) => setEftReference(e.target.value)}
+                className={tenantInputClass}
+                placeholder={pendingEft.reference}
+              />
+            </div>
+          </div>
           <div className="mt-4 space-y-3">
             <input
               type="file"

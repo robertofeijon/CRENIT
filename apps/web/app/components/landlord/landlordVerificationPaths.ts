@@ -4,6 +4,7 @@ export const LANDLORD_VERIFICATION_LOCKED_PREFIXES = [
   '/landlord/tenants',
   '/landlord/leases',
   '/landlord/deposits',
+  '/landlord/disputes',
   '/landlord/payments',
   '/landlord/reports',
   '/landlord/market-data',

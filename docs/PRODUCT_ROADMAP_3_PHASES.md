@@ -153,15 +153,21 @@ Landlord confirmation is on the critical path: no confirm → no score update �
 | **1.2 SMS/WhatsApp nudge** | ⏸ Email + in-app only | SMS vendor (P1-S7) |
 | **1.2 One-tap confirm link** | ✅ `/confirm-payment/[token]`, `public/payment-confirm` | — |
 | **1.2 Confirmation dashboard** | ✅ `/landlords/payment-confirmations/pending`, bulk confirm | — |
-| **1.4 Dispute timeline** | ✅ `dispute_events`, templates, tenant timeline UI | Landlord-side timeline UI |
+| **1.4 Dispute timeline** | ✅ `dispute_events`, templates, tenant + landlord UI (`/landlord/disputes`) | — |
 | **1.4 Evidence templates** | ✅ `DAMAGE_CLAIM`, `UNPAID_UTILITIES`, `EARLY_EXIT` | — |
-| **1.4 Outcome analytics** | Partial — `dispute_outcomes` table exists | Wire admin close → analytics charts |
-| **1.5 POPIA badge** | ✅ KYC wizard + legal pages banner | Dedicated plain-language summary page |
-| **1.5 NA bank refs** | Partial — hints on EFT UI | Server-side validation per bank |
-| **1.5 Suburb names** | Partial — `namibia-locale.ts` | Surface in marketing/MI teaser UI |
+| **1.4 Outcome analytics** | ✅ `dispute_outcomes` + admin charts | — |
+| **1.5 POPIA badge** | ✅ KYC wizard + `/company/popia-summary` | Counsel review |
+| **1.5 NA bank refs** | ✅ UI hints + server validation | — |
+| **1.5 Suburb names** | ✅ `namibia-locale.ts`, waitlist, property forms | Marketing MI teaser pass |
 | **Flywheel dashboard** | ✅ Admin system-health 30d metrics | MI capture rate metric (future) |
 
-**Phase 2+:** not started (waitlist, BYOL, CSV bulk units, public `data.crenit.na`, sample API keys).
+**Phase 2 (code):** readiness checklist, tenant waitlist, BYOL, bulk CSV import, confirmation analytics, dispute appeals, landlord dispute risk signal.
+
+**Trust & legal (Priority 1, June 2026):** transactional email reliability (`0039`), landlord dispute timeline parity, fraud detection v1 (`0040`).
+
+**Priority 2 trust polish (June 2026):** score narrative (`0041`), peer-relative framing (n&lt;5 suppression), multi-lease timeline UI (`0042`), landlord confirmation nudge copy pass.
+
+**Phase 3 data monetisation (June 2026):** B2B demo dataset (`0043`), public `/data` dashboard + methodology footer, `POST /public/market-intelligence/sample-key`, bank one-pagers (FNB NA, Bank Windhoek, Standard Bank NA — coming soon CTAs).
 
 ---
 
@@ -236,10 +242,10 @@ Do **not** parallelise 1.2 and 1.1 completely — but **1.2 auto-confirm** shoul
 ## 7. What we explicitly defer (Phase 1)
 
 - Live payment gateway (merchant) — stays simulated for card/mobile.
-- Public `data.crenit.na` dashboard — Phase 3.
-- Tenant waitlist / BYOL — Phase 2.
+- Public `data.crenit.na` dashboard — **in code** at `/data` (custom subdomain DNS optional).
+- Tenant waitlist / BYOL — Phase 2 ✅.
 - Lite landlord tier — Phase 2 (needs partner-approval rule changes).
-- Bank score export integrations — Phase 3.
+- Bank score export integrations — **one-pagers + coming soon**; live feeds Phase 3+.
 
 ---
 

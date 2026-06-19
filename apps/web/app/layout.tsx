@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 import './globals.css';
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import AppShell from './components/layout/AppShell';
+import { ThemeProvider } from '../src/contexts/ThemeContext';
+import { THEME_INIT_SCRIPT } from '../src/lib/theme-init-script';
 import { getSiteUrl, SITE_DESCRIPTION, SITE_NAME } from '../src/lib/site';
 
 const siteUrl = getSiteUrl();
@@ -40,7 +43,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <Script id="crenit-theme-init" strategy="beforeInteractive">
+          {THEME_INIT_SCRIPT}
+        </Script>
+      </head>
       <body>
         <a
           href="#main-content"
@@ -48,9 +56,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           Skip to content
         </a>
-        <AppShell>
-          <div id="main-content">{children}</div>
-        </AppShell>
+        <ThemeProvider>
+          <AppShell>
+            <div id="main-content">{children}</div>
+          </AppShell>
+        </ThemeProvider>
       </body>
     </html>
   );

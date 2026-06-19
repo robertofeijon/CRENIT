@@ -12,6 +12,7 @@ import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import { formatN$, statusPillClass, tenantInputClass } from '../../components/tenant/tenantUi';
+import DisputeDetailPanel from '../../components/disputes/DisputeDetailPanel';
 
 export default function TenantDepositPage() {
   const { user, loading, roleReady } = useAuth();
@@ -31,6 +32,8 @@ export default function TenantDepositPage() {
   const [dispute, setDispute] = useState<any>(null);
   const [disputeLoading, setDisputeLoading] = useState(false);
   const [disputeError, setDisputeError] = useState<string | null>(null);
+  const [appealReason, setAppealReason] = useState('');
+  const [appealLoading, setAppealLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && roleReady && !user) router.replace('/auth');
@@ -270,26 +273,30 @@ export default function TenantDepositPage() {
             </button>
             {disputeError ? <p className="text-sm text-red-600">{disputeError}</p> : null}
             {dispute ? (
-              <div className="rounded-xl bg-[#F3F4F6] p-4 text-sm">
-                <p className="font-semibold text-[#1A1A1A]">{dispute.id}</p>
-                <p className="mt-2 text-slate-600">
-                  Status: <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusPillClass(dispute.status)}`}>{dispute.status}</span>
-                </p>
-                {dispute.next_step ? <p className="mt-2 text-slate-600">Next: {dispute.next_step}</p> : null}
-                {dispute.estimated_resolution_by ? (
-                  <p className="text-xs text-slate-500">Est. resolution by {new Date(dispute.estimated_resolution_by).toLocaleDateString()}</p>
-                ) : null}
-                {(dispute.timeline || []).length ? (
-                  <ul className="mt-3 space-y-2 border-t border-slate-200 pt-3">
-                    {dispute.timeline.map((ev: any, i: number) => (
-                      <li key={`${ev.created_at}-${i}`} className="text-xs text-slate-600">
-                        <span className="font-semibold text-[#1A1A1A]">{ev.event_type}</span> — {ev.message}
-                        <span className="block text-slate-400">{new Date(ev.created_at).toLocaleString()}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
+              <DisputeDetailPanel
+                dispute={dispute}
+                appealReason={appealReason}
+                appealLoading={appealLoading}
+                onAppealReasonChange={setAppealReason}
+                onAppeal={async (reason) => {
+                  if (!dispute?.id || !reason.trim()) {
+                    setDisputeError('Enter a reason to file an appeal.');
+                    return;
+                  }
+                  setAppealLoading(true);
+                  setDisputeError(null);
+                  try {
+                    await api.post(`/disputes/${dispute.id}/appeal`, { reason: reason.trim() });
+                    setAppealReason('');
+                    await handleLoadDispute();
+                    setSubmitMessage('Appeal submitted for senior review.');
+                  } catch (err: any) {
+                    setDisputeError(err?.response?.data?.message || 'Unable to file appeal.');
+                  } finally {
+                    setAppealLoading(false);
+                  }
+                }}
+              />
             ) : null}
           </div>
         </section>

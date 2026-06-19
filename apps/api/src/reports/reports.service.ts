@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
+import { buildVerifyUrl } from '../lib/verify-url';
 import QRCode from 'qrcode';
 import { randomUUID } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -100,7 +101,7 @@ export class ReportsService {
       : 0;
     const generatedAt = new Date().toISOString();
     const reportReference = this.buildReportReference();
-    const verifyUrl = `${process.env.APP_BASE_URL || process.env.WEB_URL || 'https://crenit.co'}/verify/${reportReference}`;
+    const verifyUrl = buildVerifyUrl(reportReference);
     const displayScore = Number(score?.score || 0);
     const score100 = Math.round(((displayScore - 300) / 600) * 1000) / 10;
     const brand = brandTierFromScore100(score100);

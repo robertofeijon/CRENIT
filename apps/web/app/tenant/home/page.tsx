@@ -13,6 +13,7 @@ import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 import RenewalProposalCard from '../../components/renewals/RenewalProposalCard';
+import BringLandlordCard from '../../components/tenant/BringLandlordCard';
 import { formatN$, statusPillClass } from '../../components/tenant/tenantUi';
 import { countActionableRenewals } from '../../../src/lib/renewalUi';
 
@@ -302,6 +303,8 @@ export default function TenantHomePage() {
           />
         </div>
       ) : null}
+
+      {!hasLease && !loadingDashboard ? <BringLandlordCard /> : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {hasLease ? (

@@ -12,6 +12,14 @@ import {
   resolveProfileRole,
 } from '../supabase/supabase.utils';
 import { NotificationsService } from '../notifications/notifications.service';
+import {
+  generateSmsOtp,
+  hashSmsOtp,
+  isSmsOtpExpired,
+  smsOtpExpiresAt,
+  verifySmsOtp,
+} from './sms-otp.util';
+import { OnboardingEmailService } from '../notifications/onboarding-email.service';
 
 authenticator.options = { window: 1 };
 
@@ -23,6 +31,7 @@ export class AuthService {
     private readonly supabase: SupabaseService,
     private readonly consentService: ConsentService,
     private readonly notificationsService: NotificationsService,
+    private readonly onboardingEmailService: OnboardingEmailService,
   ) {}
 
   getWelcomeMessage(): string {
@@ -147,6 +156,10 @@ export class AuthService {
 
     this.logger.log(`Registered user ${payload.email} -> ${user.id}`);
 
+    if (role === 'TENANT' || role === 'LANDLORD') {
+      await this.onboardingEmailService.enrollUser(user.id, role);
+    }
+
     return { user, error: null };
   }
 
@@ -235,18 +248,29 @@ export class AuthService {
     const client = this.supabase.getClient();
     const { data, error } = await client
       .from('profiles')
-      .select('two_factor_enabled, two_factor_secret, two_factor_verified_until')
+      .select('two_factor_enabled, two_factor_secret, two_factor_verified_until, two_factor_method, phone')
       .eq('id', userId)
       .single();
     if (error) throw error;
+    const method =
+      data?.two_factor_method === 'SMS'
+        ? 'sms'
+        : data?.two_factor_secret && !this.isLegacyDemoSecret(data.two_factor_secret)
+          ? 'totp'
+          : 'legacy';
     return {
       enabled: Boolean(data?.two_factor_enabled),
-      pending_setup: Boolean(data?.two_factor_secret && !data?.two_factor_enabled),
+      pending_setup: Boolean(
+        (data?.two_factor_secret && !data?.two_factor_enabled && method === 'totp') ||
+          (data?.two_factor_method === 'SMS' && !data?.two_factor_enabled),
+      ),
       session_active: isTwoFactorSessionActive({
         two_factor_enabled: data?.two_factor_enabled,
         two_factor_verified_until: data?.two_factor_verified_until,
       }),
-      method: data?.two_factor_secret && !this.isLegacyDemoSecret(data.two_factor_secret) ? 'totp' : 'legacy',
+      method,
+      phone_masked: data?.phone ? `${data.phone.slice(0, 3)}***${data.phone.slice(-2)}` : null,
+      sms_available: process.env.SMS_ENABLED === 'true',
     };
   }
 
@@ -505,8 +529,11 @@ export class AuthService {
       .from('profiles')
       .update({
         two_factor_secret: secret,
+        two_factor_method: 'TOTP',
         two_factor_enabled: false,
         two_factor_verified_until: null,
+        sms_otp_hash: null,
+        sms_otp_expires_at: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', userId);
@@ -532,6 +559,7 @@ export class AuthService {
       .from('profiles')
       .update({
         two_factor_enabled: true,
+        two_factor_method: 'TOTP',
         two_factor_verified_until: verifiedUntil,
         updated_at: new Date().toISOString(),
       })
@@ -540,19 +568,110 @@ export class AuthService {
     return { enabled: true, verified_until: verifiedUntil };
   }
 
-  async disableTwoFactor(userId: string, code: string) {
-    const client = this.supabase.getClient();
-    const { data, error } = await client.from('profiles').select('two_factor_secret, two_factor_enabled').eq('id', userId).single();
-    if (error || !data) throw error || new Error('Profile not found');
-    if (data.two_factor_enabled && data.two_factor_secret && !this.verifyTotpCode(data.two_factor_secret, code)) {
-      throw new Error('Invalid verification code');
+  async setupSmsTwoFactor(userId: string) {
+    if (process.env.SMS_ENABLED !== 'true') {
+      throw new BadRequestException('SMS 2FA is not enabled on this environment (set SMS_ENABLED=true).');
     }
+    const client = this.supabase.getClient();
+    const { data: profile, error } = await client.from('profiles').select('phone').eq('id', userId).single();
+    if (error || !profile?.phone?.trim()) {
+      throw new BadRequestException('Add a mobile number to your profile before enabling SMS 2FA.');
+    }
+    const otp = generateSmsOtp();
+    const { sent } = await this.notificationsService.sendTransactionalSms(
+      profile.phone,
+      `CRENIT verification code: ${otp}. Valid for 10 minutes.`,
+    );
+    await client
+      .from('profiles')
+      .update({
+        two_factor_method: 'SMS',
+        two_factor_enabled: false,
+        two_factor_secret: null,
+        sms_otp_hash: hashSmsOtp(userId, otp),
+        sms_otp_expires_at: smsOtpExpiresAt(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+    return {
+      message: sent
+        ? 'We sent a 6-digit code to your phone. Enter it below to enable SMS 2FA.'
+        : 'SMS is not configured — code logged server-side in development.',
+      pending_setup: true,
+      method: 'sms',
+    };
+  }
+
+  async confirmSmsTwoFactor(userId: string, code: string) {
+    const client = this.supabase.getClient();
+    const { data, error } = await client
+      .from('profiles')
+      .select('sms_otp_hash, sms_otp_expires_at, two_factor_method')
+      .eq('id', userId)
+      .single();
+    if (error || !data) throw error || new BadRequestException('Profile not found');
+    if (data.two_factor_method !== 'SMS') throw new BadRequestException('Start SMS 2FA setup first.');
+    if (isSmsOtpExpired(data.sms_otp_expires_at)) throw new BadRequestException('Code expired — request a new one.');
+    if (!verifySmsOtp(userId, code, data.sms_otp_hash)) throw new BadRequestException('Invalid verification code');
+    const verifiedUntil = this.twoFactorVerifiedUntilIso();
+    const { error: updateError } = await client
+      .from('profiles')
+      .update({
+        two_factor_enabled: true,
+        two_factor_method: 'SMS',
+        two_factor_verified_until: verifiedUntil,
+        sms_otp_hash: null,
+        sms_otp_expires_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+    if (updateError) throw updateError;
+    return { enabled: true, verified_until: verifiedUntil, method: 'sms' };
+  }
+
+  async sendSmsTwoFactorChallenge(userId: string) {
+    if (process.env.SMS_ENABLED !== 'true') {
+      throw new BadRequestException('SMS 2FA is not enabled on this environment.');
+    }
+    const client = this.supabase.getClient();
+    const { data, error } = await client
+      .from('profiles')
+      .select('phone, two_factor_enabled, two_factor_method')
+      .eq('id', userId)
+      .single();
+    if (error || !data?.two_factor_enabled || data.two_factor_method !== 'SMS') {
+      throw new BadRequestException('SMS 2FA is not enabled for this account.');
+    }
+    if (!data.phone?.trim()) throw new BadRequestException('Profile phone number is missing.');
+    const otp = generateSmsOtp();
+    await client
+      .from('profiles')
+      .update({
+        sms_otp_hash: hashSmsOtp(userId, otp),
+        sms_otp_expires_at: smsOtpExpiresAt(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+    const { sent } = await this.notificationsService.sendTransactionalSms(
+      data.phone,
+      `CRENIT login code: ${otp}. Valid for 10 minutes.`,
+    );
+    return { sent, message: sent ? 'Code sent.' : 'SMS not delivered — check server logs.' };
+  }
+
+  async disableTwoFactor(userId: string, code: string) {
+    if (!code?.trim()) throw new BadRequestException('Verification code is required to disable 2FA.');
+    await this.verifyTwoFactorCode(userId, code.trim());
+    const client = this.supabase.getClient();
     const { error: updateError } = await client
       .from('profiles')
       .update({
         two_factor_enabled: false,
         two_factor_secret: null,
+        two_factor_method: null,
         two_factor_verified_until: null,
+        sms_otp_hash: null,
+        sms_otp_expires_at: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', userId);
@@ -562,9 +681,18 @@ export class AuthService {
 
   async verifyTwoFactorCode(userId: string, code: string) {
     const client = this.supabase.getClient();
-    const { data, error } = await client.from('profiles').select('two_factor_enabled, two_factor_secret').eq('id', userId).single();
+    const { data, error } = await client
+      .from('profiles')
+      .select('two_factor_enabled, two_factor_secret, two_factor_method, sms_otp_hash, sms_otp_expires_at')
+      .eq('id', userId)
+      .single();
     if (error || !data) throw error || new Error('Profile not found');
     if (!data.two_factor_enabled) return { verified: true };
+    if (data.two_factor_method === 'SMS') {
+      if (isSmsOtpExpired(data.sms_otp_expires_at)) throw new BadRequestException('SMS code expired — request a new one.');
+      if (verifySmsOtp(userId, code, data.sms_otp_hash)) return { verified: true };
+      throw new Error('Invalid 2FA code');
+    }
     if (data.two_factor_secret && this.verifyTotpCode(data.two_factor_secret, code)) {
       return { verified: true };
     }
@@ -577,7 +705,12 @@ export class AuthService {
     const verifiedUntil = this.twoFactorVerifiedUntilIso();
     const { error } = await client
       .from('profiles')
-      .update({ two_factor_verified_until: verifiedUntil, updated_at: new Date().toISOString() })
+      .update({
+        two_factor_verified_until: verifiedUntil,
+        sms_otp_hash: null,
+        sms_otp_expires_at: null,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', userId);
     if (error) throw error;
     return { verified: true, verified_until: verifiedUntil };

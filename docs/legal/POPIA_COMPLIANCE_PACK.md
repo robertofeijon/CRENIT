@@ -1,6 +1,7 @@
 # POPIA compliance pack (counsel review backlog)
 
-**Status:** Draft for legal counsel — not approved for production sign-off.
+**Status:** Draft for legal counsel — not approved for production sign-off.  
+**Counsel packet:** [`COUNSEL_REVIEW_PACKET.md`](COUNSEL_REVIEW_PACKET.md) · version `2026.06-draft-1`
 
 CRENIT's in-app privacy policy and terms (`src/content/legal-pages.ts`) are product summaries. Before production launch in Namibia, counsel should review and approve the items below.
 

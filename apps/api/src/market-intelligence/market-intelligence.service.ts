@@ -30,7 +30,9 @@ import {
   generateApiKey,
   median,
   monthYearFromDate,
+  resolveIntelligenceTimeframe,
 } from './market-intelligence.utils';
+import { B2B_DEMO_CLIENT_NAME, B2B_DEMO_DISCLAIMER, B2B_WINDHOEK_DEMO_SUBURBS } from './b2b-demo-dataset.constant';
 
 type MarketRecord = {
   suburb: string;
@@ -1851,5 +1853,99 @@ export class MarketIntelligenceService {
     ]);
 
     return pdfPromise;
+  }
+
+  async getPipelineLastUpdatedAt(): Promise<string | null> {
+    const client = this.supabase.getClient();
+    const [{ data: live }, { data: snap }] = await Promise.all([
+      this.mi().from('market_data_records').select('captured_at').order('captured_at', { ascending: false }).limit(1),
+      client.from('market_data_snapshots').select('created_at').order('snapshot_date', { ascending: false }).limit(1),
+    ]);
+    const times = [live?.[0]?.captured_at, snap?.[0]?.created_at]
+      .filter(Boolean)
+      .map((value) => new Date(value as string).getTime());
+    return times.length ? new Date(Math.max(...times)).toISOString() : null;
+  }
+
+  async getPublicMarketDashboard() {
+    const pipeline_updated_at = await this.getPipelineLastUpdatedAt();
+    const timeframe = resolveIntelligenceTimeframe('all');
+    const explorer = await this.getSuburbExplorer({ ...timeframe, city: 'Windhoek' });
+    const allSuburbs = explorer.suburbs ?? [];
+    const suburbs = allSuburbs
+      .filter((row: { transaction_count?: number }) => (row.transaction_count ?? 0) >= MIN_STATISTICAL_SUBURB_SAMPLE)
+      .map((row: any) => ({
+        suburb: row.suburb,
+        city: row.city,
+        median_rent: row.median_rent,
+        on_time_rate: row.on_time_rate,
+        transaction_count: row.transaction_count,
+        trend: row.trend,
+        confidence_level: row.confidence_level,
+        price_range: row.price_range,
+      }));
+    const suppressed_suburb_count = allSuburbs.length - suburbs.length;
+
+    let hasIllustrative = false;
+    try {
+      const { data } = await this.mi().from('market_data_records').select('id').eq('is_illustrative', true).limit(1);
+      hasIllustrative = Boolean(data?.length);
+    } catch {
+      hasIllustrative = false;
+    }
+
+    return {
+      city: 'Windhoek',
+      pipeline_updated_at,
+      methodology_path: '/data/methodology',
+      minimum_public_sample: MIN_STATISTICAL_SUBURB_SAMPLE,
+      data_provenance: hasIllustrative ? 'illustrative_demo' : explorer.data_source,
+      illustrative_disclaimer: hasIllustrative ? B2B_DEMO_DISCLAIMER : null,
+      suppressed_suburb_count,
+      suburbs,
+      demo_suburbs: B2B_WINDHOEK_DEMO_SUBURBS.map((s) => s.suburb),
+    };
+  }
+
+  async provisionB2bSampleKey(email: string, companyName?: string) {
+    const normalized = email?.trim().toLowerCase();
+    if (!normalized || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+      throw new BadRequestException('A valid email address is required');
+    }
+
+    const { data: demoClient, error: clientError } = await this.mi()
+      .from('b2b_clients')
+      .select('id, name')
+      .eq('name', B2B_DEMO_CLIENT_NAME)
+      .maybeSingle();
+    if (clientError || !demoClient?.id) {
+      throw new BadRequestException('B2B demo client is not provisioned — apply migration 0043');
+    }
+
+    const { key, record } = await this.createApiKey(demoClient.id, `Sample: ${normalized}`, 14);
+    const apiBase = process.env.API_URL || process.env.APP_URL || 'http://localhost:3001';
+
+    await this.supabase.getClient().from('b2b_sample_requests').insert([
+      {
+        email: normalized,
+        company_name: companyName?.trim() || null,
+        api_key_id: record?.id ?? null,
+      },
+    ]);
+
+    const suburbExamples = B2B_WINDHOEK_DEMO_SUBURBS.map((s) => s.suburb);
+
+    return {
+      api_key: key,
+      expires_in_days: 14,
+      demo_suburbs: suburbExamples,
+      illustrative_disclaimer: B2B_DEMO_DISCLAIMER,
+      sample_endpoints: suburbExamples.map((suburb) => ({
+        suburb,
+        json: `${apiBase}/api/v1/suburb/${encodeURIComponent(suburb)}`,
+        pdf: `${apiBase}/api/v1/reports/suburb_report/pdf?suburb=${encodeURIComponent(suburb)}`,
+      })),
+      email: normalized,
+    };
   }
 }

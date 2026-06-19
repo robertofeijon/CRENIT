@@ -13,6 +13,15 @@
 -- 0034_payment_eft_proofs.sql
 -- 0035_notifications_realtime.sql
 -- 0036_phase1_trust.sql
+-- 0037_phase2_growth.sql
+-- 0038_phase2_dispute_appeals.sql
+-- 0039_email_delivery_reliability.sql
+-- 0040_fraud_detection.sql
+-- 0041_score_narrative.sql
+-- 0042_score_history_metadata.sql
+-- 0043_phase3_b2b_demo_dataset.sql
+-- 0044_phase2_tail.sql
+-- 0045_sms_2fa.sql
 
 -- After apply, verify:
 --   SELECT column_name FROM information_schema.columns

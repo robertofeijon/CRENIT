@@ -1,13 +1,28 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CreditScoreService } from '../credit-score/credit-score.service';
 import { DISPUTE_TEMPLATES, DISPUTE_TYPES, type DisputeType } from './dispute-templates';
+
+function addBusinessDays(from: Date, days: number): Date {
+  const result = new Date(from);
+  let added = 0;
+  while (added < days) {
+    result.setDate(result.getDate() + 1);
+    const dow = result.getDay();
+    if (dow !== 0 && dow !== 6) added += 1;
+  }
+  return result;
+}
+
+const RESOLVED_STATUSES = new Set(['RESOLVED_TENANT', 'RESOLVED_LANDLORD', 'CLOSED']);
 
 @Injectable()
 export class DepositsService {
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly notificationsService: NotificationsService,
+    private readonly creditScoreService: CreditScoreService,
   ) {}
 
   getEscrowStatus(): string {
@@ -201,7 +216,7 @@ export class DepositsService {
     return { ...dispute, template, estimated_resolution_days: template.eta_days };
   }
 
-  async getDispute(userId: string, disputeId: string) {
+  async getDispute(userId: string, disputeId: string, role?: string) {
     const client = this.getClient();
     const { data: dispute, error: disputeError } = await client.from('disputes').select('*').eq('id', disputeId).single();
     if (disputeError || !dispute) {
@@ -215,7 +230,22 @@ export class DepositsService {
 
     const { data: evidence } = await client.from('dispute_evidence').select('*').eq('dispute_id', disputeId);
 
-    if (dispute.raised_by !== userId && deposit.tenant_id !== userId && deposit.landlord_id !== userId) {
+    const normalizedRole = (role || '').toUpperCase();
+    let authorized =
+      dispute.raised_by === userId ||
+      deposit.tenant_id === userId ||
+      normalizedRole === 'ADMIN';
+
+    if (!authorized && normalizedRole === 'LANDLORD') {
+      try {
+        const landlordProfileId = await this.getLandlordProfileId(userId);
+        authorized = deposit.landlord_id === landlordProfileId;
+      } catch {
+        authorized = false;
+      }
+    }
+
+    if (!authorized) {
       throw new BadRequestException('Not authorized to view this dispute');
     }
 
@@ -234,10 +264,66 @@ export class DepositsService {
         dispute.status === 'OPEN'
           ? 'Landlord review'
           : dispute.status === 'UNDER_REVIEW'
-            ? 'Admin or settlement review'
-            : 'Case closed',
+            ? dispute.appeal_status === 'FILED'
+              ? 'Senior review (appeal)'
+              : 'Admin or settlement review'
+            : dispute.appeal_status === 'OPEN' && this.canAppealDispute(dispute)
+              ? 'Appeal window open'
+              : 'Case closed',
       estimated_resolution_by: etaDate.toISOString(),
+      can_appeal: this.canAppealDispute(dispute),
     };
+  }
+
+  private canAppealDispute(dispute: { status?: string; appeal_status?: string | null; appeal_deadline?: string | null }) {
+    if (!dispute.status || !RESOLVED_STATUSES.has(dispute.status)) return false;
+    if (dispute.appeal_status !== 'OPEN') return false;
+    if (!dispute.appeal_deadline) return false;
+    return new Date(dispute.appeal_deadline).getTime() > Date.now();
+  }
+
+  async fileDisputeAppeal(userId: string, disputeId: string, reason: string) {
+    const trimmed = reason?.trim();
+    if (!trimmed) {
+      throw new BadRequestException('reason is required');
+    }
+
+    const client = this.getClient();
+    const { data: dispute, error: disputeError } = await client.from('disputes').select('*').eq('id', disputeId).single();
+    if (disputeError || !dispute) {
+      throw new NotFoundException('Dispute not found');
+    }
+
+    const { data: deposit, error: depositError } = await client.from('deposits').select('*').eq('id', dispute.deposit_id).single();
+    if (depositError || !deposit) {
+      throw new NotFoundException('Deposit not found');
+    }
+
+    let authorized = deposit.tenant_id === userId;
+    if (!authorized) {
+      try {
+        const landlordProfileId = await this.getLandlordProfileId(userId);
+        authorized = deposit.landlord_id === landlordProfileId;
+      } catch {
+        authorized = false;
+      }
+    }
+    if (!authorized) {
+      throw new UnauthorizedException('Not authorized to appeal this dispute');
+    }
+    if (!this.canAppealDispute(dispute)) {
+      throw new BadRequestException('Appeal window is closed or unavailable');
+    }
+
+    const { error: updateError } = await client
+      .from('disputes')
+      .update({ status: 'UNDER_REVIEW', appeal_status: 'FILED' })
+      .eq('id', disputeId);
+    if (updateError) throw updateError;
+
+    await this.logDisputeEvent(disputeId, 'APPEAL_FILED', userId, trimmed, {});
+
+    return { dispute_id: disputeId, status: 'UNDER_REVIEW', appeal_status: 'FILED' };
   }
 
   async landlordRespond(
@@ -291,6 +377,14 @@ export class DepositsService {
       }));
       await client.from('dispute_evidence').insert(evidenceRecords);
     }
+
+    await this.logDisputeEvent(
+      disputeId,
+      'LANDLORD_RESPONDED',
+      landlordUserId,
+      `Landlord responded: ${response}`,
+      { response, proposed_amount: proposedAmount, reason: reason || null },
+    );
 
     return { dispute_id: disputeId, status: 'UNDER_REVIEW', response, proposedAmount, reason };
   }
@@ -615,12 +709,16 @@ export class DepositsService {
 
     const status = decision === 'tenant_wins' ? 'RESOLVED_TENANT' : decision === 'landlord_wins' ? 'RESOLVED_LANDLORD' : 'CLOSED';
     const resolutionNotes = `Admin decision: ${decision}. ${reason}. Amount to tenant: ${amountToTenant}`;
+    const resolvedAt = new Date();
+    const appealDeadline = addBusinessDays(resolvedAt, 5);
 
     const { data: updatedDisputes, error: updateError } = await client.from('disputes').update({
       status,
       resolution_notes: resolutionNotes,
       resolved_by: adminId,
-      resolved_at: new Date().toISOString(),
+      resolved_at: resolvedAt.toISOString(),
+      appeal_deadline: appealDeadline.toISOString(),
+      appeal_status: 'OPEN',
     }).eq('id', disputeId).select().limit(1);
 
     if (updateError || !updatedDisputes || updatedDisputes.length === 0) {
@@ -671,6 +769,176 @@ export class DepositsService {
       });
     }
 
+    const openedAt = new Date(dispute.opened_at || dispute.created_at || Date.now());
+    const resolutionDays = Math.max(1, Math.ceil((resolvedAt.getTime() - openedAt.getTime()) / 86400000));
+    const landlordFavoured = decision === 'landlord_wins' || (decision === 'split' && amountToTenant <= 0);
+
+    await this.logDisputeEvent(
+      disputeId,
+      'ADMIN_ARBITRATED',
+      adminId,
+      `Admin decision: ${decision}`,
+      { decision, amount_to_tenant: amountToTenant, reason },
+    );
+
+    await client.from('dispute_outcomes').insert([
+      {
+        dispute_id: disputeId,
+        dispute_type: dispute.dispute_type || 'OTHER',
+        outcome: decision,
+        resolution_days: resolutionDays,
+        landlord_favoured: landlordFavoured,
+        evidence_types: [],
+      },
+    ]);
+
+    if (deposit.tenant_id) {
+      try {
+        await this.creditScoreService.calculateScore(deposit.tenant_id, {
+          event_type: 'DISPUTE_RESOLVED',
+          dispute_type: dispute.dispute_type,
+          decision,
+        });
+      } catch (e) {
+        // Score narrative is best-effort after dispute closure
+      }
+    }
+
     return { dispute_id: disputeId, status, decision, amount_to_tenant: amountToTenant };
+  }
+
+  async listLandlordOpenDisputes(landlordUserId: string) {
+    const client = this.getClient();
+    const landlordId = await this.getLandlordProfileId(landlordUserId);
+    const { data: deposits, error: depositsError } = await client
+      .from('deposits')
+      .select('id, tenant_id, amount')
+      .eq('landlord_id', landlordId);
+    if (depositsError) throw depositsError;
+
+    const depositIds = (deposits || []).map((d: any) => d.id);
+    if (!depositIds.length) return [];
+
+    const { data: disputes, error } = await client
+      .from('disputes')
+      .select('*')
+      .in('deposit_id', depositIds)
+      .in('status', ['OPEN', 'UNDER_REVIEW'])
+      .order('opened_at', { ascending: false });
+    if (error) throw error;
+
+    const depositById = new Map((deposits || []).map((d: any) => [d.id, d]));
+    const tenantIds = Array.from(new Set((deposits || []).map((d: any) => d.tenant_id).filter(Boolean)));
+    const { data: profiles } = tenantIds.length
+      ? await client.from('profiles').select('id, full_name').in('id', tenantIds)
+      : { data: [] };
+    const nameById = new Map((profiles || []).map((p: any) => [p.id, p.full_name]));
+
+    const rows = disputes || [];
+    const enriched = await Promise.all(
+      rows.map(async (dispute: any) => {
+        const deposit = depositById.get(dispute.deposit_id);
+        const timeline = await this.loadDisputeTimeline(dispute.id);
+        const disputeType = (dispute.dispute_type as DisputeType) || 'OTHER';
+        const template = DISPUTE_TEMPLATES[disputeType] || DISPUTE_TEMPLATES.OTHER;
+        const openedAt = new Date(dispute.opened_at || dispute.created_at || Date.now());
+        return {
+          ...dispute,
+          tenant_name: deposit ? nameById.get(deposit.tenant_id) || 'Tenant' : 'Tenant',
+          deposit_amount: deposit?.amount ?? null,
+          timeline,
+          template,
+          next_step: dispute.status === 'OPEN' ? 'Your review required' : 'Awaiting admin or settlement',
+          estimated_resolution_by: new Date(openedAt.getTime() + template.eta_days * 86400000).toISOString(),
+        };
+      }),
+    );
+    return enriched;
+  }
+
+  async getDisputeOutcomeAnalytics() {
+    const client = this.getClient();
+    const since = new Date(Date.now() - 90 * 86400000).toISOString();
+    const { data: outcomes, error } = await client
+      .from('dispute_outcomes')
+      .select('outcome, dispute_type, resolution_days, landlord_favoured, created_at')
+      .gte('created_at', since)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+
+    const rows = outcomes || [];
+    const byOutcome: Record<string, number> = {};
+    const byType: Record<string, number> = {};
+    let totalDays = 0;
+    let landlordFavoured = 0;
+
+    for (const row of rows) {
+      byOutcome[row.outcome] = (byOutcome[row.outcome] || 0) + 1;
+      const type = row.dispute_type || 'OTHER';
+      byType[type] = (byType[type] || 0) + 1;
+      totalDays += Number(row.resolution_days || 0);
+      if (row.landlord_favoured) landlordFavoured += 1;
+    }
+
+    const total = rows.length;
+    return {
+      period_days: 90,
+      total_resolved: total,
+      median_resolution_days: total
+        ? Math.round(
+            [...rows.map((r) => Number(r.resolution_days || 0))].sort((a, b) => a - b)[
+              Math.floor(total / 2)
+            ] || 0,
+          )
+        : 0,
+      avg_resolution_days: total ? Math.round(totalDays / total) : 0,
+      landlord_favoured_rate: total ? Math.round((landlordFavoured / total) * 100) : 0,
+      by_outcome: byOutcome,
+      by_type: byType,
+    };
+  }
+
+  async getLandlordDisputeRisk(landlordUserId: string) {
+    const client = this.getClient();
+    const landlordId = await this.getLandlordProfileId(landlordUserId);
+    const { data: deposits } = await client.from('deposits').select('id').eq('landlord_id', landlordId);
+    const depositIds = (deposits || []).map((d: { id: string }) => d.id);
+
+    if (!depositIds.length) {
+      return { open_count: 0, resolved_12m: 0, tenant_favoured_rate_pct: 0, risk_level: 'low' as const };
+    }
+
+    const { data: disputes, error } = await client.from('disputes').select('id, status, resolved_at').in('deposit_id', depositIds);
+    if (error) throw error;
+
+    const openCount = (disputes || []).filter((d: { status: string }) => ['OPEN', 'UNDER_REVIEW'].includes(d.status)).length;
+    const since = new Date(Date.now() - 365 * 86400000).toISOString();
+    const resolvedIds = (disputes || [])
+      .filter(
+        (d: { id: string; status: string; resolved_at?: string | null }) =>
+          d.resolved_at && d.resolved_at >= since && RESOLVED_STATUSES.has(d.status),
+      )
+      .map((d: { id: string }) => d.id);
+
+    let tenantFavouredRate = 0;
+    if (resolvedIds.length) {
+      const { data: outcomes } = await client
+        .from('dispute_outcomes')
+        .select('landlord_favoured')
+        .in('dispute_id', resolvedIds);
+      const total = outcomes?.length || 0;
+      const landlordFavoured = (outcomes || []).filter((o: { landlord_favoured?: boolean }) => o.landlord_favoured).length;
+      tenantFavouredRate = total ? Math.round(((total - landlordFavoured) / total) * 100) : 0;
+    }
+
+    const riskLevel =
+      openCount >= 3 || tenantFavouredRate >= 60 ? 'high' : openCount >= 1 || tenantFavouredRate >= 40 ? 'medium' : 'low';
+
+    return {
+      open_count: openCount,
+      resolved_12m: resolvedIds.length,
+      tenant_favoured_rate_pct: tenantFavouredRate,
+      risk_level: riskLevel,
+    };
   }
 }

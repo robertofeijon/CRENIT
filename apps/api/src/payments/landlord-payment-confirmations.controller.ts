@@ -19,6 +19,15 @@ export class LandlordPaymentConfirmationsController {
     return { success: true, data, error: null };
   }
 
+  @Get('analytics')
+  async analytics(@Headers('authorization') authHeader: string) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'LANDLORD');
+    assertPartnerApproved(profile, 'Your landlord account is under review. Payment analytics are locked until approval.');
+    const data = await this.paymentsService.getLandlordConfirmationAnalytics(profile.id);
+    return { success: true, data, error: null };
+  }
+
   @Post('bulk-confirm')
   async bulkConfirm(@Headers('authorization') authHeader: string, @Body() body: { payment_ids?: string[] }) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);

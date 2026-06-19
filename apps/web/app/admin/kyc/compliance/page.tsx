@@ -20,6 +20,8 @@ export default function AdminKycCompliancePage() {
   const [error, setError] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(false);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [fraudFlags, setFraudFlags] = useState<any[]>([]);
+  const [fraudScanBusy, setFraudScanBusy] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/auth');
@@ -36,11 +38,19 @@ export default function AdminKycCompliancePage() {
       .finally(() => setLoadingData(false));
   }, []);
 
+  const loadFraudFlags = useCallback(() => {
+    api
+      .get('/admin/fraud/flags')
+      .then((res) => setFraudFlags(res.data?.data || []))
+      .catch(() => setFraudFlags([]));
+  }, []);
+
   useEffect(() => {
     if (user && role === 'ADMIN') {
       loadData();
+      loadFraudFlags();
     }
-  }, [user, role, loadData]);
+  }, [user, role, loadData, loadFraudFlags]);
 
   const loadAudit = async (tenantId: string) => {
     setSelectedTenantId(tenantId);
@@ -62,6 +72,31 @@ export default function AdminKycCompliancePage() {
       loadData();
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Unable to dismiss quality flag.');
+    }
+  };
+
+  const runFraudScan = async () => {
+    setFraudScanBusy(true);
+    setError(null);
+    try {
+      const res = await api.post('/admin/fraud/scan');
+      setError(null);
+      loadFraudFlags();
+      window.alert(`Fraud scan complete — ${res.data?.data?.total_new ?? 0} new flag(s).`);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Fraud scan failed.');
+    } finally {
+      setFraudScanBusy(false);
+    }
+  };
+
+  const updateFraudFlag = async (flagId: string, status: string) => {
+    setError(null);
+    try {
+      await api.post(`/admin/fraud/flags/${flagId}/status`, { status, resolution_note: 'Reviewed in compliance queue.' });
+      loadFraudFlags();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Unable to update fraud flag.');
     }
   };
 
@@ -118,6 +153,56 @@ export default function AdminKycCompliancePage() {
               accent={(stats.open_quality_flags ?? 0) > 0 ? 'warning' : 'default'}
               icon={AlertTriangle}
             />
+          </section>
+
+          <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="font-semibold text-[#1A1A1A]">Fraud &amp; integrity flags</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Confirm-rate anomalies and self-dealing patterns alongside KYC LOCATION_MISMATCH flags.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={fraudScanBusy}
+                onClick={() => void runFraudScan()}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-slate-50 disabled:opacity-60"
+              >
+                {fraudScanBusy ? 'Scanning…' : 'Run fraud scan'}
+              </button>
+            </div>
+            <div className="mt-4 space-y-3">
+              {fraudFlags.map((flag) => (
+                <div key={flag.id} className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-amber-950">{flag.flag_type.replace(/_/g, ' ')}</p>
+                      <p className="mt-1 text-amber-900/90">{flag.flag_note}</p>
+                      <p className="mt-1 text-xs text-amber-800/80">
+                        User {flag.user_id?.slice(0, 8)}… · Status {flag.status} · {new Date(flag.flagged_at).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {flag.status === 'FLAGGED' ? (
+                        <button type="button" className="rounded-full bg-white px-3 py-1 text-xs font-semibold" onClick={() => void updateFraudFlag(flag.id, 'UNDER_REVIEW')}>
+                          Under review
+                        </button>
+                      ) : null}
+                      <button type="button" className="rounded-full bg-white px-3 py-1 text-xs font-semibold" onClick={() => void updateFraudFlag(flag.id, 'RESOLVED')}>
+                        Resolve
+                      </button>
+                      <button type="button" className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-900" onClick={() => void updateFraudFlag(flag.id, 'SUSPENDED')}>
+                        Suspend
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {!fraudFlags.length ? (
+                <p className="text-sm text-slate-500">No active fraud flags. Run a scan after payment volume builds.</p>
+              ) : null}
+            </div>
           </section>
 
           <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">

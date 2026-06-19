@@ -17,6 +17,8 @@ import { AdminService } from './admin.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AttachmentsService } from '../landlords/attachments.service';
 import { getUserProfileFromAuthHeader, assertRole } from '../supabase/supabase.utils';
+import { EmailDeliveryService } from '../notifications/email-delivery.service';
+import { PaymentHistoryImportService } from '../tenants/payment-history-import.service';
 
 @Controller('admin')
 export class AdminController {
@@ -24,6 +26,8 @@ export class AdminController {
     private readonly adminService: AdminService,
     private readonly supabaseService: SupabaseService,
     private readonly attachmentsService: AttachmentsService,
+    private readonly emailDelivery: EmailDeliveryService,
+    private readonly paymentHistoryImportService: PaymentHistoryImportService,
   ) {}
 
   @Get('health')
@@ -326,6 +330,38 @@ export class AdminController {
     return { success: true, data: result, error: null };
   }
 
+  @Post('system-health/email-test')
+  async emailSmokeTest(
+    @Headers('authorization') authHeader: string,
+    @Body() body: { to?: string },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const to = body?.to?.trim();
+    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      throw new BadRequestException('A valid "to" email address is required');
+    }
+    const result = await this.emailDelivery.sendSmokeTest(to);
+    return {
+      success: result.sent,
+      data: {
+        ...result,
+        message: result.sent
+          ? `Test email delivered to ${to}`
+          : `Test email failed: ${result.error || 'unknown error'}`,
+      },
+      error: result.sent ? null : result.error || 'delivery_failed',
+    };
+  }
+
+  @Get('email-delivery/failed')
+  async failedEmails(@Headers('authorization') authHeader: string) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const rows = await this.emailDelivery.listFailedDeliveries();
+    return { success: true, data: { deliveries: rows }, error: null };
+  }
+
   @Get('compliance/search-users')
   async complianceSearchUsers(
     @Headers('authorization') authHeader: string,
@@ -501,6 +537,43 @@ export class AdminController {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertRole(profile, 'ADMIN');
     const result = await this.adminService.reviewPartnerApproval(profile.id, submissionId, body.action, body.reason);
+    return { success: true, data: result, error: null };
+  }
+
+  @Get('payment-history-imports')
+  async listPaymentHistoryImports(@Headers('authorization') authHeader: string) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.paymentHistoryImportService.listPendingImports();
+    return { success: true, data: result, error: null };
+  }
+
+  @Get('payment-history-imports/:importId')
+  async getPaymentHistoryImport(
+    @Headers('authorization') authHeader: string,
+    @Param('importId') importId: string,
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const result = await this.paymentHistoryImportService.getImportDetail(importId);
+    return { success: true, data: result, error: null };
+  }
+
+  @Post('payment-history-imports/:importId/review')
+  async reviewPaymentHistoryImport(
+    @Headers('authorization') authHeader: string,
+    @Param('importId') importId: string,
+    @Body() body: { action: 'approve' | 'reject'; rejection_reason?: string },
+  ) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    if (!body.action) throw new BadRequestException('action is required');
+    const result = await this.paymentHistoryImportService.reviewImport(
+      profile.id,
+      importId,
+      body.action,
+      body.rejection_reason,
+    );
     return { success: true, data: result, error: null };
   }
 }

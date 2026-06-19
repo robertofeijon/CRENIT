@@ -15,9 +15,10 @@
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://xxxx.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `NEXT_PUBLIC_API_URL` | `https://crenit-api.onrender.com` |
-| `NEXT_PUBLIC_CONTACT_EMAIL` | `robertofeijon@mail.com` (contact page + mailto) |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | `robertofeijon@gmail.com` (contact page + mailto) |
 | `NEXT_PUBLIC_SITE_URL` | `https://crenit-web.vercel.app` (canonical URLs / sitemap) |
-| `NEXT_PUBLIC_SMS_ENABLED` | `false` |
+| `NEXT_PUBLIC_SMS_ENABLED` | `false` (set `true` when `SMS_ENABLED` on API) |
+| `NEXT_PUBLIC_VERIFY_URL` | Optional — `https://verify.crenit.na` for PDF QR links |
 
 `apps/web/vercel.json` adds security headers. Production builds fail if Supabase public keys are missing.
 
@@ -56,7 +57,7 @@ Render sets `PORT` automatically. The API binds to `0.0.0.0`.
 | `RATE_LIMIT_WINDOW_MS` | `60000` |
 | `RATE_LIMIT_MAX_REQUESTS` | `120` |
 | `EMAIL_PROVIDER` / SMTP or Resend vars | See `.env.example` |
-| `EMAIL_CONTACT` | Inbox for `POST /public/contact` (e.g. `robertofeijon@mail.com`) |
+| `EMAIL_CONTACT` | Inbox for `POST /public/contact` (e.g. `robertofeijon@gmail.com`) |
 | `EMAIL_REPLY_TO` | Reply-to for outbound mail (often same as `EMAIL_CONTACT`) |
 | `PAYMENT_WEBHOOK_SECRET` | Required when payment webhooks are enabled |
 
@@ -84,6 +85,32 @@ npm run setup:github-e2e-secrets
 E2E credentials default to demo seed (`tenant@rentcredit.demo` / `DemoTenant123!`) — run `npm run seed:demo` on staging first.
 
 **Render / Vercel dashboards:** set `EMAIL_CONTACT` and `EMAIL_REPLY_TO` on the API service; set `NEXT_PUBLIC_CONTACT_EMAIL` on the web project (same address).
+
+---
+
+## verify.crenit.na (PDF verification subdomain)
+
+1. In **Vercel** → Project → Domains → add `verify.crenit.na` (same project as main web).
+2. At your DNS provider, add a **CNAME** for `verify` → `cname.vercel-dns.com` (or Vercel’s shown target).
+3. Set env on **API** (Render): `VERIFY_URL=https://verify.crenit.na`
+4. Set env on **Web** (Vercel): `NEXT_PUBLIC_VERIFY_URL=https://verify.crenit.na`
+5. `apps/web/middleware.ts` rewrites `verify.crenit.na/{reference}` → `/verify/{reference}`.
+
+Shareable credit PDFs and QR codes use `buildVerifyUrl()` — links update automatically when `VERIFY_URL` is set.
+
+---
+
+## SMS (optional)
+
+| API (Render) | Web (Vercel) |
+|--------------|--------------|
+| `SMS_ENABLED=true` | `NEXT_PUBLIC_SMS_ENABLED=true` |
+| `SMS_PROVIDER=africas_talking` | |
+| `SMS_PROVIDER_API_KEY=...` | |
+| `SMS_AT_USERNAME=...` | |
+| `SMS_FROM=CRENIT` | |
+
+Enables: SMS 2FA (`POST /auth/2fa/sms/*`), landlord confirm SMS nudges (24h before auto-confirm).
 
 ---
 

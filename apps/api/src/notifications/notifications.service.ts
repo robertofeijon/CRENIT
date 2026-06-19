@@ -72,6 +72,12 @@ export class NotificationsService {
         return { subject: `Your rent of ${amount || 'N$0'} is due in 3 days`, body: message };
       case 'PAYMENT_CONFIRMED':
         return { subject: 'Payment confirmed — CRENIT receipt', body: message };
+      case 'PAYMENT_PENDING_CONFIRM':
+        return { subject: 'Rent payment ready for your review', body: message };
+      case 'EFT_PROOF_UPLOADED':
+        return { subject: 'EFT proof ready for review', body: message };
+      case 'PAYMENT_CONFIRM_REMINDER':
+        return { subject: 'Review window closing soon', body: message };
       case 'PAYMENT_OVERDUE':
         return { subject: 'Your rent payment is overdue', body: message };
       case 'KYC_APPROVED':
@@ -319,9 +325,27 @@ export class NotificationsService {
   }
 
   private async sendSms(phone: string, text: string) {
+    await this.sendTransactionalSms(phone, text);
+  }
+
+  /** OTP, confirm nudges, and preference-backed alerts. Requires SMS_ENABLED=true. */
+  async sendTransactionalSms(phone: string, text: string): Promise<{ sent: boolean }> {
+    const normalized = phone?.trim();
+    if (!normalized) return { sent: false };
+
+    if (process.env.SMS_ENABLED !== 'true') {
+      this.logger.log(`[sms-disabled] ${normalized}: ${text.slice(0, 120)}`);
+      return { sent: false };
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger.log(`[sms-dev] to ${normalized}: ${text}`);
+      return { sent: true };
+    }
+
     const provider = (process.env.SMS_PROVIDER || 'africas_talking').toLowerCase();
     const apiKey = process.env.SMS_PROVIDER_API_KEY;
-    if (!apiKey || provider !== 'africas_talking') return;
+    if (!apiKey || provider !== 'africas_talking') return { sent: false };
     try {
       await fetch('https://api.africastalking.com/version1/messaging', {
         method: 'POST',
@@ -330,16 +354,30 @@ export class NotificationsService {
           'Content-Type': 'application/x-www-form-urlencoded',
           Accept: 'application/json',
         },
+        signal: AbortSignal.timeout(10000),
         body: new URLSearchParams({
-          username: 'sandbox',
-          to: phone,
-          message: text,
-          from: 'CRENIT',
+          username: process.env.SMS_AT_USERNAME || 'sandbox',
+          to: normalized,
+          message: text.slice(0, 160),
+          from: process.env.SMS_FROM || 'CRENIT',
         }),
       });
+      return { sent: true };
     } catch (error) {
       this.logger.warn(`SMS send failed: ${(error as Error).message}`);
+      return { sent: false };
     }
+  }
+
+  async sendLandlordConfirmSmsNudge(landlordUserId: string, shortMessage: string) {
+    const client = this.supabase.getClient();
+    const [{ data: profile }, { data: prefs }] = await Promise.all([
+      client.from('profiles').select('phone').eq('id', landlordUserId).maybeSingle(),
+      client.from('notification_preferences').select('sms_enabled, payment_confirmations').eq('profile_id', landlordUserId).maybeSingle(),
+    ]);
+    if (prefs?.sms_enabled === false || prefs?.payment_confirmations === false) return { sent: false };
+    if (!profile?.phone) return { sent: false };
+    return this.sendTransactionalSms(profile.phone, shortMessage.slice(0, 160));
   }
 
   async listForUser(userId: string, limit = 25) {

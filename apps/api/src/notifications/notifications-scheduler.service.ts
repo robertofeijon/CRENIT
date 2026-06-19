@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { NotificationsService } from './notifications.service';
+import { OnboardingEmailService } from './onboarding-email.service';
 import { SchedulerHeartbeatService } from '../ops/scheduler-heartbeat.service';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class NotificationsSchedulerService {
 
   constructor(
     private readonly notificationsService: NotificationsService,
+    private readonly onboardingEmailService: OnboardingEmailService,
     private readonly schedulerHeartbeat: SchedulerHeartbeatService,
   ) {}
 
@@ -53,6 +55,19 @@ export class NotificationsSchedulerService {
     } catch (error) {
       this.schedulerHeartbeat.record('notifications_lease_renewal', false, (error as Error).message);
       this.logger.error('Lease renewal proposal job failed', error as any);
+    }
+  }
+
+  @Cron('30 7 * * *', { timeZone: 'Africa/Windhoek' })
+  async handleOnboardingEmailJob() {
+    this.logger.log('Running onboarding email sequence job');
+    try {
+      const { sent } = await this.onboardingEmailService.processDueEnrollments();
+      this.schedulerHeartbeat.record('notifications_onboarding_sequence', true);
+      if (sent > 0) this.logger.log(`Sent ${sent} onboarding email(s)`);
+    } catch (error) {
+      this.schedulerHeartbeat.record('notifications_onboarding_sequence', false, (error as Error).message);
+      this.logger.error('Onboarding email job failed', error as any);
     }
   }
 }

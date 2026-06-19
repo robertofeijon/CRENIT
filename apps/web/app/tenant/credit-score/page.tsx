@@ -11,6 +11,7 @@ import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import RentalCreditModelCard from '../../components/credit/RentalCreditModelCard';
 import ScoreTierProgress from '../../components/credit/ScoreTierProgress';
+import PaymentHistoryImportCard from '../../components/tenant/PaymentHistoryImportCard';
 import { BRAND_TIER_COLORS, type BrandTier } from '../../../src/lib/tier-branding';
 
 const FACTOR_LABELS: Record<string, { label: string; weight: string }> = {
@@ -152,6 +153,45 @@ export default function TenantCreditScorePage() {
 
           <ScoreTierProgress brandTier={brandTier} tierProgress={tierProgress} />
 
+          {insights?.peer_comparison?.available ? (
+            <section className="tenant-panel border-emerald-100 bg-emerald-50/50">
+              <h2 className="text-lg font-semibold text-[#1A1A1A]">How you compare locally</h2>
+              <p className="mt-2 text-sm text-emerald-950">{insights.peer_comparison.message}</p>
+              <p className="mt-2 text-xs text-slate-500">
+                Privacy-safe aggregate in {insights.peer_comparison.suburb} · n={insights.peer_comparison.sample_size} verified tenants
+              </p>
+            </section>
+          ) : insights?.peer_comparison?.suppressed ? (
+            <section className="tenant-panel">
+              <h2 className="text-lg font-semibold text-[#1A1A1A]">How you compare locally</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                {insights.peer_comparison.suburb
+                  ? `We need at least ${insights.peer_comparison.required_minimum_sample ?? 5} verified tenants in ${insights.peer_comparison.suburb} before showing a suburb comparison.`
+                  : 'Add a property suburb to your lease to unlock local comparisons.'}
+              </p>
+            </section>
+          ) : null}
+
+          {(insights?.lease_summaries?.length ?? 0) > 1 ? (
+            <section className="tenant-panel">
+              <h2 className="text-lg font-semibold text-[#1A1A1A]">Credit across your leases</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                One unified score — events below are labelled by landlord and property.
+              </p>
+              <ul className="mt-4 space-y-2">
+                {insights.lease_summaries.map((lease: any) => (
+                  <li key={lease.lease_id} className="rounded-xl border border-slate-100 bg-[#F3F4F6] px-4 py-3 text-sm">
+                    <p className="font-semibold text-[#1A1A1A]">{lease.property_label}</p>
+                    <p className="text-slate-600">
+                      {lease.landlord_name} · {lease.status} · {lease.confirmed_payments} confirmed payment
+                      {lease.confirmed_payments === 1 ? '' : 's'}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
           {insights?.holding_back?.length ? (
             <section className="tenant-panel">
               <h2 className="text-lg font-semibold text-[#1A1A1A]">What&apos;s holding your score back</h2>
@@ -282,6 +322,43 @@ export default function TenantCreditScorePage() {
               </div>
             </section>
           </div>
+
+          <PaymentHistoryImportCard />
+
+          <section className="tenant-panel">
+            <h2 className="text-lg font-semibold text-[#1A1A1A]">Score timeline</h2>
+            <p className="mt-1 text-sm text-slate-500">What moved your score — stored with each update, not guessed on the fly.</p>
+            {(insights?.narrative_timeline?.length ? insights.narrative_timeline : history.filter((h) => h.event_reason)).length ? (
+              <ul className="mt-4 space-y-3">
+                {(insights?.narrative_timeline?.length
+                  ? insights.narrative_timeline
+                  : history.filter((h) => h.event_reason)
+                ).map((entry: any, index: number) => (
+                  <li key={`${entry.recorded_at}-${index}`} className="flex gap-3 rounded-xl border border-slate-100 bg-[#F3F4F6] px-4 py-3 text-sm">
+                    <div className="shrink-0 text-xs text-slate-500">
+                      {new Date(entry.recorded_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                    <div>
+                      {entry.landlord_name || entry.property_label ? (
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {[entry.property_label, entry.landlord_name].filter(Boolean).join(' · ')}
+                        </p>
+                      ) : null}
+                      <p className="font-medium text-[#1A1A1A]">{entry.annotation || entry.event_reason}</p>
+                      {entry.score != null ? (
+                        <p className="mt-1 text-xs text-slate-500">
+                          Score {entry.score}
+                          {entry.score_delta != null && entry.score_delta !== 0 ? ` (${entry.score_delta > 0 ? '+' : ''}${entry.score_delta})` : ''}
+                        </p>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-4 text-sm text-slate-500">Annotations appear when rent is confirmed, auto-confirmed, or disputes resolve.</p>
+            )}
+          </section>
 
           <section className="tenant-panel">
             <h2 className="text-lg font-semibold text-[#1A1A1A]">Score history</h2>

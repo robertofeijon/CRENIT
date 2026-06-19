@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { WINDHOEK_SUBURBS } from '../../src/lib/namibia-locale';
 
 export const metadata: Metadata = {
   title: 'Products',
@@ -110,6 +111,16 @@ export default function ProductsPage() {
           <Link href="/products/market-data" className="mt-6 inline-flex text-sm font-semibold text-[#C0392B] hover:underline">
             Explore market data →
           </Link>
+          <div className="mt-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Windhoek coverage (pilot suburbs)</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {WINDHOEK_SUBURBS.map((suburb) => (
+                <span key={suburb} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
+                  {suburb}
+                </span>
+              ))}
+            </div>
+          </div>
         </section>
 
         <section className="mt-16 rounded-[2rem] bg-white p-10 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">

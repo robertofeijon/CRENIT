@@ -1,10 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { isKycApproved } from '../supabase/supabase.utils';
+import { PublicService } from '../public/public.service';
+import { parsePropertiesCsv } from './properties-csv.util';
 
 @Injectable()
 export class PropertiesService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly publicService: PublicService,
+  ) {}
 
   private getClient() {
     return this.supabase.getClient();
@@ -109,6 +114,8 @@ export class PropertiesService {
       unit = unitRows?.[0] ?? null;
     }
 
+    void this.publicService.notifyWaitlistForSuburb(payload.address_suburb).catch(() => null);
+
     return { ...property, units: unit ? [unit] : [] };
   }
 
@@ -168,6 +175,66 @@ export class PropertiesService {
     const { data, error } = await client.from('units').update(updates).eq('id', unitId).select().single();
     if (error) throw error;
     return data;
+  }
+
+  async importUnitsFromCsv(landlordUserId: string, csvText: string) {
+    await this.assertLandlordKycApproved(landlordUserId);
+    const rows = parsePropertiesCsv(csvText);
+    const client = this.getClient();
+    const landlordId = await this.getLandlordProfileId(landlordUserId);
+    const propertyCache = new Map<string, string>();
+    let propertiesCreated = 0;
+    let unitsCreated = 0;
+
+    for (const row of rows) {
+      const key = [row.property_name, row.address_street, row.address_suburb, row.address_city]
+        .map((v) => v.trim().toLowerCase())
+        .join('|');
+      let resolvedPropertyId = propertyCache.get(key);
+
+      if (!resolvedPropertyId) {
+        const { data: existing } = await client
+          .from('properties')
+          .select('id')
+          .eq('landlord_id', landlordId)
+          .eq('property_name', row.property_name)
+          .eq('address_street', row.address_street)
+          .ilike('address_suburb', row.address_suburb)
+          .maybeSingle();
+
+        const newPropertyId = existing?.id
+          ? existing.id
+          : String(
+              (
+                await this.createProperty(landlordUserId, {
+                  property_name: row.property_name,
+                  address_street: row.address_street,
+                  address_suburb: row.address_suburb,
+                  address_city: row.address_city,
+                  address_postcode: row.address_postcode,
+                  property_type: row.property_type,
+                })
+              ).id,
+            );
+        if (!existing?.id) propertiesCreated += 1;
+        resolvedPropertyId = newPropertyId;
+        propertyCache.set(key, newPropertyId);
+      }
+
+      if (!resolvedPropertyId) {
+        throw new BadRequestException('Failed to resolve property for CSV row');
+      }
+
+      await this.addUnit(landlordUserId, resolvedPropertyId, {
+        unit_identifier: row.unit_identifier,
+        bedrooms: row.bedrooms,
+        bathrooms: row.bathrooms,
+        monthly_rent: row.monthly_rent,
+      });
+      unitsCreated += 1;
+    }
+
+    return { properties_created: propertiesCreated, units_created: unitsCreated, rows_processed: rows.length };
   }
 
   private async assertPropertyOwnership(landlordId: string, propertyId: string) {

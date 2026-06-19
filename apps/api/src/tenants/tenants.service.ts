@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreditScoreService } from '../credit-score/credit-score.service';
 import { brandTierFromScore100 } from '../credit-score/tier-branding';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailDeliveryService } from '../notifications/email-delivery.service';
 import { buildPaymentMetrics } from '../payments/payment-metrics.util';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class TenantsService {
     private readonly supabase: SupabaseService,
     private readonly creditScoreService: CreditScoreService,
     private readonly notificationsService: NotificationsService,
+    private readonly emailDelivery: EmailDeliveryService,
   ) {}
 
   async getTenantProfile(userId: string) {
@@ -443,5 +445,65 @@ export class TenantsService {
       .order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
+  }
+
+  async bringLandlord(
+    userId: string,
+    payload: { landlord_email: string; landlord_name?: string; suburb?: string; message?: string; tenant_email?: string },
+  ) {
+    const landlordEmail = payload.landlord_email?.trim().toLowerCase();
+    if (!landlordEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(landlordEmail)) {
+      throw new BadRequestException('A valid landlord_email is required');
+    }
+
+    const client = this.supabase.getClient();
+    const profile = await this.getTenantProfile(userId);
+    const tenantEmail = payload.tenant_email || '';
+    const tenantName = profile.full_name || 'A CRENIT tenant';
+
+    const { data: referral, error } = await client
+      .from('landlord_referrals')
+      .insert([
+        {
+          tenant_user_id: userId,
+          tenant_email: tenantEmail,
+          tenant_name: tenantName,
+          landlord_email: landlordEmail,
+          landlord_name: payload.landlord_name?.trim() || null,
+          suburb: payload.suburb?.trim() || null,
+          message: payload.message?.trim() || null,
+          status: 'PENDING',
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const webUrl = process.env.WEB_URL || process.env.APP_URL || 'http://localhost:3002';
+    const signupUrl = `${webUrl}/auth?role=landlord&ref=${referral.token}`;
+    const suburbLine = payload.suburb?.trim() ? ` in ${payload.suburb.trim()}` : '';
+    const note = payload.message?.trim() ? `<p><em>${payload.message.trim().replace(/</g, '&lt;')}</em></p>` : '';
+    const html = `
+      <h2>${tenantName} invited you to CRENIT</h2>
+      <p>Your tenant${suburbLine} uses CRENIT to build verified rental credit from on-time rent payments.</p>
+      <p>Register as a verified landlord partner to confirm rent, manage deposits, and optionally contribute anonymised market data.</p>
+      ${note}
+      <p><a href="${signupUrl}">Join CRENIT as a landlord →</a></p>
+    `;
+
+    await this.emailDelivery.deliverHtml({
+      to: landlordEmail,
+      subject: `${tenantName} wants you on CRENIT`,
+      html,
+      replyTo: tenantEmail || undefined,
+    });
+
+    await client.from('landlord_referrals').update({ status: 'EMAIL_SENT' }).eq('id', referral.id);
+
+    return {
+      referral_id: referral.id,
+      message: `We emailed ${landlordEmail} with a link to join CRENIT as your landlord.`,
+    };
   }
 }

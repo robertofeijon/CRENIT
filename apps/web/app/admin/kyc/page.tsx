@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { AlertTriangle, CheckCircle2, RefreshCw, XCircle } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
@@ -48,6 +49,7 @@ export default function AdminKycPage() {
   const [auditLoadingUserId, setAuditLoadingUserId] = useState<string | null>(null);
   const [detailLoadingUserId, setDetailLoadingUserId] = useState<string | null>(null);
   const [kycDetail, setKycDetail] = useState<any | null>(null);
+  const [fraudFlagCount, setFraudFlagCount] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/auth');
@@ -76,6 +78,14 @@ export default function AdminKycPage() {
       void loadQueue();
     }
   }, [user, role, loadQueue]);
+
+  useEffect(() => {
+    if (!user || role !== 'ADMIN') return;
+    api
+      .get('/admin/fraud/flags')
+      .then((res) => setFraudFlagCount(Array.isArray(res.data?.data) ? res.data.data.length : 0))
+      .catch(() => setFraudFlagCount(0));
+  }, [user, role, submissions]);
 
   useEffect(() => {
     if (!user || role !== 'ADMIN') return;
@@ -158,6 +168,20 @@ export default function AdminKycPage() {
           </button>
         }
       />
+
+      {fraudFlagCount > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+            <span>
+              <strong>{fraudFlagCount}</strong> active fraud flag{fraudFlagCount === 1 ? '' : 's'} (confirm-rate anomalies, self-dealing, LOCATION_MISMATCH) awaiting review.
+            </span>
+          </p>
+          <Link href="/admin/kyc/compliance" className="font-semibold text-[#C0392B] hover:underline">
+            Open fraud queue →
+          </Link>
+        </div>
+      ) : null}
 
       <div className="flex gap-2 rounded-full border border-slate-200 bg-white p-1 w-fit">
         {(['TENANT', 'LANDLORD'] as const).map((tab) => (

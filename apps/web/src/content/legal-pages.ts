@@ -8,6 +8,8 @@ export type LegalPageContent = {
   lastUpdated: string;
   /** Shown until external counsel signs off — see docs/legal/POPIA_COMPLIANCE_PACK.md */
   counselReview?: boolean;
+  /** Counsel packet version — update when counsel approves */
+  counselReviewVersion?: string;
   sections: LegalSection[];
 };
 
@@ -20,6 +22,7 @@ export const LEGAL_PAGES: Record<string, LegalPageContent> = {
     bullets: ['Purpose-limited collection', 'Encrypted storage', 'Export & erasure tools'],
     lastUpdated: 'June 2026',
     counselReview: true,
+    counselReviewVersion: '2026.06-draft-1',
     sections: [
       {
         heading: 'Who we are',
@@ -91,6 +94,46 @@ export const LEGAL_PAGES: Record<string, LegalPageContent> = {
       },
     ],
   },
+  'company/popia-summary': {
+    title: 'POPIA summary',
+    headline: 'Your data, in plain language.',
+    description:
+      'A short summary of how CRENIT handles personal information under Namibia\'s Protection of Personal Information Act (POPIA). For the full policy, see our Privacy Policy.',
+    bullets: ['Why we collect data', 'What we never sell', 'Your rights'],
+    lastUpdated: 'June 2026',
+    counselReview: true,
+    counselReviewVersion: '2026.06-draft-1',
+    sections: [
+      {
+        heading: 'What we collect and why',
+        paragraphs: [
+          'We collect your name, contact details, ID documents, and rent payment records so we can verify who you are, record rent accurately, and calculate your rental credit score.',
+          'Landlords provide property and banking details so tenants can pay rent and receive confirmations.',
+        ],
+      },
+      {
+        heading: 'How we protect it',
+        paragraphs: [
+          'KYC documents and payment proofs live in private storage — not public links. Access is logged and limited to your role (tenant, landlord, or admin).',
+          'We use encrypted connections and industry-standard hosting (Supabase, Vercel, Render).',
+        ],
+      },
+      {
+        heading: 'What we do not do',
+        paragraphs: [
+          'We do not sell your personal information. Market intelligence products use anonymised, aggregated data only — never your name or address in B2B exports.',
+          'We do not share your KYC documents with other tenants or landlords except as needed for your active lease relationship.',
+        ],
+      },
+      {
+        heading: 'Your choices',
+        paragraphs: [
+          'Update profile details in Settings. Request data export or account closure via our contact page — admins can assist through compliance tools.',
+          'Landlords can opt out of market data contribution without losing core payment and portfolio features.',
+        ],
+      },
+    ],
+  },
   'company/terms': {
     title: 'Terms of Service',
     headline: 'Rules for using the CRENIT platform.',
@@ -99,6 +142,7 @@ export const LEGAL_PAGES: Record<string, LegalPageContent> = {
     bullets: ['Accurate accounts', 'Verified payments only', 'Market data consent'],
     lastUpdated: 'June 2026',
     counselReview: true,
+    counselReviewVersion: '2026.06-draft-1',
     sections: [
       {
         heading: 'Acceptance',

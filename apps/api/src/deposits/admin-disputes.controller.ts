@@ -19,6 +19,14 @@ export class AdminDisputesController {
     return { success: true, data: { disputes }, error: null };
   }
 
+  @Get('analytics')
+  async getAnalytics(@Headers('authorization') authHeader: string) {
+    const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
+    assertRole(profile, 'ADMIN');
+    const analytics = await this.depositsService.getDisputeOutcomeAnalytics();
+    return { success: true, data: analytics, error: null };
+  }
+
   @Post(':disputeId/arbitrate')
   async arbitrate(
     @Headers('authorization') authHeader: string,

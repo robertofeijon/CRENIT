@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import MarketingNav from '../layout/MarketingNav';
 import Logo from '../ui/Logo';
+import ThemeToggle from '../ui/ThemeToggle';
 
 export default function MarketingHeader() {
   const pathname = usePathname();
@@ -16,7 +17,7 @@ export default function MarketingHeader() {
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white">
+    <header className="sticky top-0 z-50 w-full border-b border-[var(--rc-border,#e2e8f0)] bg-[var(--rc-card,#fff)]">
       <div className="marketing-container flex h-[72px] items-center justify-between gap-4">
         <div className="flex items-center gap-6">
           <button
@@ -34,6 +35,7 @@ export default function MarketingHeader() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle compact className="hidden sm:inline-flex" />
           <Link href="/auth" className="marketing-btn-ghost hidden sm:inline-flex">
             Login
           </Link>
@@ -47,9 +49,10 @@ export default function MarketingHeader() {
       </div>
 
       {mobileOpen ? (
-        <div className="border-t border-slate-100 bg-white px-4 py-4 lg:hidden">
+        <div className="border-t border-[var(--rc-border,#f1f5f9)] bg-[var(--rc-card,#fff)] px-4 py-4 lg:hidden">
           <MarketingNav compact />
           <div className="mt-4 flex flex-col gap-2">
+            <ThemeToggle className="w-full justify-center" />
             <Link href="/auth" className="marketing-btn-ghost w-full justify-center">
               Login
             </Link>

@@ -125,6 +125,9 @@ export default function LandlordKycPanel({ open, onClose, initialStep = 1, onSta
     if (verificationStatus === 'REJECTED') setStep(3);
   }, [verificationStatus]);
 
+  const isLiteLandlord = propertiesCount > 0 && propertiesCount <= 3;
+  const consentVersion = isLiteLandlord ? 'landlord-lite-v1' : 'landlord-kyc-v1';
+
   const requiredDocs = useMemo((): LandlordDocType[] => {
     const idDoc: LandlordDocType = accountType === 'COMPANY' ? 'company_registration' : 'government_id';
     return [idDoc, 'proof_of_address', 'proof_of_property_ownership', 'selfie'];
@@ -275,7 +278,7 @@ export default function LandlordKycPanel({ open, onClose, initialStep = 1, onSta
           ownership_status: ownershipStatus,
         },
         documents: docsToSend,
-        consent_text_version: 'landlord-kyc-v1',
+        consent_text_version: consentVersion,
       });
       await loadStatus();
       onStatusChange?.();
@@ -419,6 +422,12 @@ export default function LandlordKycPanel({ open, onClose, initialStep = 1, onSta
                       onChange={(e) => setPropertiesCount(Number(e.target.value) || 1)}
                     />
                   </label>
+                  {isLiteLandlord ? (
+                    <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+                      Lite landlord (1–3 units): streamlined B2B consent — you still confirm every payment; only
+                      aggregated market data is licensed.
+                    </p>
+                  ) : null}
                   <label className="block text-sm">
                     <span className="font-medium text-slate-700">Ownership status</span>
                     <select className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" value={ownershipStatus} onChange={(e) => setOwnershipStatus(e.target.value)}>

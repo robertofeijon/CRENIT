@@ -21,6 +21,7 @@ export default function AdminDisputesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [analytics, setAnalytics] = useState<any>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/auth');
@@ -40,6 +41,10 @@ export default function AdminDisputesPage() {
   useEffect(() => {
     if (user && role === 'ADMIN') {
       loadDisputes();
+      api
+        .get('/admin/disputes/analytics')
+        .then((res) => setAnalytics(res.data.data))
+        .catch(() => setAnalytics(null));
     }
   }, [user, role, loadDisputes]);
 
@@ -63,6 +68,10 @@ export default function AdminDisputesPage() {
       setAmountToTenant('');
       setSelectedId('');
       loadDisputes();
+      api
+        .get('/admin/disputes/analytics')
+        .then((res) => setAnalytics(res.data.data))
+        .catch(() => null);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to arbitrate.');
     } finally {
@@ -92,6 +101,35 @@ export default function AdminDisputesPage() {
 
       {error ? <ErrorStateCard message={error} onRetry={loadDisputes} /> : null}
       {message ? <p className="text-sm font-medium text-emerald-700">{message}</p> : null}
+
+      {analytics ? (
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: 'Resolved (90d)', value: analytics.total_resolved ?? 0 },
+            { label: 'Median days', value: analytics.median_resolution_days ?? 0 },
+            { label: 'Avg days', value: analytics.avg_resolution_days ?? 0 },
+            { label: 'Landlord favoured %', value: `${analytics.landlord_favoured_rate ?? 0}%` },
+          ].map((stat) => (
+            <div key={stat.label} className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{stat.label}</p>
+              <p className="mt-2 text-2xl font-semibold text-[#1A1A1A]">{stat.value}</p>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {analytics?.by_outcome && Object.keys(analytics.by_outcome).length ? (
+        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Outcomes (90 days)</h2>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {Object.entries(analytics.by_outcome).map(([outcome, count]) => (
+              <span key={outcome} className="rounded-full bg-[#F3F4F6] px-4 py-2 text-sm font-medium text-[#1A1A1A]">
+                {outcome.replace(/_/g, ' ')}: {count as number}
+              </span>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-3">

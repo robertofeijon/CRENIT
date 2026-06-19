@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { LEGAL_PAGES } from '../../../src/content/legal-pages';
 import { CONTACT_EMAIL, MARKETING_SLUGS } from '../../../src/lib/site';
+import TenantWaitlistForm from '../../components/marketing/TenantWaitlistForm';
+import BankIntegrationCards from '../../components/marketing/BankIntegrationCards';
 
 const pageData: Record<string, { title: string; headline: string; description: string; bullets: string[] }> = {
   'products/rent-payments': {
@@ -133,8 +135,8 @@ export default function SectionPage({ params }: { params: { section: string; slu
             >
               <p className="font-semibold text-amber-900">Draft — pending legal counsel review</p>
               <p className="mt-1 leading-6">
-                This page is a product summary for staging. Do not treat it as final legal advice or a production
-                sign-off. See our POPIA compliance backlog for counsel deliverables.
+                Packet version {legal.counselReviewVersion || 'draft'} — not final legal advice or production sign-off.
+                See <code className="text-xs">docs/legal/COUNSEL_REVIEW_PACKET.md</code>.
               </p>
             </div>
           ) : null}
@@ -164,6 +166,17 @@ export default function SectionPage({ params }: { params: { section: string; slu
                   {CONTACT_EMAIL}
                 </a>
               </p>
+            </div>
+          ) : null}
+          {key === 'solutions/for-tenants' ? (
+            <div className="mt-10">
+              <TenantWaitlistForm />
+            </div>
+          ) : null}
+          {key === 'solutions/for-banks-lenders' ? (
+            <div className="mt-10">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Integration targets</p>
+              <BankIntegrationCards />
             </div>
           ) : null}
           {isContact ? (

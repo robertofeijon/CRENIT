@@ -9,9 +9,11 @@ Run on **staging** before production. Commands assume repo root and `.env` confi
 ## 1. Staging migrations + RLS
 
 ```bash
-# Apply migrations 0026–0036 in Supabase (see supabase/scripts/staging_apply_reference.sql)
+# Apply migrations 0026–0045 in Supabase (see supabase/scripts/staging_apply_reference.sql)
+# Then run supabase/scripts/staging_post_apply_verify.sql
 # Then validate tenant-scoped RLS with anon key:
 npm run validate:rls
+npm run staging:checklist
 ```
 
 **Migration `0035_notifications_realtime.sql` (live in-app notifications):**
@@ -27,6 +29,20 @@ npm run validate:rls
 | `payments.auto_confirm_at`, `confirmed_via` columns | `payments` table |
 | `dispute_events`, `dispute_outcomes` tables | Table Editor |
 | `report_verifications.expires_at`, `brand_tier` | `report_verifications` |
+
+**Migration `0037_phase2_growth.sql` (waitlist, BYOL, EFT bank refs):**
+
+| Check | Where |
+|-------|--------|
+| `tenant_waitlist` table | Table Editor |
+| `landlord_referrals` table | Table Editor |
+| `payments.eft_bank_code`, `eft_payment_reference` | `payments` table |
+
+**Migration `0038_phase2_dispute_appeals.sql` (5-day appeal window):**
+
+| Check | Where |
+|-------|--------|
+| `disputes.appeal_deadline`, `appeal_status` | `disputes` table |
 
 **Migration `0034_payment_eft_proofs.sql` (required for EFT proof + CI login E2E path):**
 
@@ -77,15 +93,15 @@ SMTP_PORT=587
 SMTP_USER=your@gmail.com
 SMTP_PASS=app-password
 EMAIL_FROM=CRENIT <your@gmail.com>
-EMAIL_CONTACT=robertofeijon@mail.com
-EMAIL_REPLY_TO=robertofeijon@mail.com
+EMAIL_CONTACT=robertofeijon@gmail.com
+EMAIL_REPLY_TO=robertofeijon@gmail.com
 WEB_URL=https://your-staging-web.vercel.app
 ```
 
 **Web (Vercel / `apps/web/.env.local`):**
 
 ```env
-NEXT_PUBLIC_CONTACT_EMAIL=robertofeijon@mail.com
+NEXT_PUBLIC_CONTACT_EMAIL=robertofeijon@gmail.com
 ```
 
 `POST /public/contact` delivers to **`EMAIL_CONTACT`** (falls back to `EMAIL_REPLY_TO` → `SMTP_USER`). The contact page mailto link uses **`NEXT_PUBLIC_CONTACT_EMAIL`**.
@@ -113,6 +129,23 @@ npm run email:test your@email.com
 
 **UI test:** `/auth/forgot-password` → email → link → `/auth/reset-password` → new password → login.
 
+**Admin email reliability (migration `0039`):**
+
+| Step | Action |
+|------|--------|
+| 1 | Apply `0039_email_delivery_reliability.sql` on staging |
+| 2 | `/admin/system-health` → **Transactional email** panel shows provider + retry counts |
+| 3 | Send test email to your inbox — expect explicit success/failure banner (not silent) |
+| 4 | If SMTP unset, panel shows misconfiguration issues + `EMAIL_MISCONFIGURED` alert |
+
+**Fraud detection (migration `0040`):**
+
+| Step | Action |
+|------|--------|
+| 1 | Apply `0040_fraud_detection.sql` |
+| 2 | `/admin/kyc/compliance` → **Run fraud scan** after EFT confirms exist |
+| 3 | Confirm flags appear for review; status transitions log to admin audit |
+
 ---
 
 ## 4. Landlord / admin 2FA step-up
@@ -123,8 +156,25 @@ npm run email:test your@email.com
 | 2 | Log out → log in → should land on `/auth/verify-2fa` |
 | 3 | Enter TOTP → dashboard unlocks for ~12h |
 | 4 | Repeat for admin account in `ADMIN_EMAILS` |
+| 5 | Optional: `/admin/security` → **SMS 2FA** when `SMS_ENABLED=true` on API |
 
 Dev bypass only: `TWO_FACTOR_ENFORCEMENT=false` (not for staging/prod).
+
+**Public data & B2B (migrations `0043`–`0044`):**
+
+| Step | Action |
+|------|--------|
+| 1 | `/data` — suburb table + **Last updated** footer |
+| 2 | `/products/market-data` — sample API key form |
+| 3 | Tenant → credit score → **Import past rent history** → admin approves on `/admin/payments` |
+
+**Flywheel baseline:**
+
+```bash
+ADMIN_TOKEN=<admin-jwt> API_URL=https://your-api node scripts/capture-flywheel-baseline.mjs
+```
+
+Save output before/after staging traffic for comparison.
 
 ---
 

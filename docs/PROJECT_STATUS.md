@@ -9,9 +9,9 @@
 
 | Dimension | Status |
 |-----------|--------|
-| **Product phase** | **Phase 1 (Core product trust)** — code largely complete; **staging validation in progress** |
-| **Phase 2 (Growth flywheel)** | Not started |
-| **Phase 3 (Data monetisation)** | Not started |
+| **Product phase** | **Phase 1** staging validation · **Phase 2** growth features in code |
+| **Phase 2 (Growth flywheel)** | In progress — readiness checklist, waitlist, BYOL, bulk CSV, appeals shipped in code |
+| **Phase 3 (Data monetisation)** | In code — apply `0043`, deploy `/data` |
 | **Production launch** | **Not signed off** — P0 gates + legal counsel pending |
 | **Branch** | `main` (pushed to GitHub) |
 | **Hosting** | Web → Vercel · API → Render · DB → Supabase |
@@ -45,7 +45,7 @@ Roadmap detail: [`docs/PRODUCT_ROADMAP_3_PHASES.md`](PRODUCT_ROADMAP_3_PHASES.md
 | **P1-S6** | One-tap `/confirm-payment/[token]`, landlord pending + bulk confirm | ✅ | ⬜ |
 | **P1-S7** | SMS/WhatsApp nudges | ⏸ Deferred | — |
 | **P1-S8** | Dispute types, templates, `dispute_events` timeline | ✅ | ⬜ |
-| **P1-S9** | POPIA badge (KYC), flywheel panel; admin dispute outcome charts | **Partial** | ⬜ |
+| **P1-S9** | POPIA badge (KYC), flywheel panel; admin dispute outcome charts | ✅ | ⬜ |
 | **P1-S10** | NA bank reference hints on EFT UI | ✅ (hints only) | ⬜ |
 
 **Phase 1 exit criteria** (measure after staging traffic):
@@ -70,6 +70,14 @@ Apply in order (reference: [`supabase/scripts/staging_apply_reference.sql`](../s
 0034         payment EFT proofs
 0035         notifications realtime
 0036         Phase 1 trust (auto_confirm_at, confirmed_via, dispute_events, report expiry)
+0037         Phase 2 growth (waitlist, BYOL, EFT bank refs)
+0038         Phase 2 dispute appeals (appeal_deadline, appeal_status)
+0039         Email delivery reliability (email_delivery_log, retry queue)
+0040         Fraud detection (platform_fraud_flags, payment IP capture)
+0041         Score narrative annotations (score_history.score_delta, event_reason)
+0042         Score history lease metadata (score_history.metadata)
+0043         Phase 3 B2B demo dataset (illustrative MI, sample key flow)
+0044         Phase 2 tail (lite landlord, onboarding emails, payment history import)
 ```
 
 Verify `0036`:
@@ -125,13 +133,15 @@ Landlord invite → Tenant KYC → EFT pay → Landlord confirm (or auto-confirm
 
 | Who | Where | What |
 |-----|-------|------|
-| Tenant | `/tenant/credit-score` | Tier, insights, simulator |
+| Tenant | `/tenant/credit-score` | Tier, insights, simulator, score narrative, **peer comparison**, **multi-lease timeline** |
 | Tenant | `/tenant/reports` | Shareable PDF + expiry days |
 | Tenant | `/tenant/kyc` | POPIA trust badge |
 | Tenant | `/tenant/deposit` | Typed dispute + timeline |
+| Landlord | `/landlord/disputes` | Shared dispute timeline, evidence, ETA (parity with tenant) |
 | Landlord | `/landlord/payments` | Pending confirmations, bulk confirm, one-tap links |
 | Landlord | `/confirm-payment/[token]` | Public confirm/dispute (no login) |
-| Admin | `/admin/system-health` | Observability + **flywheel metrics (30d)** |
+| Admin | `/admin/system-health` | Observability + flywheel metrics + email delivery panel |
+| Admin | `/admin/kyc/compliance` | Fraud flags + KYC quality queue |
 | Public | `/verify/[reference]` | PDF authenticity + expiry |
 
 ### Still simulated / deferred
@@ -143,22 +153,25 @@ Landlord invite → Tenant KYC → EFT pay → Landlord confirm (or auto-confirm
 
 ---
 
-## Phase 2 — next product work (not started)
+## Phase 2 — next product work (in code)
 
-When Phase 1 exit criteria are met on staging:
-
-1. **2.1** Landlord readiness checklist + review-time estimates  
-2. **2.2** Tenant waitlist + “bring your landlord” flow  
-3. **2.3** Bulk CSV unit import  
-4. **2.4** Dispute admin outcomes + appeal window  
+1. **2.1** Landlord readiness checklist + review-time estimates — ✅
+2. **2.2** Tenant waitlist + “bring your landlord” flow — ✅
+3. **2.3** Bulk CSV unit import — ✅
+4. **2.4** Dispute admin outcomes + 5-day appeal window — ✅
+5. **Deferred:** ~~onboarding email sequence, lite landlord tier, retrospective payment import~~ **Done in code** — apply `0044` on staging
 
 ---
 
-## Phase 3 — data monetisation (not started)
+## Phase 3 — data monetisation (in code — apply `0043` on staging)
 
-- Public `data.crenit.na` market dashboard  
-- B2B self-serve sample API + sales PDF  
-- Bank integration targets (FNB NA, Bank Windhoek, Standard Bank NA)  
+| Item | Status | Notes |
+|------|--------|-------|
+| B2B demo dataset (3 suburbs) | Done | Migration `0043`, `b2b-demo-dataset.constant.ts`, illustrative flag |
+| Public MI dashboard (`/data`) | Done | `GET /public/market-intelligence/dashboard`, n≥10 suppression |
+| Last updated · Methodology footer | Done | Live `pipeline_updated_at` via `PublicMiFooter` |
+| B2B sample API key | Done | `POST /public/market-intelligence/sample-key` + email via `EmailDeliveryService` |
+| Bank one-pagers (FNB, BW, SB NA) | Done | `bank-integration-one-pagers.ts`, Banks & lenders page, EFT hint |
 
 ---
 
@@ -166,9 +179,9 @@ When Phase 1 exit criteria are met on staging:
 
 | Priority | Open items |
 |----------|------------|
-| **P0** | Migrations **0035/0036** on staging/prod; RLS smoke; prod secrets; live gateway **deferred**; email verify in prod |
-| **P1** | Legal counsel on privacy/terms; `dispute_outcomes` admin wiring |
-| **P2** | SMS 2FA; SMS confirm nudges; `verify.crenit.na` custom domain |
+| **P0** | Migrations **0035**–**0040** on staging/prod; RLS smoke; prod secrets; live gateway **deferred** |
+| **P1** | Legal counsel sign-off — **packet ready** (`docs/legal/COUNSEL_REVIEW_PACKET.md` v2026.06-draft-1) |
+| **P2** | ~~SMS 2FA, SMS confirm nudges, verify.crenit.na~~ **In code** — enable `SMS_ENABLED`, `VERIFY_URL`, DNS on Vercel |
 | **P3** | Mobile apps, Open Banking, full POPIA pack |
 
 Full list: [`docs/CRITICAL_GAPS.md`](CRITICAL_GAPS.md)

@@ -15,10 +15,11 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { PaymentsService } from './payments.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { getUserProfileFromAuthHeader, assertKycApproved } from '../supabase/supabase.utils';
+import { extractClientIp, extractUserAgent } from '../common/request-client.util';
 import * as crypto from 'crypto';
 
 @Controller('payments')
@@ -83,6 +84,8 @@ export class PaymentsController {
     @Headers('authorization') authHeader: string,
     @Param('paymentId') paymentId: string,
     @UploadedFile() file: { buffer: Buffer; mimetype: string; originalname: string; size?: number },
+    @Body() body: { bank_code?: string; payment_reference?: string },
+    @Req() req: Request,
   ) {
     const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
     assertKycApproved(profile);
@@ -97,6 +100,11 @@ export class PaymentsController {
       mimetype: file.mimetype,
       originalname: file.originalname,
       size: file.size,
+    }, {
+      bank_code: body?.bank_code,
+      payment_reference: body?.payment_reference,
+      client_ip: extractClientIp(req),
+      user_agent: extractUserAgent(req),
     });
     return { success: true, data: result, error: null };
   }

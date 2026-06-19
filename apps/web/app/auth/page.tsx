@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../src/contexts/AuthContext';
 import AuthModal from '../components/auth/AuthModal';
 import Logo from '../components/ui/Logo';
+import ThemeToggle from '../components/ui/ThemeToggle';
 
 function AuthPageContent() {
   const router = useRouter();
@@ -27,7 +28,10 @@ function AuthPageContent() {
   }, [user, sessionRole, roleReady, router]);
 
   return (
-    <main className="relative min-h-screen bg-[#F3F4F6] px-4 py-8 text-[#1A1A1A] sm:px-8">
+    <main className="relative min-h-screen bg-[var(--rc-bg,#F3F4F6)] px-4 py-8 text-[var(--rc-text,#1A1A1A)] sm:px-8">
+      <div className="absolute right-4 top-4 sm:right-8">
+        <ThemeToggle compact />
+      </div>
       <div className="mx-auto flex max-w-3xl flex-col items-center pt-8">
         <Logo />
         <p className="mt-6 text-center text-sm text-slate-500">

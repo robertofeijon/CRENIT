@@ -54,7 +54,7 @@ export class CreditScoreController {
     try {
       const { profile } = await getUserProfileFromAuthHeader(this.supabaseService.getClient(), authHeader);
       assertRole(profile, 'TENANT');
-      const result = await this.creditScoreService.calculateScore(profile.id);
+      const result = await this.creditScoreService.calculateScore(profile.id, { event_type: 'MANUAL_RECALC' });
       const milestone = this.creditScoreService.getMilestoneGuidance(result.score);
       return { success: true, data: { ...result, milestone }, error: null };
     } catch (error: any) {

@@ -199,7 +199,7 @@ npm run setup:github-e2e-secrets       # requires gh auth login
 - **Tenant home** — onboarding progress bar, empty states (no lease, no payments), KYC/settings CTAs, score hints.
 - **Privacy & Terms** — full sections in `src/content/legal-pages.ts` rendered on `/company/privacy` and `/company/terms`.
 - **Admin overview** — “Queue clear” attention state; deposit escrow panel always visible with empty state.
-- **Contact email** — `robertofeijon@mail.com` (Nodemailer / `EMAIL_CONTACT` / `NEXT_PUBLIC_CONTACT_EMAIL`).
+- **Contact email** — `robertofeijon@gmail.com` (Nodemailer / `EMAIL_CONTACT` / `NEXT_PUBLIC_CONTACT_EMAIL`).
 
 ---
 

@@ -15,7 +15,7 @@ export default function PopiaTrustBadge({ className = '' }: Props) {
         CRENIT processes your information for identity verification and rent reporting under Namibia&apos;s data protection
         framework. Documents are stored securely and never sold.
       </p>
-      <Link href="/company/privacy" className="mt-2 inline-block font-semibold text-[#C0392B] hover:underline">
+      <Link href="/company/popia-summary" className="mt-2 inline-block font-semibold text-[#C0392B] hover:underline">
         Plain-language privacy summary →
       </Link>
     </div>

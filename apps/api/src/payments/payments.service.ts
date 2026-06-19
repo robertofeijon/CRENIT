@@ -2,10 +2,17 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { Response } from 'express';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreditScoreService } from '../credit-score/credit-score.service';
+import {
+  landlordAutoConfirmReminderMessage,
+  landlordEftInitiatedMessage,
+  landlordEftProofUploadedMessage,
+  landlordPendingQueueSummaryMessage,
+} from '../notifications/landlord-confirmation-copy.util';
 import { MarketIntelligenceCaptureService } from '../market-intelligence/market-intelligence-capture.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { createSignedStorageUrl, sanitizeStorageFileName } from '../supabase/storage.utils';
 import { PaymentConfirmTokenService } from './payment-confirm-token.service';
+import { validateNamibianPaymentReference } from './namibia-bank-ref.util';
 
 const PAYMENT_PROOFS_BUCKET = 'payment-proofs';
 const DEFAULT_AUTO_CONFIRM_HOURS = Number(process.env.PAYMENT_AUTO_CONFIRM_HOURS || 48);
@@ -305,8 +312,8 @@ export class PaymentsService {
           await this.notificationsService.createNotification({
             user_id: landlordUserId,
             type: 'PAYMENT_PENDING_CONFIRM',
-            title: 'Rent payment awaiting confirmation',
-            message: `A tenant initiated an EFT payment (N$${Number(body.amount || 0).toLocaleString()}). Confirm or dispute within ${DEFAULT_AUTO_CONFIRM_HOURS}h.`,
+            title: 'Rent payment ready for review',
+            message: landlordEftInitiatedMessage(Number(body.amount || 0), DEFAULT_AUTO_CONFIRM_HOURS),
             metadata: { payment_id: payment.id, confirm_url: confirmUrl },
           });
         }
@@ -359,7 +366,13 @@ export class PaymentsService {
         transactionId: preAuth.transactionId,
       });
 
-      await this.creditScoreService.calculateScore(tenantId);
+      await this.creditScoreService.calculateScore(tenantId, {
+        event_type: 'PAYMENT_CONFIRMED',
+        due_date: dueDate,
+        paid_date: new Date().toISOString(),
+        payment_id: payment?.id,
+        lease_id: lease.id,
+      });
       await this.notificationsService.createNotification({
         user_id: tenantId,
         type: 'PAYMENT_CONFIRMED',
@@ -436,6 +449,7 @@ export class PaymentsService {
     tenantId: string,
     paymentId: string,
     file: { buffer: Buffer; mimetype: string; originalname: string; size?: number },
+    options?: { bank_code?: string; payment_reference?: string; client_ip?: string | null; user_agent?: string | null },
   ) {
     if (!file?.buffer?.length) {
       throw new BadRequestException('Proof file is required');
@@ -463,6 +477,20 @@ export class PaymentsService {
       throw new BadRequestException(`Cannot upload proof for payment status ${payment.status}`);
     }
 
+    const expectedRef =
+      payment.payment_details?.reference ||
+      payment.payment_details?.bank_details?.reference ||
+      undefined;
+    const bankCode = options?.bank_code?.trim();
+    const paymentReference = options?.payment_reference?.trim();
+    if (!bankCode || !paymentReference) {
+      throw new BadRequestException('bank_code and payment_reference are required for EFT proof upload');
+    }
+    const refCheck = validateNamibianPaymentReference(bankCode, paymentReference, expectedRef);
+    if (!refCheck.valid) {
+      throw new BadRequestException(refCheck.message || 'Invalid payment reference');
+    }
+
     const safeName = sanitizeStorageFileName(file.originalname || 'proof');
     const storagePath = `${tenantId}/${paymentId}/${Date.now()}-${safeName}`;
     const { error: uploadError } = await client.storage.from(PAYMENT_PROOFS_BUCKET).upload(storagePath, file.buffer, {
@@ -480,6 +508,10 @@ export class PaymentsService {
         eft_proof_storage_path: storagePath,
         eft_proof_file_name: safeName,
         eft_proof_uploaded_at: now,
+        eft_bank_code: bankCode.toUpperCase(),
+        eft_payment_reference: paymentReference,
+        eft_proof_client_ip: options?.client_ip || null,
+        eft_proof_user_agent: options?.user_agent || null,
         status: 'PROCESSING',
         updated_at: now,
       })
@@ -517,8 +549,8 @@ export class PaymentsService {
       await this.notificationsService.createNotification({
         user_id: landlordUserId,
         type: 'EFT_PROOF_UPLOADED',
-        title: 'EFT proof received',
-        message: `A tenant uploaded proof (N$${Number(payment.amount_gross || 0).toLocaleString()}). Tap to confirm or dispute — auto-confirms in ${DEFAULT_AUTO_CONFIRM_HOURS}h if uncontested.`,
+        title: 'EFT proof ready for review',
+        message: landlordEftProofUploadedMessage(Number(payment.amount_gross || 0), DEFAULT_AUTO_CONFIRM_HOURS),
         metadata: { payment_id: paymentId, lease_id: payment.lease_id, confirm_url: confirmUrl },
       });
     }
@@ -706,7 +738,13 @@ export class PaymentsService {
     }
     if (payment && payment.tenant_id) {
       try {
-        await this.creditScoreService.calculateScore(payment.tenant_id);
+        await this.creditScoreService.calculateScore(payment.tenant_id, {
+          event_type: 'PAYMENT_CONFIRMED',
+          due_date: payment.due_date,
+          paid_date: payment.paid_date,
+          payment_id: payment.id,
+          lease_id: payment.lease_id,
+        });
         await this.notificationsService.createNotification({
           user_id: payment.tenant_id,
           type: 'PAYMENT_CONFIRMED',
@@ -818,7 +856,7 @@ export class PaymentsService {
     landlordUserId: string,
     paymentId: string,
     payload?: { received_date?: string; amount?: number },
-    options?: { confirmedVia?: 'MANUAL' | 'AUTO' | 'TOKEN_LINK' },
+    options?: { confirmedVia?: 'MANUAL' | 'AUTO' | 'TOKEN_LINK'; client_ip?: string | null; user_agent?: string | null },
   ) {
     const client = this.getClient();
     const landlordProfileId = await this.getLandlordProfileId(landlordUserId);
@@ -854,6 +892,8 @@ export class PaymentsService {
         commission_amount: commission.commissionAmount,
         amount_net: commission.netAmount,
         confirmed_via: confirmedVia,
+        confirm_client_ip: options?.client_ip || null,
+        confirm_user_agent: options?.user_agent || null,
         auto_confirm_at: null,
         updated_at: new Date().toISOString(),
       })
@@ -883,7 +923,13 @@ export class PaymentsService {
     }
     if (confirmed?.tenant_id) {
       try {
-        await this.creditScoreService.calculateScore(confirmed.tenant_id);
+        await this.creditScoreService.calculateScore(confirmed.tenant_id, {
+          event_type: confirmedVia === 'AUTO' ? 'AUTO_CONFIRM' : 'PAYMENT_CONFIRMED',
+          due_date: confirmed.due_date,
+          paid_date: confirmed.paid_date,
+          payment_id: confirmed.id,
+          lease_id: confirmed.lease_id,
+        });
         await this.notificationsService.createNotification({
           user_id: confirmed.tenant_id,
           type: 'PAYMENT_CONFIRMED',
@@ -987,11 +1033,61 @@ export class PaymentsService {
       const agingHours = Math.round((now - new Date(p.eft_proof_uploaded_at || p.created_at).getTime()) / (3600 * 1000));
       return { ...p, hours_until_auto_confirm: hoursUntilAuto, aging_hours: agingHours, confirm_url: this.buildConfirmLink(landlordUserId, p.id) };
     });
+    const soonestHours = rows.find((r) => r.hours_until_auto_confirm != null)?.hours_until_auto_confirm ?? null;
     return {
       pending_count: rows.length,
       overdue_confirm_count: rows.filter((r) => r.aging_hours >= DEFAULT_AUTO_CONFIRM_HOURS).length,
       auto_confirm_hours: DEFAULT_AUTO_CONFIRM_HOURS,
+      nudge_summary: landlordPendingQueueSummaryMessage(rows.length, soonestHours),
+      soonest_auto_confirm_hours: soonestHours,
       payments: rows,
+    };
+  }
+
+  async getLandlordConfirmationAnalytics(landlordUserId: string) {
+    const client = this.getClient();
+    const landlordProfileId = await this.getLandlordProfileId(landlordUserId);
+    const since = new Date(Date.now() - 90 * 86400000).toISOString();
+
+    const [{ data: mine, error }, { data: platform }] = await Promise.all([
+      client
+        .from('payments')
+        .select('paid_date, eft_proof_uploaded_at, created_at, confirmed_via, confirmation_disputed_at, payment_method')
+        .eq('landlord_id', landlordProfileId)
+        .eq('status', 'PAID')
+        .gte('paid_date', since),
+      client
+        .from('payments')
+        .select('paid_date, eft_proof_uploaded_at, created_at')
+        .eq('status', 'PAID')
+        .eq('payment_method', 'EFT')
+        .gte('paid_date', since),
+    ]);
+    if (error) throw error;
+
+    const lagHours = (p: { paid_date: string; eft_proof_uploaded_at?: string | null; created_at: string }) => {
+      const start = new Date(p.eft_proof_uploaded_at || p.created_at).getTime();
+      const end = new Date(p.paid_date).getTime();
+      return Math.max(0, Math.round((end - start) / 3600000));
+    };
+
+    const eftRows = (mine || []).filter((p) => p.payment_method === 'EFT' && p.paid_date);
+    const avgLag = eftRows.length ? Math.round(eftRows.reduce((sum, p) => sum + lagHours(p), 0) / eftRows.length) : 0;
+    const disputed = (mine || []).filter((p) => p.confirmation_disputed_at).length;
+    const autoConfirmed = eftRows.filter((p) => p.confirmed_via === 'AUTO').length;
+    const totalEft = eftRows.length;
+
+    const platformLags = (platform || []).filter((p) => p.paid_date).map(lagHours).sort((a, b) => a - b);
+    const platformMedian = platformLags.length ? platformLags[Math.floor(platformLags.length / 2)] : null;
+
+    return {
+      period_days: 90,
+      avg_confirmation_hours: avgLag,
+      platform_median_hours: platformMedian,
+      eft_confirmed_count: totalEft,
+      auto_confirm_rate_pct: totalEft ? Math.round((autoConfirmed / totalEft) * 100) : 0,
+      dispute_rate_pct: totalEft ? Math.round((disputed / totalEft) * 100) : 0,
+      faster_than_median: platformMedian != null ? avgLag <= platformMedian : null,
     };
   }
 
@@ -1116,11 +1212,21 @@ export class PaymentsService {
       await this.notificationsService.createNotification({
         user_id: landlordUserId,
         type: 'PAYMENT_CONFIRM_REMINDER',
-        title: 'Reminder: confirm rent payment',
-        message: `N$${Number(payment.amount_gross || 0).toLocaleString()} will auto-confirm within 24 hours unless you dispute.`,
+        title: 'Review window closing soon',
+        message: landlordAutoConfirmReminderMessage(
+          Number(payment.amount_gross || 0),
+          Math.max(1, Math.round((autoAt - now) / (3600 * 1000))),
+        ),
         metadata: { payment_id: payment.id, confirm_url: confirmUrl },
       });
       await client.from('payments').update({ confirmation_reminder_sent_at: new Date().toISOString() }).eq('id', payment.id);
+      if (process.env.SMS_ENABLED === 'true') {
+        const hoursLeft = Math.max(1, Math.round((autoAt - now) / (3600 * 1000)));
+        await this.notificationsService.sendLandlordConfirmSmsNudge(
+          landlordUserId,
+          `CRENIT: N$${Number(payment.amount_gross || 0).toLocaleString()} rent auto-confirms in ~${hoursLeft}h. Review in your dashboard.`,
+        );
+      }
       sent += 1;
     }
     return { reminders_sent: sent };

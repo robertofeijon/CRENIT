@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { CONTACT_EMAIL } from '../../../src/lib/site';
 
 const columns = [
   {
@@ -8,6 +9,7 @@ const columns = [
       { label: 'Credit score', href: '/products/credit-score' },
       { label: 'Deposits', href: '/products/deposit-management' },
       { label: 'Market data', href: '/products/market-data' },
+      { label: 'Public data dashboard', href: '/data' },
     ],
   },
   {
@@ -40,7 +42,7 @@ const columns = [
 
 export default function MarketingFooter() {
   return (
-    <footer className="w-full border-t border-white/10 bg-black text-white">
+    <footer className="marketing-footer w-full border-t border-white/10 text-white">
       <div className="marketing-container py-16">
         <div className="grid gap-10 lg:grid-cols-4">
           {columns.map((col) => (
@@ -60,7 +62,7 @@ export default function MarketingFooter() {
         </div>
         <div className="mt-12 flex flex-col gap-3 border-t border-white/15 pt-8 text-sm text-white/70 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} CRENIT. All rights reserved.</p>
-          <p>crenit.co · robertofeijon@mail.com</p>
+          <p>crenit.co · {CONTACT_EMAIL}</p>
         </div>
       </div>
     </footer>

@@ -14,6 +14,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/company/blog`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
     { url: `${base}/company/contact`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${base}/auth`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${base}/data`, lastModified: now, changeFrequency: 'weekly', priority: 0.85 },
+    { url: `${base}/data/methodology`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
   ];
 
   const marketingPages = MARKETING_SLUGS.map((slug) => ({

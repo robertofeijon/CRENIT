@@ -20,7 +20,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
       <Header />
-      <main className="min-h-[60vh] bg-white">{children}</main>
+      <main className="min-h-[60vh] bg-[var(--rc-card,#fff)]">{children}</main>
       <MarketingFooter />
     </>
   );

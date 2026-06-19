@@ -32,7 +32,7 @@ Senior full-stack review of `main` @ June 2026 (`e5e728b`).
 | 3 | **Production env + secrets** | Process | `JWT_SECRET` ≥32 chars, `ADMIN_EMAILS`, `CORS_ORIGIN`, SMTP/Resend, `WEB_URL` for email links |
 | 4 | **Backup before migrate** | Process | Release gate item |
 | 5 | **Payment gateway (live money)** | Missing | Card/mobile **simulated**; EFT + landlord confirm works. Blocked on merchant — **accepted deferral** |
-| 6 | **Transactional email in prod** | Partial | Nodemailer/Resend wired; fails silently if SMTP unset — verify with smoke + real send |
+| 6 | **Transactional email in prod** | Done | `email_delivery_log`, startup validation, retry queue (1m cron), `/admin/system-health` panel + `POST /admin/system-health/email-test`, failed log at `GET /admin/email-delivery/failed` — migration `0039` |
 
 ---
 
@@ -62,7 +62,7 @@ Senior full-stack review of `main` @ June 2026 (`e5e728b`).
 | # | Area | Status | Notes |
 |---|------|--------|-------|
 | 21 | **Mandatory 2FA for all admins** | Done | Set `ADMIN_REQUIRE_2FA=true`; `/admin/security` setup gate |
-| 22 | **SMS 2FA** | Missing | TOTP only |
+| 22 | **SMS 2FA** | Done | TOTP + SMS when `SMS_ENABLED=true`; migration `0045` |
 | 23 | **Real-time notifications** | Done | `NotificationsProvider` + bell on all dashboard shells; migration `0035` |
 | 24 | **E2E monitoring (Sentry/Datadog)** | Done | Sentry wired (API + web); admin health dashboard + `docs/OBSERVABILITY.md`; set DSN on Render/Vercel |
 | 25 | **Payment webhook → live provider** | Partial | Generic webhook + signature; not tied to PayToday/etc. |
@@ -102,17 +102,20 @@ Senior full-stack review of `main` @ June 2026 (`e5e728b`).
 | Bronze–Platinum tiers + simulator | Done | `/tenant/credit-score`, migration N/A |
 | EFT auto-confirm + one-tap link | Done | `0036`; prove on staging |
 | Shareable PDF + verify expiry | Done | `POST /reports/credit-score/share` |
-| Dispute templates + timeline | Partial | Admin `dispute_outcomes` charts pending |
+| Dispute templates + timeline | Done | Tenant + landlord (`/landlord/disputes`) share `DisputeDetailPanel`; admin analytics + appeal window |
+| Transactional email reliability | Done | `0039` — retry queue, failed log, admin smoke test |
+| Fraud pattern detection v1 | Done | `0040` — confirm-rate + self-dealing flags; daily cron; `/admin/kyc/compliance` |
 | Flywheel metrics (admin) | Done | `/admin/system-health` |
-| SMS confirm nudges | Deferred | P1-S7 |
+| SMS confirm nudges | Done | Email + in-app + SMS when `SMS_ENABLED` (24h landlord reminder) |
 
 ## Recommended next implementation order
 
-1. **Staging**: apply `0035`/`0036`, redeploy, smoke + flywheel metrics baseline  
-2. **Phase 1 tail**: dispute outcome admin wiring; optional SMS vendor  
-3. **Legal**: counsel review of privacy/terms copy  
-4. **Phase 2**: landlord readiness checklist, tenant waitlist, BYOL  
-5. **Payments**: merchant integration when provider selected  
+1. **Staging**: apply `0035`–`0044`, redeploy, smoke + flywheel metrics baseline  
+2. **Legal**: counsel review — packet `docs/legal/COUNSEL_REVIEW_PACKET.md` (v2026.06-draft-1)
+3. **Staging/process**: apply `0035`–`0045`, `staging_post_apply_verify.sql`, `npm run staging:checklist`, flywheel baseline script
+4. **Phase 3 data monetisation**: ~~B2B demo dataset, public MI dashboard, bank one-pagers~~ **Done in code** — apply `0043`, smoke `/data` and sample-key flow
+5. **Phase 2 tail**: ~~onboarding emails, lite landlord tier, retrospective import~~ **Done in code** — apply `0044`
+6. **Payments**: merchant integration when provider selected
 
 ---
 
