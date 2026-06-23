@@ -66,9 +66,7 @@ export default function MarketingFooter() {
 
         <div className="mt-16 grid gap-10 lg:grid-cols-[1.1fr_2fr] lg:gap-16">
           <div className="marketing-footer__brand">
-            <div className="[&_img]:brightness-0 [&_img]:invert">
-              <Logo />
-            </div>
+            <Logo size="lg" onDarkBg />
             <p className="marketing-footer__tagline">
               Verified rental finance for tenants, landlords, and partners licensing anonymised market data.
             </p>

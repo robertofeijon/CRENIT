@@ -1032,6 +1032,19 @@ body {
     @apply bg-rose-500;
   }
 
+  /* CRENIT wordmark — PNG with transparent background */
+  .crenit-logo {
+    @apply block max-w-none object-contain object-left;
+  }
+
+  /*
+   * Dark-mode / on-dark treatment for black wordmark PNG.
+   * TODO: replace with a dedicated light/white logo asset so the red arc stays on-brand.
+   */
+  .crenit-logo--light {
+    filter: brightness(0) invert(1);
+  }
+
   .chart-card__title {
     @apply font-semibold;
     color: var(--rc-text);
@@ -1560,6 +1573,65 @@ html.dark .shadow-xl {
   .rc-atmosphere__orb {
     transition: none !important;
     animation: none !important;
+  }
+}
+
+/* Legacy hardcoded Tailwind colors → design tokens in dark mode */
+@layer utilities {
+  html.dark .text-\[\#1A1A1A\] {
+    color: var(--rc-text) !important;
+  }
+
+  html.dark .text-slate-900 {
+    color: var(--rc-text) !important;
+  }
+
+  html.dark .text-slate-800 {
+    color: var(--rc-text) !important;
+  }
+
+  html.dark .text-slate-700 {
+    color: var(--rc-text-secondary) !important;
+  }
+
+  html.dark .text-slate-600 {
+    color: var(--rc-text-secondary) !important;
+  }
+
+  html.dark .text-slate-500 {
+    color: var(--rc-text-muted) !important;
+  }
+
+  html.dark .text-slate-400 {
+    color: var(--rc-text-muted) !important;
+  }
+
+  html.dark .bg-white {
+    background-color: var(--rc-card) !important;
+  }
+
+  html.dark .bg-\[\#F3F4F6\] {
+    background-color: var(--rc-card-alt) !important;
+  }
+
+  html.dark .bg-slate-50,
+  html.dark .bg-slate-100 {
+    background-color: var(--rc-hover) !important;
+  }
+
+  html.dark .border-slate-100,
+  html.dark .border-slate-200,
+  html.dark .border-slate-300 {
+    border-color: var(--rc-border) !important;
+  }
+
+  html.dark .hover\:bg-slate-50:hover,
+  html.dark .hover\:bg-slate-100:hover {
+    background-color: var(--rc-hover) !important;
+  }
+
+  html.dark .hover\:text-\[\#1A1A1A\]:hover {
+    color: var(--rc-text) !important;
   }
 }
 
