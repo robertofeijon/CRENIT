@@ -783,7 +783,7 @@ body {
   }
 
   .admin-workspace-card {
-    @apply group block rounded-[1.5rem] border p-5 transition;
+    @apply block rounded-[1.5rem] border p-5 transition;
     border-color: var(--rc-border);
     background: linear-gradient(160deg, var(--rc-card) 0%, var(--rc-card-alt) 100%);
     box-shadow:
@@ -1155,8 +1155,12 @@ body {
   }
 
   .marketing-link-card__title {
-    @apply mt-4 text-xl font-semibold transition group-hover:text-[#C0392B];
+    @apply mt-4 text-xl font-semibold transition;
     color: var(--rc-text);
+  }
+
+  .group:hover .marketing-link-card__title {
+    @apply text-[#C0392B];
   }
 
   .marketing-link-card__desc {
