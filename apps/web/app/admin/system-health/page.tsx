@@ -15,6 +15,8 @@ import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import AdminPageHeader from '../../components/ui/AdminPageHeader';
 import AdminStatCard from '../../components/ui/AdminStatCard';
+import AdminHealthPanel from '../../components/admin/AdminHealthPanel';
+import AdminToolbarButton from '../../components/admin/AdminToolbarButton';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
 
@@ -115,36 +117,26 @@ export default function AdminSystemHealthPage() {
         subtitle="Live probes against Supabase tables and admin audit activity — refreshed on demand."
         actions={
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={loadHealth}
-              disabled={loadingSnapshot}
-              className="inline-flex items-center gap-2 rounded-full bg-[#C0392B] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#C0392B]/20 disabled:opacity-60"
-            >
+            <AdminToolbarButton onClick={loadHealth} disabled={loadingSnapshot} variant="primary">
               <RefreshCw className={`h-4 w-4 ${loadingSnapshot ? 'animate-spin' : ''}`} aria-hidden />
               Run health check
-            </button>
-            <button
-              type="button"
-              onClick={runSmoke}
-              disabled={loadingSmoke}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-[#1A1A1A] disabled:opacity-60"
-            >
+            </AdminToolbarButton>
+            <AdminToolbarButton onClick={runSmoke} disabled={loadingSmoke}>
               {loadingSmoke ? 'Running smoke…' : 'Run smoke tests'}
-            </button>
+            </AdminToolbarButton>
           </div>
         }
       />
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-[var(--rc-text-muted)]">
         Last checked: {lastChecked ? lastChecked.toLocaleString() : '—'}
         {platformOk ? (
-          <span className="ml-3 inline-flex items-center gap-1 font-semibold text-emerald-700">
+          <span className="admin-status-pill admin-status-pill--ok ml-3">
             <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
             Platform operational
           </span>
         ) : (
-          <span className="ml-3 inline-flex items-center gap-1 font-semibold text-amber-800">
+          <span className="admin-status-pill admin-status-pill--warn ml-3">
             <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
             {snapshot?.platform_status || 'Degraded'}
           </span>
@@ -154,10 +146,8 @@ export default function AdminSystemHealthPage() {
       {error ? <ErrorStateCard message={error} onRetry={loadHealth} /> : null}
 
       {snapshot?.flywheel ? (
-        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="font-semibold text-[#1A1A1A]">Flywheel metrics (30 days)</h2>
-          <p className="mt-1 text-xs text-slate-500">Confirmation lag, auto-confirm rate, pending queue, shared reports.</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <AdminHealthPanel title="Flywheel metrics (30 days)" subtitle="Confirmation lag, auto-confirm rate, pending queue, shared reports." icon={Activity}>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <AdminStatCard
               label="Confirm lag (p50)"
               value={snapshot.flywheel.confirmation_lag_hours_p50 != null ? `${snapshot.flywheel.confirmation_lag_hours_p50}h` : '—'}
@@ -190,30 +180,21 @@ export default function AdminSystemHealthPage() {
               icon={Server}
             />
           </div>
-        </section>
+        </AdminHealthPanel>
       ) : null}
 
       {emailHealth ? (
-        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="flex items-center gap-2 font-semibold text-[#1A1A1A]">
-                <Mail className="h-5 w-5 text-[#C0392B]" aria-hidden />
-                Transactional email
-              </h2>
-              <p className="mt-1 text-xs text-slate-500">
-                Delivery health, retry queue, and explicit smoke test — failed sends are never silent.
-              </p>
-            </div>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                emailHealth.configured ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-900'
-              }`}
-            >
+        <AdminHealthPanel
+          title="Transactional email"
+          subtitle="Delivery health, retry queue, and explicit smoke test — failed sends are never silent."
+          icon={Mail}
+          badge={
+            <span className={`admin-status-pill ${emailHealth.configured ? 'admin-status-pill--ok' : 'admin-status-pill--error'}`}>
               {emailHealth.configured ? `${emailHealth.provider} ready` : 'Misconfigured'}
             </span>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          }
+        >
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <AdminStatCard label="Pending retries" value={emailHealth.pending_retries ?? 0} icon={RefreshCw} accent={(emailHealth.pending_retries ?? 0) > 0 ? 'warning' : 'default'} />
             <AdminStatCard label="Failed (24h)" value={emailHealth.failed_24h ?? 0} icon={AlertTriangle} accent={(emailHealth.failed_24h ?? 0) > 0 ? 'warning' : 'default'} />
             <AdminStatCard label="Dead letter (24h)" value={emailHealth.dead_24h ?? 0} icon={AlertTriangle} accent={(emailHealth.dead_24h ?? 0) > 0 ? 'warning' : 'default'} />
@@ -286,14 +267,12 @@ export default function AdminSystemHealthPage() {
               ) : null}
             </div>
           </div>
-        </section>
+        </AdminHealthPanel>
       ) : null}
 
       {observability || smokeResult?.observability ? (
-        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="font-semibold text-[#1A1A1A]">Observability</h2>
-          <p className="mt-1 text-xs text-slate-500">Sentry, external cron, and email transport flags from the API.</p>
-          <ul className="mt-4 flex flex-wrap gap-3 text-sm">
+        <AdminHealthPanel title="Observability" subtitle="Sentry, external cron, and email transport flags from the API." icon={Server}>
+          <ul className="flex flex-wrap gap-3 text-sm">
             <li
               className={`rounded-full px-3 py-1 font-medium ${
                 (observability ?? smokeResult?.observability)?.sentry_api
@@ -339,25 +318,24 @@ export default function AdminSystemHealthPage() {
               <span className="text-slate-500">Set NEXT_PUBLIC_SENTRY_PROJECT_URL on Vercel for a Sentry link.</span>
             )}
           </div>
-        </section>
+        </AdminHealthPanel>
       ) : null}
 
       {smokeResult ? (
-        <section
-          className={`rounded-[1.5rem] border p-5 ${smokeResult.passed ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}
+        <AdminHealthPanel
+          title={`Smoke tests: ${smokeResult.pass_count}/${smokeResult.total}`}
+          subtitle={smokeResult.passed ? 'All automated checks passed.' : 'Review failures before promoting.'}
+          variant={smokeResult.passed ? 'success' : 'warning'}
+          icon={Shield}
         >
-          <p className="font-semibold text-[#1A1A1A]">
-            Smoke tests: {smokeResult.pass_count}/{smokeResult.total}{' '}
-            {smokeResult.passed ? 'passed' : '— review failures'}
-          </p>
-          <ul className="mt-3 space-y-1 text-sm">
+          <ul className="space-y-1 text-sm">
             {(smokeResult.checks || []).map((c: any) => (
               <li key={c.name} className={c.pass ? 'text-emerald-800' : 'text-amber-900'}>
                 {c.pass ? '✓' : '✗'} {c.name}: {c.detail}
               </li>
             ))}
           </ul>
-        </section>
+        </AdminHealthPanel>
       ) : null}
 
       <p className="text-sm text-slate-600">
@@ -405,23 +383,20 @@ export default function AdminSystemHealthPage() {
           </section>
 
           {(snapshot.alerts || []).length > 0 ? (
-            <section className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5">
-              <h2 className="font-semibold text-[#1A1A1A]">Active alerts</h2>
-              <ul className="mt-3 space-y-2 text-sm text-amber-900">
+            <AdminHealthPanel title="Active alerts" variant="warning" icon={AlertTriangle}>
+              <ul className="space-y-2 text-sm text-amber-900">
                 {snapshot.alerts.map((a: any) => (
                   <li key={a.code}>
                     <span className="font-semibold uppercase text-xs">{a.severity}</span> — {a.message}
                   </li>
                 ))}
               </ul>
-            </section>
+            </AdminHealthPanel>
           ) : null}
 
           {(snapshot.schedulers || []).length > 0 ? (
-            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="font-semibold text-[#1A1A1A]">Scheduler heartbeats</h2>
-              <p className="mt-1 text-xs text-slate-500">Last run since API process started (Namibia cron jobs).</p>
-              <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+            <AdminHealthPanel title="Scheduler heartbeats" subtitle="Last run since API process started (Namibia cron jobs)." icon={RefreshCw}>
+              <ul className="grid gap-2 sm:grid-cols-2">
                 {snapshot.schedulers.map((job: any) => (
                   <li key={job.job} className="rounded-lg bg-[#F3F4F6] px-3 py-2 text-xs">
                     <span className="font-semibold text-[#1A1A1A]">{job.job}</span>
@@ -432,16 +407,14 @@ export default function AdminSystemHealthPage() {
                   </li>
                 ))}
               </ul>
-            </section>
+            </AdminHealthPanel>
           ) : null}
 
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {(snapshot.services || []).map((svc: any) => (
               <article
                 key={svc.key}
-                className={`rounded-[1.5rem] border p-5 shadow-sm ${
-                  svc.status === 'Operational' ? 'border-slate-200 bg-white' : 'border-amber-200 bg-amber-50'
-                }`}
+                className={`dashboard-stat-card ${svc.status === 'Operational' ? '' : 'dashboard-stat-card--warning'}`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-semibold text-[#1A1A1A]">{svc.name}</p>
@@ -465,15 +438,15 @@ export default function AdminSystemHealthPage() {
           </section>
 
           <section className="grid gap-6 lg:grid-cols-2">
-            <article className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="font-semibold text-[#1A1A1A]">Admin activity (7 days)</h2>
-              <p className="mt-1 text-xs text-slate-500">Actions logged vs error-like entries</p>
+            <article className="chart-card">
+              <h2 className="text-lg font-semibold text-[var(--rc-text)]">Admin activity (7 days)</h2>
+              <p className="mt-1 text-xs text-[var(--rc-text-muted)]">Actions logged vs error-like entries</p>
               <div className="mt-4 h-[220px]">
                 <LazyAuditActivityChart data={chartData} />
               </div>
             </article>
 
-            <article className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <article className="chart-card">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="font-semibold text-[#1A1A1A]">Recent admin actions</h2>
                 <Link
@@ -498,10 +471,11 @@ export default function AdminSystemHealthPage() {
             </article>
           </section>
 
-          <article className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-semibold text-[#1A1A1A]">Error-like audit entries</h2>
-              {(snapshot.summary?.gdpr_events ?? 0) > 0 ? (
+          <AdminHealthPanel
+            title="Error-like audit entries"
+            icon={Shield}
+            badge={
+              (snapshot.summary?.gdpr_events ?? 0) > 0 ? (
                 <Link
                   href="/admin/compliance"
                   className="inline-flex items-center gap-1 text-xs font-semibold text-[#C0392B] hover:underline"
@@ -509,9 +483,10 @@ export default function AdminSystemHealthPage() {
                   <Shield className="h-3.5 w-3.5" aria-hidden />
                   {snapshot.summary.gdpr_events} GDPR events logged
                 </Link>
-              ) : null}
-            </div>
-            <div className="mt-4 space-y-2">
+              ) : null
+            }
+          >
+            <div className="space-y-2">
               {(snapshot.recent_errors || []).map((row: any, idx: number) => (
                 <div key={`${row.timestamp}-${idx}`} className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-950">
                   {new Date(row.timestamp).toLocaleString()} · {row.error_type} · {row.affected_endpoint}
@@ -521,16 +496,15 @@ export default function AdminSystemHealthPage() {
                 <p className="text-sm text-slate-500">No error-like actions in the latest audit batch.</p>
               ) : null}
             </div>
-          </article>
+          </AdminHealthPanel>
 
-          <section className="rounded-[1.5rem] border border-dashed border-slate-300 bg-[#F3F4F6]/80 p-5">
-            <p className="text-sm font-semibold text-[#1A1A1A]">Operational runbook</p>
-            <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-slate-600">
+          <AdminHealthPanel title="Operational runbook" variant="spotlight">
+            <ul className="list-inside list-disc space-y-1 text-xs text-slate-300">
               <li>Degraded service → confirm Supabase migration status and RLS policies on the probed table.</li>
               <li>Zero row counts on core tables → run <code className="rounded bg-white px-1">supabase/seed.sql</code> in staging.</li>
               <li>Spike in audit errors → review escrow disputes and payment webhooks.</li>
             </ul>
-          </section>
+          </AdminHealthPanel>
         </>
       ) : !loadingSnapshot ? (
         <EmptyStateCard title="No health data" description="Run a health check to probe platform services." />

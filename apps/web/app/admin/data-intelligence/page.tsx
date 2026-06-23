@@ -30,6 +30,10 @@ import {
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import AdminStatCard from '../../components/ui/AdminStatCard';
+import AdminPageHeader from '../../components/ui/AdminPageHeader';
+import AdminChartCard from '../../components/admin/AdminChartCard';
+import AdminToolbarButton from '../../components/admin/AdminToolbarButton';
+import AdminSuburbExplorer from '../../components/admin/AdminSuburbExplorer';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
@@ -356,29 +360,21 @@ export default function DataIntelligencePage() {
   return (
     <div className="space-y-0">
       {/* Zone 1 — Header & global controls */}
-      <div className="sticky top-0 z-20 -mx-4 border-b border-slate-200 bg-[#F3F4F6]/95 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#C0392B]/90">B2B property data</p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[#1A1A1A]">Data Intelligence</h1>
-              <p className="mt-1 max-w-2xl text-sm text-slate-600">
-                Licensed rental market data for developers, estate agents, banks, contractors, and investors — verified
-                payment comps by suburb, not listing scrapes.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void loadAll()}
-              disabled={loadingData}
-              className="inline-flex items-center gap-2 rounded-full bg-[#C0392B] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#C0392B]/25 transition hover:bg-[#992d24] disabled:opacity-60"
-            >
-              <RefreshCw className={`h-4 w-4 ${loadingData ? 'animate-spin' : ''}`} aria-hidden />
-              Apply & refresh
-            </button>
-          </div>
+      <div className="admin-data-sticky">
+        <div className="space-y-4">
+          <AdminPageHeader
+            badge="B2B property data"
+            title="Data intelligence"
+            subtitle="Licensed rental market data for developers, estate agents, banks, contractors, and investors — verified payment comps by suburb, not listing scrapes."
+            actions={
+              <AdminToolbarButton onClick={() => void loadAll()} disabled={loadingData} variant="primary">
+                <RefreshCw className={`h-4 w-4 ${loadingData ? 'animate-spin' : ''}`} aria-hidden />
+                Apply & refresh
+              </AdminToolbarButton>
+            }
+          />
 
-          <div className="grid gap-3 rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-6">
+          <div className="admin-filter-grid lg:grid-cols-6">
             <FilterField label="Timeframe">
               <select
                 value={timeframe}
@@ -465,7 +461,7 @@ export default function DataIntelligencePage() {
 
       <div className="space-y-8 pt-8">
         {commercial ? (
-          <section className="rounded-[2rem] border border-[#C0392B]/20 bg-gradient-to-br from-[#FDEDEC] to-white p-6 shadow-sm sm:p-8">
+          <section className="admin-commercial-spotlight">
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#C0392B]">What we sell</p>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-700">{commercial.methodology.headline}</p>
             <ul className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -563,7 +559,7 @@ export default function DataIntelligencePage() {
             ) : null}
 
             <section className="grid gap-6 lg:grid-cols-2">
-              <ChartCard title="Capture volume & avg rent" subtitle="Monthly verified records in view">
+              <AdminChartCard title="Capture volume & avg rent" subtitle="Monthly verified records in view">
                 <div className="h-64">
                   {dashboard?.volume_trend?.length ? (
                     <ResponsiveContainer width="100%" height="100%">
@@ -597,9 +593,9 @@ export default function DataIntelligencePage() {
                     <ChartEmpty />
                   )}
                 </div>
-              </ChartCard>
+              </AdminChartCard>
 
-              <ChartCard title="Top suburbs by volume" subtitle="Licensed rent comps — median & on-time rate">
+              <AdminChartCard title="Top suburbs by volume" subtitle="Licensed rent comps — median & on-time rate">
                 <div className="h-64">
                   {dashboard?.rent_by_suburb?.length ? (
                     <ResponsiveContainer width="100%" height="100%">
@@ -620,9 +616,9 @@ export default function DataIntelligencePage() {
                     <ChartEmpty />
                   )}
                 </div>
-              </ChartCard>
+              </AdminChartCard>
 
-              <ChartCard title="Property mix" subtitle="Share of records by type">
+              <AdminChartCard title="Property mix" subtitle="Share of records by type">
                 <div className="h-64">
                   {dashboard?.property_mix?.length ? (
                     <ResponsiveContainer width="100%" height="100%">
@@ -659,9 +655,9 @@ export default function DataIntelligencePage() {
                     </li>
                   ))}
                 </ul>
-              </ChartCard>
+              </AdminChartCard>
 
-              <ChartCard title="Payment behaviour" subtitle="On-time vs late vs missed">
+              <AdminChartCard title="Payment behaviour" subtitle="On-time vs late vs missed">
                 <div className="mt-4 space-y-3">
                   {dashboard?.payment_status_mix?.length ? (
                     dashboard.payment_status_mix.map((row) => (
@@ -687,14 +683,14 @@ export default function DataIntelligencePage() {
                     <ChartEmpty />
                   )}
                 </div>
-              </ChartCard>
+              </AdminChartCard>
             </section>
           </>
         )}
 
         {/* Zone 3 — Tabbed workspace */}
-        <section className="rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-wrap gap-1 border-b border-slate-100 p-2">
+        <section className="admin-tab-shell">
+          <div className="admin-tab-bar">
             {(
               [
                 { id: 'explorer' as TabId, label: 'Suburb comps' },
@@ -709,9 +705,7 @@ export default function DataIntelligencePage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  activeTab === tab.id ? 'bg-[#1A1A1A] text-white' : 'text-slate-600 hover:bg-slate-100'
-                }`}
+                className={`admin-tab-pill ${activeTab === tab.id ? 'admin-tab-pill--active' : 'admin-tab-pill--inactive'}`}
               >
                 {tab.label}
               </button>
@@ -720,7 +714,7 @@ export default function DataIntelligencePage() {
 
           <div className="p-6 sm:p-8">
             {activeTab === 'explorer' ? (
-              <ExplorerPanel
+              <AdminSuburbExplorer
                 suburbs={suburbs}
                 selectedSuburb={selectedSuburb}
                 suburbDetail={suburbDetail}
@@ -840,8 +834,7 @@ export default function DataIntelligencePage() {
   );
 }
 
-const selectClass =
-  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-[#1A1A1A] outline-none transition focus:border-[#C0392B]/60';
+const selectClass = 'admin-select';
 
 function FilterField({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -852,186 +845,9 @@ function FilterField({ label, children }: { label: string; children: ReactNode }
   );
 }
 
-function ChartCard({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  children: ReactNode;
-}) {
-  return (
-    <article className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-      <h3 className="font-semibold text-[#1A1A1A]">{title}</h3>
-      <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>
-      <div className="mt-4">{children}</div>
-    </article>
-  );
-}
-
 function ChartEmpty() {
   return (
     <div className="flex h-full items-center justify-center text-sm text-slate-400">No data for current filters</div>
-  );
-}
-
-function ConfidenceBadge({ level }: { level?: string }) {
-  const styles =
-    level === 'high'
-      ? 'bg-emerald-100 text-emerald-800'
-      : level === 'moderate'
-        ? 'bg-sky-100 text-sky-800'
-        : level === 'low'
-          ? 'bg-amber-100 text-amber-900'
-          : 'bg-slate-100 text-slate-600';
-  const label = level ? level.charAt(0).toUpperCase() + level.slice(1) : '—';
-  return <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${styles}`}>{label}</span>;
-}
-
-function TrendBadge({ trend }: { trend: string }) {
-  const colors =
-    trend === 'Rising'
-      ? 'bg-emerald-100 text-emerald-800'
-      : trend === 'Falling'
-        ? 'bg-rose-100 text-rose-800'
-        : 'bg-slate-100 text-slate-700';
-  return <span className={`rounded-full px-2 py-1 text-xs font-medium ${colors}`}>{trend}</span>;
-}
-
-function ExplorerPanel({
-  suburbs,
-  selectedSuburb,
-  suburbDetail,
-  loading,
-  onSelectSuburb,
-}: {
-  suburbs: SuburbRow[];
-  selectedSuburb: string | null;
-  suburbDetail: SuburbDetail | null;
-  loading: boolean;
-  onSelectSuburb: (name: string) => void;
-}) {
-  if (loading && !suburbs.length) return <SkeletonBlocks rows={4} />;
-
-  return (
-    <div className="space-y-6">
-      <p className="text-sm text-slate-600">
-        Verified <strong>rental</strong> price ranges for client reports, feasibility, and asking-rent decisions. Not sale
-        deed data.
-      </p>
-      <div className="overflow-x-auto rounded-xl border border-slate-100">
-        <table className="w-full min-w-[900px] text-left text-sm">
-          <thead>
-            <tr className="bg-[#F3F4F6] text-xs uppercase tracking-wider text-slate-500">
-              <th className="px-4 py-3 font-semibold">Suburb</th>
-              <th className="px-4 py-3 font-semibold">Rent range (verified)</th>
-              <th className="px-4 py-3 font-semibold">Median</th>
-              <th className="px-4 py-3 font-semibold">Sample</th>
-              <th className="px-4 py-3 font-semibold">Confidence</th>
-              <th className="px-4 py-3 font-semibold">On-time</th>
-              <th className="px-4 py-3 font-semibold">Trend</th>
-              <th className="px-4 py-3 font-semibold">License</th>
-            </tr>
-          </thead>
-          <tbody>
-            {suburbs.map((row) => (
-              <tr
-                key={row.suburb}
-                onClick={() => onSelectSuburb(row.suburb)}
-                className={`cursor-pointer border-t border-slate-100 transition hover:bg-slate-50 ${
-                  selectedSuburb === row.suburb ? 'bg-[#FDEDEC]' : ''
-                }`}
-              >
-                <td className="px-4 py-3 font-medium text-[#1A1A1A]">{row.suburb}</td>
-                <td className="px-4 py-3 text-slate-700">
-                  {row.price_range
-                    ? `N$${row.price_range.min.toLocaleString()} – N$${row.price_range.max.toLocaleString()}`
-                    : `N$${row.median_rent.toLocaleString()}`}
-                </td>
-                <td className="px-4 py-3">N${row.median_rent.toLocaleString()}</td>
-                <td className="px-4 py-3">{row.transaction_count}</td>
-                <td className="px-4 py-3">
-                  <ConfidenceBadge level={row.confidence_level} />
-                </td>
-                <td className="px-4 py-3">{row.on_time_rate}%</td>
-                <td className="px-4 py-3">
-                  <TrendBadge trend={row.trend} />
-                </td>
-                <td className="px-4 py-3">
-                  {row.commercially_licensable ? (
-                    <span className="text-xs font-semibold text-emerald-700">Ready to sell</span>
-                  ) : (
-                    <span className="text-xs text-amber-800">Directional</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!suburbs.length ? (
-          <div className="p-6">
-            <EmptyStateCard
-              title="No suburbs in view"
-              description="Adjust filters or run supabase/seed.sql to load market_data_snapshots."
-            />
-          </div>
-        ) : null}
-      </div>
-
-      {suburbDetail && suburbDetail.rent_distribution ? (
-        <div className="space-y-6 border-t border-slate-100 pt-8">
-          {suburbDetail.price_range ? (
-            <div className="rounded-xl border border-slate-200 bg-[#F3F4F6] p-5">
-              <p className="text-lg font-semibold text-[#1A1A1A]">
-                {suburbDetail.suburb} — verified rental band N${suburbDetail.price_range.min.toLocaleString()} – N$
-                {suburbDetail.price_range.max.toLocaleString()}
-              </p>
-              <p className="mt-2 text-sm text-slate-600">
-                Median N${suburbDetail.price_range.median.toLocaleString()} · {suburbDetail.transaction_count} records ·{' '}
-                <ConfidenceBadge level={suburbDetail.confidence_level} />
-              </p>
-              {suburbDetail.pricing_guidance ? (
-                <p className="mt-3 text-xs leading-5 text-slate-500">{suburbDetail.pricing_guidance}</p>
-              ) : null}
-              {suburbDetail.licensing_notice ? (
-                <p className="mt-2 text-xs font-medium text-[#C0392B]">{suburbDetail.licensing_notice}</p>
-              ) : null}
-            </div>
-          ) : null}
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div>
-            <h3 className="font-semibold text-[#1A1A1A]">Rent distribution (what clients buy)</h3>
-            <div className="mt-4 h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={suburbDetail.rent_distribution}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="range" tick={{ fontSize: 10 }} />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#1A1A1A" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-          <div>
-            <h3 className="font-semibold text-[#1A1A1A]">On-time rate trend</h3>
-            <div className="mt-4 h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={suburbDetail.on_time_trend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                  <YAxis domain={[0, 100]} />
-                  <Tooltip formatter={(v) => [`${v}%`, 'On-time']} />
-                  <Line type="monotone" dataKey="on_time_rate" stroke="#C0392B" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-        </div>
-      ) : null}
-    </div>
   );
 }
 
@@ -1295,7 +1111,7 @@ function ProductsPanel({
       ) : null}
       <div className="grid gap-4 lg:grid-cols-2">
         {products.map((p) => (
-          <div key={p.report_type} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div key={p.report_type} className="chart-card">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <h3 className="font-semibold text-[#1A1A1A]">{p.display_name}</h3>
               {p.requires_suburb ? (

@@ -9,22 +9,16 @@ import TenantPageHeader from '../../components/ui/TenantPageHeader';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
+import CreditScoreHero from '../../components/credit/CreditScoreHero';
+import LandlordStatCard from '../../components/ui/LandlordStatCard';
 import RentalCreditModelCard from '../../components/credit/RentalCreditModelCard';
 import ScoreTierProgress from '../../components/credit/ScoreTierProgress';
 import PaymentHistoryImportCard from '../../components/tenant/PaymentHistoryImportCard';
-import { BRAND_TIER_COLORS, type BrandTier } from '../../../src/lib/tier-branding';
 
 const FACTOR_LABELS: Record<string, { label: string; weight: string }> = {
   payment_history: { label: 'Payment history', weight: '50%' },
   amount_defaulted: { label: 'Amount defaulted on', weight: '30%' },
   history_length: { label: 'Length of credit history', weight: '20%' },
-};
-
-const tierColors: Record<string, string> = {
-  EXCELLENT: 'text-emerald-600',
-  GOOD: 'text-blue-600',
-  FAIR: 'text-amber-600',
-  BUILDING: 'text-slate-600',
 };
 
 export default function TenantCreditScorePage() {
@@ -95,7 +89,6 @@ export default function TenantCreditScorePage() {
       setSimLoading(false);
     }
   };
-  const gaugePercent = useMemo(() => Math.min(100, Math.max(0, score100)), [score100]);
   const breakdown = scoreData?.breakdown;
   const paymentMetrics = scoreData?.paymentMetrics;
 
@@ -133,21 +126,32 @@ export default function TenantCreditScorePage() {
         <SkeletonBlocks rows={5} />
       ) : (
         <>
+          <CreditScoreHero
+            score={score}
+            score100={score100}
+            brandTier={brandTier}
+            riskTier={riskTier}
+            legacyTier={scoreData?.tier}
+            onTimePct={paymentMetrics?.on_time_rate_pct}
+            streak={paymentMetrics?.consecutive_on_time_streak}
+            recalcLoading={recalcLoading}
+            onRecalculate={() => void handleRecalculate()}
+          />
+
           {paymentMetrics ? (
-            <section className="tenant-panel grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl bg-[#F3F4F6] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">On-time streak</p>
-                <p className="mt-2 text-3xl font-semibold text-[#1A1A1A]">{paymentMetrics.consecutive_on_time_streak} months</p>
-                <p className="mt-1 text-sm text-slate-600">Consecutive rent cycles paid on or before due date.</p>
-              </div>
-              <div className="rounded-xl bg-[#F3F4F6] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">On-time rate</p>
-                <p className="mt-2 text-3xl font-semibold text-[#1A1A1A]">{paymentMetrics.on_time_rate_pct}%</p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {paymentMetrics.on_time_payments_in_window} of {paymentMetrics.payments_in_window} payments in the last{' '}
-                  {paymentMetrics.window_months} months.
-                </p>
-              </div>
+            <section className="grid gap-4 sm:grid-cols-2">
+              <LandlordStatCard
+                label="On-time streak"
+                value={`${paymentMetrics.consecutive_on_time_streak} mo`}
+                sub="Consecutive rent cycles paid on or before due date"
+                icon={TrendingUp}
+                accent="success"
+              />
+              <LandlordStatCard
+                label="On-time rate"
+                value={`${paymentMetrics.on_time_rate_pct}%`}
+                sub={`${paymentMetrics.on_time_payments_in_window} of ${paymentMetrics.payments_in_window} payments in ${paymentMetrics.window_months} months`}
+              />
             </section>
           ) : null}
 
@@ -244,54 +248,19 @@ export default function TenantCreditScorePage() {
           />
           <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
             <section className="tenant-panel">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-[#C0392B]" aria-hidden />
-                <h2 className="text-lg font-semibold text-[#1A1A1A]">Score gauge</h2>
-              </div>
-              <div className="mt-8 flex flex-col items-center">
-                <div className="relative h-40 w-40">
-                  <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
-                    <circle cx="60" cy="60" r="52" fill="none" stroke="#e2e8f0" strokeWidth="12" />
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="52"
-                      fill="none"
-                      stroke="#C0392B"
-                      strokeWidth="12"
-                      strokeLinecap="round"
-                      strokeDasharray={`${(gaugePercent / 100) * 327} 327`}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-bold text-[#1A1A1A]">{score100}</span>
-                    <span className="text-xs text-slate-500">/ 100</span>
-                    {brandTier ? (
-                      <span className={`mt-1 rounded-full px-2 py-0.5 text-xs font-bold ${BRAND_TIER_COLORS[brandTier.id as BrandTier]}`}>
-                        {brandTier.label}
-                      </span>
-                    ) : (
-                      <span className={`mt-1 text-sm font-semibold uppercase ${tierColors[scoreData?.tier] || 'text-slate-600'}`}>
-                        {riskTier.replace('_', ' ')}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <button type="button" className="tenant-btn-secondary mt-6" disabled={recalcLoading} onClick={() => void handleRecalculate()}>
-                  {recalcLoading ? 'Recalculating…' : 'Recalculate score'}
-                </button>
-              </div>
               {scoreData?.milestone ? (
-                <div className="mt-8 rounded-xl bg-[#F3F4F6] p-5">
-                  <p className="text-sm font-semibold text-[#1A1A1A]">Next milestone</p>
-                  <p className="mt-2 text-sm text-slate-600">{scoreData.milestone.message}</p>
+                <div className="dashboard-hero__stat">
+                  <p className="dashboard-hero__stat-label">Next milestone</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--rc-text)]">{scoreData.milestone.message}</p>
                   {scoreData.milestone.nextTier ? (
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-xs text-[var(--rc-text-muted)]">
                       {scoreData.milestone.pointsNeeded} points to {scoreData.milestone.nextTier}
                     </p>
                   ) : null}
                 </div>
-              ) : null}
+              ) : (
+                <p className="text-sm text-[var(--rc-text-muted)]">Milestones appear as your score improves.</p>
+              )}
             </section>
 
             <section className="tenant-panel">
@@ -367,7 +336,7 @@ export default function TenantCreditScorePage() {
                 {history.map((point, index) => (
                   <div key={`${point.recorded_at}-${index}`} className="flex flex-1 flex-col items-center gap-2">
                     <div
-                      className="w-full max-w-[48px] rounded-t-lg bg-[#C0392B]/80"
+                      className="score-history-bar"
                       style={{ height: `${Math.max(12, (point.score / maxHistoryScore) * 140)}px` }}
                       title={`${point.score} (${point.tier})`}
                     />

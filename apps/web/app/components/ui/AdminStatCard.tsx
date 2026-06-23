@@ -13,24 +13,24 @@ export default function AdminStatCard({
   icon?: LucideIcon;
   accent?: 'default' | 'warning' | 'success' | 'dark';
 }) {
-  const accentClasses = {
-    default: 'border-slate-200 bg-white',
-    warning: 'border-amber-200 bg-amber-50',
-    success: 'border-emerald-200 bg-emerald-50',
-    dark: 'border-[#1A1A1A] bg-[#1A1A1A] text-white',
+  const cardClass = {
+    default: 'dashboard-stat-card',
+    warning: 'dashboard-stat-card dashboard-stat-card--warning',
+    success: 'dashboard-stat-card dashboard-stat-card--success',
+    dark: 'dashboard-stat-card dashboard-stat-card--dark',
   }[accent];
 
-  const labelClass = accent === 'dark' ? 'text-slate-400' : 'text-slate-500';
-  const valueClass = accent === 'dark' ? 'text-white' : 'text-[#1A1A1A]';
-  const subClass = accent === 'dark' ? 'text-slate-400' : 'text-slate-500';
+  const labelClass = accent === 'dark' ? 'text-slate-400' : 'text-[var(--rc-text-muted)]';
+  const valueClass = accent === 'dark' ? 'text-white' : 'text-[var(--rc-text)]';
+  const subClass = accent === 'dark' ? 'text-slate-400' : 'text-[var(--rc-text-secondary)]';
 
   return (
-    <div className={`rounded-[1.5rem] border p-5 shadow-sm ${accentClasses}`}>
+    <div className={cardClass}>
       <div className="flex items-start justify-between gap-3">
-        <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${labelClass}`}>{label}</p>
+        <p className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${labelClass}`}>{label}</p>
         {Icon ? (
-          <span className={`rounded-full p-2 ${accent === 'dark' ? 'bg-white/10' : 'bg-[#FDEDEC]'}`}>
-            <Icon className={`h-4 w-4 ${accent === 'dark' ? 'text-white' : 'text-[#C0392B]'}`} aria-hidden />
+          <span className="dashboard-stat-card__icon">
+            <Icon className="h-4 w-4" aria-hidden />
           </span>
         ) : null}
       </div>

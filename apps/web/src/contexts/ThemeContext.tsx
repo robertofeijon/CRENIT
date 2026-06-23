@@ -4,7 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import {
   applyDarkPalette,
   clearDarkPaletteVars,
-  generateDarkPalette,
+  DEFAULT_DARK_PALETTE,
+  getNextDarkPalette,
   loadStoredDarkPalette,
   storeDarkPalette,
   type DarkPalette,
@@ -37,7 +38,7 @@ function applyThemeToDocument(mode: ThemeMode, palette?: DarkPalette | null) {
   const root = document.documentElement;
   if (mode === 'dark') {
     root.classList.add('dark');
-    const p = palette || loadStoredDarkPalette() || generateDarkPalette();
+    const p = palette || loadStoredDarkPalette() || DEFAULT_DARK_PALETTE;
     applyDarkPalette(p);
     storeDarkPalette(p);
     return p;
@@ -62,7 +63,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setTheme = useCallback((mode: ThemeMode) => {
     let palette: DarkPalette | null = null;
     if (mode === 'dark') {
-      palette = loadStoredDarkPalette() || generateDarkPalette();
+      palette = loadStoredDarkPalette() || DEFAULT_DARK_PALETTE;
     }
     applyThemeToDocument(mode, palette);
     setThemeState(mode);
@@ -79,11 +80,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [setTheme, theme]);
 
   const regenerateDarkPalette = useCallback(() => {
-    const palette = generateDarkPalette();
+    const palette = getNextDarkPalette(darkPalette);
     applyDarkPalette(palette);
     storeDarkPalette(palette);
     setDarkPalette(palette);
-  }, []);
+  }, [darkPalette]);
 
   const value = useMemo(
     () => ({ theme, darkPalette, setTheme, toggleTheme, regenerateDarkPalette }),

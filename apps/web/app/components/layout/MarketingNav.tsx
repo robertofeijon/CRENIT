@@ -64,9 +64,10 @@ export default function MarketingNav({ compact = false }: { compact?: boolean })
           <button
             type="button"
             onClick={() => setOpenMenu(openMenu === group.label ? null : group.label)}
-            className={`inline-flex w-full items-center gap-1 rounded-lg px-3 py-2 font-medium text-slate-700 transition hover:bg-slate-100 ${
+            className={`inline-flex w-full items-center gap-1 rounded-lg px-3 py-2 font-medium transition hover:bg-[var(--rc-hover)] ${
               compact ? 'justify-between' : ''
             }`}
+            style={{ color: 'var(--rc-text-secondary)' }}
           >
             {group.label}
             <ChevronDown className={`h-4 w-4 opacity-60 transition ${openMenu === group.label ? 'rotate-180' : ''}`} />
@@ -75,9 +76,13 @@ export default function MarketingNav({ compact = false }: { compact?: boolean })
             <div
               className={
                 compact
-                  ? 'mt-1 space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-2'
-                  : 'absolute left-0 top-full z-50 mt-2 w-[min(100vw-2rem,22rem)] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl'
+                  ? 'mt-1 space-y-1 rounded-xl border p-2'
+                  : 'absolute left-0 top-full z-50 mt-2 w-[min(100vw-2rem,22rem)] rounded-2xl border p-2 shadow-xl'
               }
+              style={{
+                borderColor: 'var(--rc-border)',
+                background: 'var(--rc-card)',
+              }}
             >
               <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                 {group.label}
@@ -86,14 +91,21 @@ export default function MarketingNav({ compact = false }: { compact?: boolean })
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`block rounded-xl px-3 py-2.5 transition hover:bg-slate-50 ${
-                    pathname === item.href ? 'bg-slate-50' : ''
+                  className={`block rounded-xl px-3 py-2.5 transition hover:bg-[var(--rc-hover)] ${
+                    pathname === item.href ? 'bg-[var(--rc-hover)]' : ''
                   }`}
                 >
-                  <span className={`block text-sm font-medium ${pathname === item.href ? 'text-[#C0392B]' : 'text-[#1A1A1A]'}`}>
+                  <span
+                    className={`block text-sm font-medium ${pathname === item.href ? 'text-[#C0392B]' : ''}`}
+                    style={pathname === item.href ? undefined : { color: 'var(--rc-text)' }}
+                  >
                     {item.label}
                   </span>
-                  {!compact ? <span className="mt-0.5 block text-xs leading-5 text-slate-500">{item.desc}</span> : null}
+                  {!compact ? (
+                    <span className="mt-0.5 block text-xs leading-5" style={{ color: 'var(--rc-text-muted)' }}>
+                      {item.desc}
+                    </span>
+                  ) : null}
                 </Link>
               ))}
             </div>

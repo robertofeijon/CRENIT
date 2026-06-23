@@ -25,6 +25,9 @@ import api from '../../src/lib/api';
 import { useAuth } from '../../src/contexts/AuthContext';
 import AdminPageHeader from '../components/ui/AdminPageHeader';
 import AdminStatCard from '../components/ui/AdminStatCard';
+import AdminHealthPanel from '../components/admin/AdminHealthPanel';
+import AdminWorkspaceCard from '../components/admin/AdminWorkspaceCard';
+import AdminToolbarButton from '../components/admin/AdminToolbarButton';
 import SkeletonBlocks from '../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../components/ui/ErrorStateCard';
 import EmptyStateCard from '../components/ui/EmptyStateCard';
@@ -128,18 +131,13 @@ export default function AdminPage() {
         subtitle="Live pulse from Supabase — who needs attention, money moving through the platform, and shortcuts to every workspace."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={loadDashboard}
-              disabled={isLoading}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-slate-50 disabled:opacity-60"
-            >
+            <AdminToolbarButton onClick={loadDashboard} disabled={isLoading}>
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden />
               Refresh
-            </button>
+            </AdminToolbarButton>
             <Link
               href="/admin/kyc"
-              className="inline-flex items-center justify-center rounded-full bg-[#C0392B] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#C0392B]/25 transition hover:bg-[#992d24]"
+              className="admin-toolbar-btn admin-toolbar-btn--primary inline-flex"
             >
               Review KYC
             </Link>
@@ -153,24 +151,22 @@ export default function AdminPage() {
 
       {error ? <ErrorStateCard message={error} onRetry={loadDashboard} /> : null}
 
-      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-semibold text-[#1A1A1A]">Health & observability</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              DB probes, scheduler heartbeats, smoke tests, Sentry, and cron configuration.
-            </p>
-          </div>
+      <AdminHealthPanel
+        title="Health & observability"
+        subtitle="DB probes, scheduler heartbeats, smoke tests, Sentry, and cron configuration."
+        icon={Activity}
+        badge={
           <Link
             href="/admin/system-health"
-            className="inline-flex items-center gap-2 rounded-full bg-[#1A1A1A] px-5 py-2.5 text-sm font-semibold text-white hover:bg-black"
+            className="admin-toolbar-btn admin-toolbar-btn--primary inline-flex"
           >
             <Activity className="h-4 w-4" aria-hidden />
             Open system health
           </Link>
-        </div>
+        }
+      >
         {process.env.NEXT_PUBLIC_SENTRY_PROJECT_URL ? (
-          <p className="mt-3 text-sm">
+          <p className="text-sm">
             <a
               href={process.env.NEXT_PUBLIC_SENTRY_PROJECT_URL}
               target="_blank"
@@ -181,29 +177,19 @@ export default function AdminPage() {
             </a>
           </p>
         ) : null}
-      </section>
+      </AdminHealthPanel>
 
       {isLoading ? (
         <SkeletonBlocks rows={4} />
       ) : stats ? (
         <>
-          <section
-            className={`rounded-[1.5rem] border p-5 sm:p-6 ${
-              attentionItems.length > 0 ? 'border-amber-200 bg-amber-50/80' : 'border-emerald-200 bg-emerald-50/60'
-            }`}
+          <AdminHealthPanel
+            title={attentionItems.length > 0 ? 'Needs attention' : 'Queue clear'}
+            variant={attentionItems.length > 0 ? 'warning' : 'success'}
+            icon={attentionItems.length > 0 ? AlertTriangle : BadgeCheck}
           >
-            <div className="flex items-center gap-2">
-              {attentionItems.length > 0 ? (
-                <AlertTriangle className="h-5 w-5 text-amber-800" aria-hidden />
-              ) : (
-                <BadgeCheck className="h-5 w-5 text-emerald-700" aria-hidden />
-              )}
-              <h2 className="font-semibold text-[#1A1A1A]">
-                {attentionItems.length > 0 ? 'Needs attention' : 'Queue clear'}
-              </h2>
-            </div>
             {attentionItems.length > 0 ? (
-              <ul className="mt-4 flex flex-wrap gap-3">
+              <ul className="flex flex-wrap gap-3">
                 {attentionItems.map((item) => (
                   <li key={item.label}>
                     <Link
@@ -221,11 +207,11 @@ export default function AdminPage() {
                 ))}
               </ul>
             ) : (
-              <p className="mt-3 text-sm text-emerald-900">
+              <p className="text-sm text-emerald-900">
                 No pending KYC, disputes, partner approvals, or service requests right now.
               </p>
             )}
-          </section>
+          </AdminHealthPanel>
 
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <AdminStatCard label="Total users" value={stats.total_users ?? 0} icon={Users} />
@@ -256,29 +242,22 @@ export default function AdminPage() {
             <AdminStatCard label="Active landlords" value={stats.active_landlords ?? 0} />
           </section>
 
-          <section className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-[#1A1A1A]">Deposit escrow</h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  Held N${Number(escrow?.summary?.total_held || 0).toLocaleString()} · Released N$
-                  {Number(escrow?.summary?.total_released || 0).toLocaleString()}
-                  {escrow?.summary?.disputed_count != null ? ` · ${escrow.summary.disputed_count} disputed` : ''}
-                </p>
-              </div>
+          <AdminHealthPanel
+            title="Deposit escrow"
+            subtitle={`Held N$${Number(escrow?.summary?.total_held || 0).toLocaleString()} · Released N$${Number(escrow?.summary?.total_released || 0).toLocaleString()}${escrow?.summary?.disputed_count != null ? ` · ${escrow.summary.disputed_count} disputed` : ''}`}
+            icon={Wallet}
+            badge={
               <Link href="/admin/disputes" className="text-sm font-semibold text-[#C0392B] hover:underline">
                 Manage disputes →
               </Link>
-            </div>
+            }
+          >
             {escrow?.recent_transactions?.length ? (
-              <div className="mt-4 space-y-2">
+              <div className="space-y-2">
                 {escrow.recent_transactions.map((row: any) => (
-                  <div
-                    key={row.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#F3F4F6] px-4 py-3 text-sm"
-                  >
-                    <span className="font-medium text-[#1A1A1A]">{row.transaction_type}</span>
-                    <span className="text-slate-700">N${Number(row.amount || 0).toLocaleString()}</span>
+                  <div key={row.id} className="admin-escrow-row">
+                    <span className="font-medium text-[var(--rc-text)]">{row.transaction_type}</span>
+                    <span className="text-[var(--rc-text-secondary)]">N${Number(row.amount || 0).toLocaleString()}</span>
                     <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-slate-600">{row.status}</span>
                     <span className="text-xs text-slate-400">
                       {row.created_at ? new Date(row.created_at).toLocaleString() : ''}
@@ -287,32 +266,19 @@ export default function AdminPage() {
                 ))}
               </div>
             ) : (
-              <div className="mt-4">
-                <EmptyStateCard
-                  title="No recent escrow movements"
-                  description="Deposit holds, releases, and dispute resolutions will appear here."
-                />
-              </div>
+              <EmptyStateCard
+                title="No recent escrow movements"
+                description="Deposit holds, releases, and dispute resolutions will appear here."
+              />
             )}
-          </section>
+          </AdminHealthPanel>
 
           <section>
-            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Workspaces</h2>
+            <h2 className="admin-section-label">Workspaces</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {QUICK_LINKS.map((card) => {
-                const Icon = card.icon;
-                return (
-                  <Link
-                    key={card.href}
-                    href={card.href}
-                    className="group rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:border-[#C0392B]/40 hover:shadow-md"
-                  >
-                    <Icon className="h-5 w-5 text-[#C0392B]" aria-hidden />
-                    <p className="mt-3 font-semibold text-[#1A1A1A] group-hover:text-[#C0392B]">{card.title}</p>
-                    <p className="mt-2 text-sm text-slate-600">{card.desc}</p>
-                  </Link>
-                );
-              })}
+              {QUICK_LINKS.map((card) => (
+                <AdminWorkspaceCard key={card.href} {...card} />
+              ))}
             </div>
           </section>
         </>

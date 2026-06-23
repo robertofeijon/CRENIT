@@ -9,6 +9,7 @@ import AdminPageHeader from '../../components/ui/AdminPageHeader';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
+import AdminToolbarButton from '../../components/admin/AdminToolbarButton';
 
 const PAGE_SIZE = 25;
 
@@ -66,19 +67,14 @@ export default function AdminAuditPage() {
         title="Audit log"
         subtitle="Immutable record of admin actions — partner decisions, KYC, suspensions, and arbitration."
         actions={
-          <button
-            type="button"
-            onClick={loadAudit}
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[#1A1A1A] transition hover:bg-slate-50 disabled:opacity-60"
-          >
+          <AdminToolbarButton onClick={loadAudit} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden />
             Refresh
-          </button>
+          </AdminToolbarButton>
         }
       />
 
-      <div className="flex flex-wrap items-center gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="admin-filter-bar">
         <label className="text-sm font-medium text-slate-700" htmlFor="audit-action-filter">
           Filter by action
         </label>
@@ -107,10 +103,7 @@ export default function AdminAuditPage() {
       ) : filteredLogs.length ? (
         <div className="space-y-3">
           {filteredLogs.map((log) => (
-            <article
-              key={log.id}
-              className="rounded-[1.25rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300"
-            >
+            <article key={log.id} className="admin-list-item">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <ScrollText className="h-4 w-4 text-[#C0392B]" aria-hidden />

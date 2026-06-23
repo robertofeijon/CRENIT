@@ -125,7 +125,7 @@ export default function GeocodeQaPanel({ onError }: { onError: (message: string)
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="admin-list-item">
           <p className="text-xs uppercase text-slate-500">Scanned</p>
           <p className="text-2xl font-semibold">{report.scanned}</p>
         </div>

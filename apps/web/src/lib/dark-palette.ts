@@ -1,4 +1,6 @@
 export type DarkPalette = {
+  id: string;
+  label: string;
   bg: string;
   card: string;
   cardAlt: string;
@@ -11,51 +13,75 @@ export type DarkPalette = {
   hover: string;
 };
 
-function hslToHex(h: number, s: number, l: number): string {
-  const sat = s / 100;
-  const light = l / 100;
-  const a = sat * Math.min(light, 1 - light);
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    const color = light - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color)
-      .toString(16)
-      .padStart(2, '0');
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
-}
+/** Curated dark themes — brand-anchored navy & wine, not random hues. */
+export const DARK_PALETTE_PRESETS: DarkPalette[] = [
+  {
+    id: 'midnight',
+    label: 'Midnight',
+    bg: '#0b0d12',
+    card: '#12151c',
+    cardAlt: '#161a22',
+    elevated: '#1a1f28',
+    border: '#252b36',
+    text: '#f1f3f6',
+    textSecondary: '#a8b0bd',
+    textMuted: '#6b7280',
+    accentSurface: '#2a1818',
+    hover: '#1e232d',
+  },
+  {
+    id: 'navy',
+    label: 'Navy',
+    bg: '#0c1018',
+    card: '#131926',
+    cardAlt: '#171e2e',
+    elevated: '#1c2436',
+    border: '#283044',
+    text: '#eef2f8',
+    textSecondary: '#9aa8be',
+    textMuted: '#64748b',
+    accentSurface: '#1f1520',
+    hover: '#222a3c',
+  },
+  {
+    id: 'wine',
+    label: 'Wine',
+    bg: '#100c0e',
+    card: '#181214',
+    cardAlt: '#1e1719',
+    elevated: '#241c1f',
+    border: '#32282c',
+    text: '#f5f0f1',
+    textSecondary: '#b8a8ad',
+    textMuted: '#7a6b70',
+    accentSurface: '#2d1518',
+    hover: '#2a2024',
+  },
+];
 
-/** Picks varied deep hues — each dark mode session gets its own moody palette. */
-export function generateDarkPalette(): DarkPalette {
-  const pick = (lMin: number, lMax: number, sMin = 12, sMax = 38) => {
-    const h = Math.floor(Math.random() * 360);
-    const s = sMin + Math.floor(Math.random() * (sMax - sMin));
-    const l = lMin + Math.floor(Math.random() * (lMax - lMin));
-    return hslToHex(h, s, l);
-  };
-
-  return {
-    bg: pick(6, 11),
-    card: pick(10, 16),
-    cardAlt: pick(12, 18),
-    elevated: pick(14, 20),
-    border: pick(18, 26, 8, 22),
-    text: pick(88, 94, 6, 14),
-    textSecondary: pick(68, 78, 8, 18),
-    textMuted: pick(48, 58, 6, 16),
-    accentSurface: pick(16, 24, 20, 45),
-    hover: pick(20, 28, 14, 32),
-  };
-}
+export const DEFAULT_DARK_PALETTE = DARK_PALETTE_PRESETS[0];
 
 export const DARK_PALETTE_STORAGE_KEY = 'crenit-dark-palette';
+
+export function generateDarkPalette(): DarkPalette {
+  const idx = Math.floor(Math.random() * DARK_PALETTE_PRESETS.length);
+  return DARK_PALETTE_PRESETS[idx];
+}
+
+export function getNextDarkPalette(current: DarkPalette | null): DarkPalette {
+  if (!current) return DARK_PALETTE_PRESETS[1];
+  const idx = DARK_PALETTE_PRESETS.findIndex((p) => p.id === current.id);
+  const next = idx < 0 ? 0 : (idx + 1) % DARK_PALETTE_PRESETS.length;
+  return DARK_PALETTE_PRESETS[next];
+}
 
 export function loadStoredDarkPalette(): DarkPalette | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem(DARK_PALETTE_STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as DarkPalette;
+    const parsed = JSON.parse(raw) as DarkPalette;
+    return DARK_PALETTE_PRESETS.find((p) => p.id === parsed.id) ?? parsed;
   } catch {
     return null;
   }

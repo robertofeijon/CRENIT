@@ -184,7 +184,7 @@ export default function AdminCreditScoresPage() {
         </Link>
       </p>
 
-      <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="admin-panel">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="flex-1">
             <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Search tenant</label>
@@ -228,7 +228,7 @@ export default function AdminCreditScoresPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+        <div className="admin-panel overflow-hidden">
           {loadingRows ? (
             <div className="p-6">
               <SkeletonBlocks rows={4} />
@@ -301,7 +301,7 @@ export default function AdminCreditScoresPage() {
           )}
         </div>
 
-        <aside className="h-fit rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <aside className="admin-panel h-fit">
           <div className="flex items-center gap-2">
             <LineChartIcon className="h-5 w-5 text-[#C0392B]" aria-hidden />
             <h2 className="text-lg font-semibold text-[#1A1A1A]">Score detail</h2>

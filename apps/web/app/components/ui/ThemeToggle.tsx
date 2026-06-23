@@ -59,8 +59,8 @@ export default function ThemeToggle({ compact = false, className = '' }: Props) 
           type="button"
           onClick={regenerateDarkPalette}
           className="rounded-full p-1.5 text-[var(--rc-text-muted,#94a3b8)] transition hover:bg-[var(--rc-hover,#334155)] hover:text-[var(--rc-text,#f1f5f9)]"
-          aria-label="Shuffle dark colors"
-          title="New random dark palette"
+          aria-label="Cycle dark theme"
+          title="Next dark theme"
         >
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
         </button>

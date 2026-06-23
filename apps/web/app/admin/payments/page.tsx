@@ -10,6 +10,7 @@ import AdminStatCard from '../../components/ui/AdminStatCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
+import AdminToolbarButton from '../../components/admin/AdminToolbarButton';
 import AdminPaymentHistoryImportsPanel from './AdminPaymentHistoryImportsPanel';
 
 export default function AdminPaymentsPage() {
@@ -55,19 +56,14 @@ export default function AdminPaymentsPage() {
         title="Payment oversight"
         subtitle="Live payment records — gross volume and settlement status. CRENIT revenue is monthly data-recording fees, not rent commissions."
         actions={
-          <button
-            type="button"
-            onClick={() => loadPayments()}
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[#1A1A1A] transition hover:bg-slate-50 disabled:opacity-60"
-          >
+          <AdminToolbarButton onClick={() => loadPayments()} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden />
             Refresh
-          </button>
+          </AdminToolbarButton>
         }
       />
 
-      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <div className="admin-panel">
         <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Payment method</label>
         <select
           value={paymentMethodFilter}
@@ -113,7 +109,7 @@ export default function AdminPaymentsPage() {
           {payments.map((payment) => (
             <article
               key={payment.id}
-              className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm"
+              className="admin-list-item"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <p className="text-lg font-semibold text-[#1A1A1A]">

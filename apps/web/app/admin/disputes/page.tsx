@@ -9,6 +9,9 @@ import AdminPageHeader from '../../components/ui/AdminPageHeader';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
+import AdminStatCard from '../../components/ui/AdminStatCard';
+import AdminHealthPanel from '../../components/admin/AdminHealthPanel';
+import AdminToolbarButton from '../../components/admin/AdminToolbarButton';
 
 export default function AdminDisputesPage() {
   const { user, role, loading } = useAuth();
@@ -87,15 +90,10 @@ export default function AdminDisputesPage() {
         title="Deposit disputes"
         subtitle="Open escrow disputes awaiting admin arbitration — record split or winner decisions."
         actions={
-          <button
-            type="button"
-            onClick={() => loadDisputes()}
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[#1A1A1A] transition hover:bg-slate-50 disabled:opacity-60"
-          >
+          <AdminToolbarButton onClick={() => loadDisputes()} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden />
             Refresh
-          </button>
+          </AdminToolbarButton>
         }
       />
 
@@ -104,31 +102,27 @@ export default function AdminDisputesPage() {
 
       {analytics ? (
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { label: 'Resolved (90d)', value: analytics.total_resolved ?? 0 },
-            { label: 'Median days', value: analytics.median_resolution_days ?? 0 },
-            { label: 'Avg days', value: analytics.avg_resolution_days ?? 0 },
-            { label: 'Landlord favoured %', value: `${analytics.landlord_favoured_rate ?? 0}%` },
-          ].map((stat) => (
-            <div key={stat.label} className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{stat.label}</p>
-              <p className="mt-2 text-2xl font-semibold text-[#1A1A1A]">{stat.value}</p>
-            </div>
-          ))}
+          <AdminStatCard label="Resolved (90d)" value={analytics.total_resolved ?? 0} icon={Scale} />
+          <AdminStatCard label="Median days" value={analytics.median_resolution_days ?? 0} />
+          <AdminStatCard label="Avg days" value={analytics.avg_resolution_days ?? 0} />
+          <AdminStatCard
+            label="Landlord favoured %"
+            value={`${analytics.landlord_favoured_rate ?? 0}%`}
+            accent="dark"
+          />
         </section>
       ) : null}
 
       {analytics?.by_outcome && Object.keys(analytics.by_outcome).length ? (
-        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Outcomes (90 days)</h2>
-          <div className="mt-4 flex flex-wrap gap-3">
+        <AdminHealthPanel title="Outcomes (90 days)" subtitle="Arbitration results in the last quarter">
+          <div className="flex flex-wrap gap-3">
             {Object.entries(analytics.by_outcome).map(([outcome, count]) => (
-              <span key={outcome} className="rounded-full bg-[#F3F4F6] px-4 py-2 text-sm font-medium text-[#1A1A1A]">
+              <span key={outcome} className="rounded-full bg-[var(--rc-card-alt)] px-4 py-2 text-sm font-medium text-[var(--rc-text)]">
                 {outcome.replace(/_/g, ' ')}: {count as number}
               </span>
             ))}
           </div>
-        </section>
+        </AdminHealthPanel>
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -141,11 +135,7 @@ export default function AdminDisputesPage() {
                 key={dispute.id}
                 type="button"
                 onClick={() => setSelectedId(dispute.id)}
-                className={`w-full rounded-[1.5rem] border p-5 text-left shadow-sm transition ${
-                  selectedId === dispute.id
-                    ? 'border-[#C0392B] bg-[#FDEDEC]'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
-                }`}
+                className={`w-full admin-list-item text-left ${selectedId === dispute.id ? 'admin-list-item--selected' : ''}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <p className="font-semibold text-[#1A1A1A]">{dispute.id.slice(0, 8)}…</p>
@@ -169,7 +159,7 @@ export default function AdminDisputesPage() {
           )}
         </div>
 
-        <aside className="h-fit rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <aside className="admin-panel h-fit">
           <div className="flex items-center gap-2">
             <Scale className="h-5 w-5 text-[#C0392B]" aria-hidden />
             <h2 className="text-lg font-semibold text-[#1A1A1A]">Arbitration panel</h2>
@@ -182,7 +172,7 @@ export default function AdminDisputesPage() {
               <select
                 value={decision}
                 onChange={(e) => setDecision(e.target.value as typeof decision)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#C0392B]/60"
+                className="admin-select"
               >
                 <option value="tenant_wins">Tenant wins</option>
                 <option value="landlord_wins">Landlord wins</option>
@@ -194,14 +184,14 @@ export default function AdminDisputesPage() {
                 placeholder="Amount to tenant (N$)"
                 type="number"
                 min={0}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#C0392B]/60"
+                className="admin-select"
               />
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Arbitration reason (required)"
                 rows={3}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#C0392B]/60"
+                className="admin-select"
               />
               <button
                 type="button"

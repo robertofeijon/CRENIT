@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { BookOpen, Info, Mail, Workflow } from 'lucide-react';
+import MarketingCtaBand from '../components/marketing/MarketingCtaBand';
+import MarketingLinkCard from '../components/marketing/MarketingLinkCard';
+import MarketingPageHero from '../components/marketing/MarketingPageHero';
 
 export const metadata: Metadata = {
   title: 'Company',
@@ -11,66 +14,88 @@ const companyHighlights = [
     title: 'About Us',
     slug: 'about-us',
     description: 'CRENIT records rent payments to build verified rental credit and market intelligence.',
+    icon: Info,
   },
   {
     title: 'How It Works',
     slug: 'how-it-works',
-    description: 'We connect landlords, tenants, and lenders through verified rental payment data and credit reporting.',
+    description: 'Landlords, tenants, and lenders connected through verified rental payment data.',
+    icon: Workflow,
+    featured: true,
   },
   {
     title: 'Blog',
     slug: 'blog',
-    description: 'Read the latest market insights, product updates, and stories from our partner network.',
+    description: 'Market insights, product updates, and stories from our partner network.',
+    icon: BookOpen,
   },
   {
     title: 'Contact',
     slug: 'contact',
-    description: 'Reach out for partnerships or support from the CRENIT team.',
+    description: 'Partnerships, onboarding support, and general enquiries.',
+    icon: Mail,
   },
 ];
 
 export default function CompanyPage() {
   return (
-    <main className="bg-[#F5F5F5] text-[#1A1A1A]">
-      <div className="mx-auto max-w-7xl px-6 py-16 sm:px-8">
-        <section className="rounded-[2rem] bg-white px-8 py-12 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
-          <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Company</p>
-          <h1 className="mt-5 text-4xl font-semibold tracking-tight text-[#1A1A1A] sm:text-5xl">
-            Building a better rental finance experience with verified payment data.
-          </h1>
-          <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">
-            CRENIT helps landlords and tenants unlock financial identity through verified rent payments while supporting lenders with trusted rental signals.
-          </p>
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+    <main>
+      <MarketingPageHero
+        eyebrow="Company"
+        title={
+          <>
+            Building rental finance on <em>verified payments</em>
+          </>
+        }
+        lead="CRENIT helps landlords and tenants unlock financial identity through verified rent payments while giving lenders and developers trusted rental signals from Namibia."
+      />
+
+      <section className="marketing-section border-b border-slate-200/60 dark:border-[var(--rc-border)]">
+        <div className="marketing-container">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {companyHighlights.map((item) => (
-              <Link
+              <MarketingLinkCard
                 key={item.title}
                 href={`/company/${item.slug}`}
-                className="group rounded-[1.5rem] border border-slate-200 bg-[#F8F8F8] p-6 transition hover:border-[#C0392B]/30 hover:shadow-md"
-              >
-                <h2 className="text-xl font-semibold text-[#1A1A1A] group-hover:text-[#C0392B]">{item.title}</h2>
-                <p className="mt-4 text-sm leading-6 text-slate-600">{item.description}</p>
-                <span className="mt-4 inline-block text-sm font-semibold text-[#C0392B]">Learn more →</span>
-              </Link>
+                title={item.title}
+                description={item.description}
+                icon={item.icon}
+                featured={item.featured}
+              />
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="mt-16 rounded-[2rem] bg-white p-10 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Start a conversation</p>
-              <h2 className="mt-3 text-3xl font-semibold text-[#1A1A1A]">Talk to the CRENIT team today.</h2>
+      <section className="marketing-section-muted border-b border-slate-200/60 dark:border-[var(--rc-border)]">
+        <div className="marketing-container">
+          <div className="grid gap-8 lg:grid-cols-2">
+            <div className="marketing-panel">
+              <p className="marketing-eyebrow">Our mission</p>
+              <h2 className="marketing-h2 mt-4">Accountable rental markets, built locally</h2>
+              <p className="mt-5 text-base leading-7 text-[var(--rc-text-secondary)]">
+                We are not copying a foreign credit bureau model. CRENIT is designed for how rent actually works in
+                Namibia — EFT confirmations, landlord partnerships, and suburb-level intelligence lenders can license.
+              </p>
             </div>
-            <Link
-              href="/company/contact"
-              className="inline-flex items-center justify-center rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white hover:bg-[#992d24]"
-            >
-              Contact us
-            </Link>
+            <div className="marketing-spotlight">
+              <p className="marketing-eyebrow text-[#f4a9a3]">Windhoek-first</p>
+              <h2 className="mt-4 text-2xl font-semibold tracking-tight">Piloting with real partners</h2>
+              <p className="mt-4 text-base leading-7 text-slate-300">
+                Banks, landlords, and developers work with us on verified payment flows and anonymised market aggregates
+                — with POPIA-aligned consent and minimum sample rules.
+              </p>
+            </div>
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
+
+      <MarketingCtaBand
+        eyebrow="Start a conversation"
+        title="Talk to the CRENIT team today"
+        href="/company/contact"
+        ctaLabel="Contact us"
+      />
     </main>
   );
 }

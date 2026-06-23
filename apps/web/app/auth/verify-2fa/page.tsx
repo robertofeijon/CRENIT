@@ -1,11 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Shield } from 'lucide-react';
+import { Shield, Smartphone } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import OtpCodeInput from '../../components/auth/OtpCodeInput';
+import MarketingAtmosphere from '../../components/marketing/MarketingAtmosphere';
 import Logo from '../../components/ui/Logo';
+import ThemeToggle from '../../components/ui/ThemeToggle';
 
 export default function VerifyTwoFactorPage() {
   const router = useRouter();
@@ -74,47 +78,64 @@ export default function VerifyTwoFactorPage() {
   const isSms = twoFactor?.method === 'sms';
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F3F4F6] px-4">
-      <div className="mb-8">
-        <Logo />
-      </div>
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
-        <div className="flex items-center gap-2 text-[#C0392B]">
-          <Shield className="h-6 w-6" aria-hidden />
-          <h1 className="text-xl font-semibold text-[#1A1A1A]">Two-factor verification</h1>
+    <main className="relative min-h-screen text-[var(--rc-text)]">
+      <MarketingAtmosphere variant="auth" className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
+        <div className="absolute right-4 top-4 z-10 sm:right-8">
+          <ThemeToggle compact />
         </div>
-        <p className="mt-2 text-sm text-slate-600">
-          {isSms
-            ? `Enter the 6-digit code we sent${twoFactor?.phone_masked ? ` to ${twoFactor.phone_masked}` : ''}.`
-            : `Enter the 6-digit code from your authenticator app to access your ${role === 'ADMIN' ? 'admin' : 'partner'} dashboard.`}
-        </p>
-        {isSms ? (
+
+        <div className="mb-8">
+          <Logo />
+        </div>
+
+        <div className="verify-2fa-card">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--rc-accent-surface)] text-[#C0392B]">
+              {isSms ? <Smartphone className="h-5 w-5" aria-hidden /> : <Shield className="h-5 w-5" aria-hidden />}
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C0392B]">Step-up security</p>
+              <h1 className="text-xl font-semibold text-[var(--rc-text)]">Two-factor verification</h1>
+            </div>
+          </div>
+
+          <p className="mt-5 text-sm leading-7 text-[var(--rc-text-secondary)]">
+            {isSms
+              ? `Enter the 6-digit code we sent${twoFactor?.phone_masked ? ` to ${twoFactor.phone_masked}` : ''}.`
+              : `Enter the code from your authenticator app to access your ${role === 'ADMIN' ? 'admin' : 'partner'} dashboard.`}
+          </p>
+
+          {isSms ? (
+            <button
+              type="button"
+              className="mt-3 text-sm font-semibold text-[#C0392B] hover:underline"
+              onClick={() => void sendSmsChallenge()}
+            >
+              Resend SMS code
+            </button>
+          ) : null}
+
+          <OtpCodeInput value={code} onChange={setCode} disabled={submitting} />
+
+          {error ? <p className="mt-4 text-center text-sm text-rose-600">{error}</p> : null}
+
           <button
             type="button"
-            className="mt-3 text-sm font-semibold text-[#C0392B] hover:underline"
-            onClick={() => void sendSmsChallenge()}
+            disabled={submitting || code.length < 6}
+            onClick={() => void handleVerify()}
+            className="tenant-btn-primary mt-6 w-full"
           >
-            Resend SMS code
+            {submitting ? 'Verifying…' : 'Continue to dashboard'}
           </button>
-        ) : null}
-        <input
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-          placeholder="6-digit code"
-          className="mt-6 w-full rounded-xl border border-slate-200 px-4 py-3 text-center text-lg tracking-widest outline-none focus:border-[#C0392B]/60"
-          inputMode="numeric"
-          maxLength={6}
-        />
-        {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-        <button
-          type="button"
-          disabled={submitting || code.length < 6}
-          onClick={() => void handleVerify()}
-          className="mt-6 w-full rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white hover:bg-[#992d24] disabled:opacity-60"
-        >
-          {submitting ? 'Verifying…' : 'Continue'}
-        </button>
-      </div>
-    </div>
+
+          <Link
+            href="/auth"
+            className="mt-4 block text-center text-sm font-semibold text-[var(--rc-text-secondary)] transition hover:text-[#C0392B]"
+          >
+            ← Back to sign in
+          </Link>
+        </div>
+      </MarketingAtmosphere>
+    </main>
   );
 }

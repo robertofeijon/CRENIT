@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { LEGAL_PAGES } from '../../../src/content/legal-pages';
-import { CONTACT_EMAIL, MARKETING_SLUGS } from '../../../src/lib/site';
+import MarketingPageHero from '../../components/marketing/MarketingPageHero';
+import MarketingSectionReveal from '../../components/marketing/MarketingSectionReveal';
+import SlugFeatureGrid from '../../components/marketing/SlugFeatureGrid';
 import TenantWaitlistForm from '../../components/marketing/TenantWaitlistForm';
 import BankIntegrationCards from '../../components/marketing/BankIntegrationCards';
+import { LEGAL_PAGES } from '../../../src/content/legal-pages';
+import { CONTACT_EMAIL, MARKETING_SLUGS } from '../../../src/lib/site';
 
 const pageData: Record<string, { title: string; headline: string; description: string; bullets: string[] }> = {
   'products/rent-payments': {
@@ -120,94 +123,92 @@ export default function SectionPage({ params }: { params: { section: string; slu
   const legal = LEGAL_PAGES[key];
 
   return (
-    <main className="min-h-[80vh] bg-[#F5F5F5] py-20">
-      <div className="mx-auto max-w-6xl px-6 sm:px-8">
-        <div className="mb-10 rounded-[2rem] bg-white p-10 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
-          <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">{page.title}</p>
-          <h1 className="mt-4 text-4xl font-semibold text-[#1A1A1A] sm:text-5xl">{page.headline}</h1>
-          {legal?.lastUpdated ? (
-            <p className="mt-3 text-sm text-slate-500">Last updated {legal.lastUpdated}</p>
-          ) : null}
-          {legal?.counselReview ? (
-            <div
-              className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-950"
-              role="note"
-            >
-              <p className="font-semibold text-amber-900">Draft — pending legal counsel review</p>
-              <p className="mt-1 leading-6">
-                Packet version {legal.counselReviewVersion || 'draft'} — not final legal advice or production sign-off.
-                See <code className="text-xs">docs/legal/COUNSEL_REVIEW_PACKET.md</code>.
-              </p>
-            </div>
-          ) : null}
-          <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">{page.description}</p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            {page.bullets.map((item) => (
-              <div key={item} className="rounded-3xl border border-slate-200 bg-[#F8F8F8] p-5 text-sm text-slate-700">
-                {item}
+    <main>
+      <MarketingPageHero eyebrow={page.title} title={page.headline} lead={page.description} />
+
+      <section className="marketing-section">
+        <div className="marketing-container max-w-4xl">
+          <MarketingSectionReveal>
+            <article className="marketing-panel">
+              {legal?.lastUpdated ? (
+                <p className="mb-6 text-sm text-[var(--rc-text-muted)]">Last updated {legal.lastUpdated}</p>
+              ) : null}
+              {legal?.counselReview ? (
+                <div className="marketing-callout marketing-callout--legal mb-8" role="note">
+                  <p className="font-semibold text-amber-900 dark:text-amber-100">Draft — pending legal counsel review</p>
+                  <p className="mt-1 leading-6">
+                    Packet version {legal.counselReviewVersion || 'draft'} — not final legal advice or production
+                    sign-off. See <code>docs/legal/COUNSEL_REVIEW_PACKET.md</code>.
+                  </p>
+                </div>
+              ) : null}
+
+              <SlugFeatureGrid bullets={page.bullets} pageKey={key} />
+
+            {legal?.sections?.length ? (
+              <div className="rc-prose mt-12 border-t border-[var(--rc-border)] pt-10">
+                {legal.sections.map((section) => (
+                  <section key={section.heading}>
+                    <h2>{section.heading}</h2>
+                    {section.paragraphs.map((paragraph) => (
+                      <p key={paragraph.slice(0, 40)}>{paragraph}</p>
+                    ))}
+                  </section>
+                ))}
+                <p className="text-sm text-[var(--rc-text-muted)]">
+                  Privacy questions:{' '}
+                  <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+                </p>
               </div>
-            ))}
-          </div>
-          {legal?.sections?.length ? (
-            <div className="prose prose-slate mt-12 max-w-none border-t border-slate-100 pt-10">
-              {legal.sections.map((section) => (
-                <section key={section.heading} className="mb-10">
-                  <h2 className="text-xl font-semibold text-[#1A1A1A]">{section.heading}</h2>
-                  {section.paragraphs.map((paragraph) => (
-                    <p key={paragraph.slice(0, 40)} className="mt-3 text-base leading-7 text-slate-600">
-                      {paragraph}
-                    </p>
-                  ))}
-                </section>
-              ))}
-              <p className="text-sm text-slate-500">
-                Privacy questions:{' '}
-                <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-[#C0392B] hover:underline">
+            ) : null}
+
+            {key === 'solutions/for-tenants' ? (
+              <div className="mt-10 border-t border-[var(--rc-border)] pt-10">
+                <TenantWaitlistForm />
+              </div>
+            ) : null}
+
+            {key === 'solutions/for-banks-lenders' ? (
+              <div className="mt-10 border-t border-[var(--rc-border)] pt-10">
+                <p className="marketing-eyebrow">Integration targets</p>
+                <div className="mt-6">
+                  <BankIntegrationCards />
+                </div>
+              </div>
+            ) : null}
+
+            {isContact ? (
+              <div className="mt-10 rounded-2xl border border-[var(--rc-border)] bg-[var(--rc-card-alt)] p-6">
+                <p className="text-sm font-semibold text-[var(--rc-text)]">Email us</p>
+                <a href={`mailto:${CONTACT_EMAIL}`} className="mt-2 inline-block text-lg font-semibold text-[#C0392B] hover:underline">
                   {CONTACT_EMAIL}
                 </a>
-              </p>
+                <p className="mt-4 text-sm text-[var(--rc-text-secondary)]">
+                  For account access, use{' '}
+                  <Link href="/auth" className="font-semibold text-[#C0392B] hover:underline">
+                    sign in
+                  </Link>{' '}
+                  or{' '}
+                  <Link href="/auth?mode=register" className="font-semibold text-[#C0392B] hover:underline">
+                    create an account
+                  </Link>
+                  .
+                </p>
+              </div>
+            ) : null}
+
+            <div className="mt-10 flex flex-wrap gap-3 border-t border-[var(--rc-border)] pt-8">
+              <Link href="/auth" className="marketing-btn-primary">
+                Get started
+              </Link>
+              <Link href="/" className="marketing-btn-outline">
+                Back to home
+              </Link>
             </div>
-          ) : null}
-          {key === 'solutions/for-tenants' ? (
-            <div className="mt-10">
-              <TenantWaitlistForm />
-            </div>
-          ) : null}
-          {key === 'solutions/for-banks-lenders' ? (
-            <div className="mt-10">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Integration targets</p>
-              <BankIntegrationCards />
-            </div>
-          ) : null}
-          {isContact ? (
-            <div className="mt-10 rounded-2xl border border-slate-200 bg-[#F8F8F8] p-6">
-              <p className="text-sm font-semibold text-[#1A1A1A]">Email us</p>
-              <a href={`mailto:${CONTACT_EMAIL}`} className="mt-2 inline-block text-lg font-semibold text-[#C0392B] hover:underline">
-                {CONTACT_EMAIL}
-              </a>
-              <p className="mt-4 text-sm text-slate-600">
-                For account access, use{' '}
-                <Link href="/auth" className="font-semibold text-[#C0392B] hover:underline">
-                  sign in
-                </Link>{' '}
-                or{' '}
-                <Link href="/auth?mode=register" className="font-semibold text-[#C0392B] hover:underline">
-                  create an account
-                </Link>
-                .
-              </p>
-            </div>
-          ) : null}
-          <div className="mt-10 flex flex-wrap gap-4">
-            <Link href="/auth" className="inline-flex items-center justify-center rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white hover:bg-[#992d24]">
-              Get Started
-            </Link>
-            <Link href="/" className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-[#1A1A1A] hover:bg-slate-100">
-              Back to Home
-            </Link>
-          </div>
+          </article>
+          </MarketingSectionReveal>
         </div>
-      </div>
+      </section>
     </main>
   );
 }

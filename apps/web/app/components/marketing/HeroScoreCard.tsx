@@ -60,7 +60,11 @@ export default function HeroScoreCard() {
   }, []);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-white/65 bg-gradient-to-br from-white/85 via-[#fff5f5]/90 to-[#fce8e7]/95 p-6 shadow-[0_24px_44px_rgba(127,29,29,0.14)] backdrop-blur-md sm:p-8">
+    <div className="hero-score-card shimmer-border relative overflow-hidden rounded-3xl border border-white/65 bg-gradient-to-br from-white/90 via-[#fff8f7]/92 to-[#fce8e7]/95 p-6 shadow-[0_24px_44px_rgba(127,29,29,0.14)] backdrop-blur-md dark:border-[var(--rc-border)] dark:from-[var(--rc-card)] dark:via-[var(--rc-card-alt)] dark:to-[var(--rc-elevated)] sm:p-8">
+      <div
+        className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-[#C0392B]/15 blur-2xl"
+        aria-hidden
+      />
       <p className="text-xs font-medium uppercase tracking-widest text-[#7f1d1d]">Tenant dashboard</p>
       <p className="mt-3 text-xl font-medium leading-snug text-[#1A1A1A]">
         Payment history, score, and downloadable reports—in one place.

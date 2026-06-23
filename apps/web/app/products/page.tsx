@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { BarChart3, ShieldCheck, TrendingUp, Wallet } from 'lucide-react';
+import MarketingCtaBand from '../components/marketing/MarketingCtaBand';
+import MarketingLinkCard from '../components/marketing/MarketingLinkCard';
+import MarketingPageHero from '../components/marketing/MarketingPageHero';
 import { WINDHOEK_SUBURBS } from '../../src/lib/namibia-locale';
 
 export const metadata: Metadata = {
@@ -13,131 +17,152 @@ const products = [
     title: 'Rent Payments',
     slug: 'rent-payments',
     description: 'Collect rent seamlessly, automate receipts, and track every payment in one verified ledger.',
+    icon: Wallet,
   },
   {
     title: 'Credit Score',
     slug: 'credit-score',
     description: 'Convert on-time rental payments into a trusted credit history for tenants and lenders.',
+    icon: TrendingUp,
   },
   {
     title: 'Deposit Management',
     slug: 'deposit-management',
     description: 'Securely manage tenant deposits from move-in to move-out with automated reconciliation.',
+    icon: ShieldCheck,
   },
   {
     title: 'Data Intelligence',
     slug: 'market-data',
     description:
-      'Licensed suburb rental comps for developers, estate agents, banks, and contractors — verified from real payments, not listings.',
+      'Licensed suburb rental comps for developers, estate agents, banks, and contractors — verified from real payments.',
+    icon: BarChart3,
+    featured: true,
   },
+];
+
+const workflowItems = [
+  'Automated rent collection and receipts',
+  'Verified credit reporting from rent history',
+  'Secure deposit tracking and claims',
+  'Localized market insights for underwriting',
 ];
 
 export default function ProductsPage() {
   return (
-    <main className="bg-[#F5F5F5] text-[#1A1A1A]">
-      <div className="mx-auto max-w-7xl px-6 py-16 sm:px-8">
-        <section className="rounded-[2rem] bg-white px-8 py-12 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
-          <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Products</p>
-          <h1 className="mt-5 text-4xl font-semibold tracking-tight text-[#1A1A1A] sm:text-5xl">
-            One platform for rent, credit, deposits, and market intelligence.
-          </h1>
-          <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">
-            CRENIT brings together the key products landlords and tenants need to manage rental payments, build verified credit,
-            and make smarter decisions with local market data.
-          </p>
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+    <main>
+      <MarketingPageHero
+        eyebrow="Products"
+        title={
+          <>
+            One platform for rent, credit, deposits, and <em>market intelligence</em>
+          </>
+        }
+        lead="CRENIT brings together the products landlords and tenants need to manage rental payments, build verified credit, and make smarter decisions with local market data."
+      />
+
+      <section className="marketing-section border-b border-slate-200/60 dark:border-[var(--rc-border)]">
+        <div className="marketing-container">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {products.map((product) => (
-              <Link
+              <MarketingLinkCard
                 key={product.title}
                 href={`/products/${product.slug}`}
-                className="group rounded-[1.5rem] border border-slate-200 bg-[#F8F8F8] p-6 transition hover:border-[#C0392B]/30 hover:shadow-md"
-              >
-                <h2 className="text-xl font-semibold text-[#1A1A1A] group-hover:text-[#C0392B]">{product.title}</h2>
-                <p className="mt-4 text-sm leading-6 text-slate-600">{product.description}</p>
-                <span className="mt-4 inline-block text-sm font-semibold text-[#C0392B]">Learn more →</span>
-              </Link>
+                title={product.title}
+                description={product.description}
+                icon={product.icon}
+                featured={product.featured}
+              />
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="mt-16 grid gap-8 lg:grid-cols-[1fr_0.9fr]">
-          <div className="rounded-[2rem] bg-white p-10 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
-            <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">How it works</p>
-            <h2 className="mt-4 text-3xl font-semibold text-[#1A1A1A]">Streamlined rental workflows for every stakeholder.</h2>
-            <p className="mt-6 text-base leading-7 text-slate-600">
-              From landlords collecting rent to tenants building credit and lenders underwriting rental borrowers, CRENIT connects the full rental lifecycle.
-            </p>
-            <div className="mt-10 space-y-4">
-              {[
-                'Automated rent collection and receipts',
-                'Verified credit reporting from rent history',
-                'Secure deposit tracking and claims',
-                'Localized market insights for underwriting',
-              ].map((item) => (
-                <div key={item} className="flex gap-4 rounded-3xl bg-[#F5F5F5] p-5">
-                  <span className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#C0392B]/10 text-[#C0392B]">✓</span>
-                  <p className="text-sm leading-6 text-slate-700">{item}</p>
+      <section className="marketing-section-muted border-b border-slate-200/60 dark:border-[var(--rc-border)]">
+        <div className="marketing-container">
+          <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
+            <div className="marketing-panel">
+              <p className="marketing-eyebrow">How it works</p>
+              <h2 className="marketing-h2-display mt-4">Streamlined rental workflows for every stakeholder</h2>
+              <p className="mt-6 text-base leading-7 text-[var(--rc-text-secondary)]">
+                From landlords collecting rent to tenants building credit and lenders underwriting rental borrowers,
+                CRENIT connects the full rental lifecycle.
+              </p>
+              <div className="mt-8 space-y-3">
+                {workflowItems.map((item) => (
+                  <div key={item} className="marketing-check-row">
+                    <span className="marketing-check-row__icon" aria-hidden>
+                      ✓
+                    </span>
+                    <p className="text-sm leading-6 text-[var(--rc-text-secondary)]">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="marketing-spotlight">
+              <p className="marketing-eyebrow text-[#f4a9a3]">Product focus</p>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight">Trusted infrastructure for rental credit</h2>
+              <p className="mt-5 text-base leading-7 text-slate-300">
+                Build lasting tenant relationships, improve portfolio transparency, and give financial partners a new way
+                to underwrite rentals.
+              </p>
+              <div className="mt-8 grid gap-4">
+                <div className="marketing-spotlight__card">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Trusted data</p>
+                  <p className="mt-3 text-lg font-semibold">Verified payments, verified performance.</p>
                 </div>
-              ))}
+                <div className="marketing-spotlight__card">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Reliable scores</p>
+                  <p className="mt-3 text-lg font-semibold">Score improvements from real rental behaviour.</p>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="rounded-[2rem] bg-[#1A1A1A] p-10 text-white shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
-            <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Product focus</p>
-            <h2 className="mt-4 text-3xl font-semibold">Trusted infrastructure for rental credit.</h2>
-            <p className="mt-6 text-base leading-7 text-slate-300">
-              Build lasting tenant relationships, improve portfolio transparency, and give financial partners a new way to underwrite rentals.
+        </div>
+      </section>
+
+      <section className="marketing-section border-b border-slate-200/60 dark:border-[var(--rc-border)]">
+        <div className="marketing-container">
+          <div className="marketing-accent-panel">
+            <p className="marketing-eyebrow">Data Intelligence for property professionals</p>
+            <h2 className="marketing-h2 mt-4">Know the rent range before you build, list, or lend</h2>
+            <p className="mt-4 max-w-3xl text-base leading-7 text-[var(--rc-text-secondary)]">
+              CRENIT licenses anonymised, verified rental market data — suburb price bands, payment behaviour, and
+              feasibility packs. Individual tenants are never exposed; only aggregates that meet minimum sample rules are
+              licensed.
             </p>
-            <div className="mt-10 grid gap-6">
-              <div className="rounded-[1.5rem] bg-[#111111] p-6">
-                <p className="text-sm uppercase tracking-[0.35em] text-slate-500">Trusted data</p>
-                <p className="mt-4 text-xl font-semibold text-white">Verified payments, verified performance.</p>
-              </div>
-              <div className="rounded-[1.5rem] bg-[#111111] p-6">
-                <p className="text-sm uppercase tracking-[0.35em] text-slate-500">Reliable score updates</p>
-                <p className="mt-4 text-xl font-semibold text-white">Score improvements from real rental behavior.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-16 rounded-[2rem] border border-[#C0392B]/15 bg-gradient-to-br from-[#FDEDEC] to-white p-10 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
-          <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Data Intelligence for property professionals</p>
-          <h2 className="mt-4 text-3xl font-semibold text-[#1A1A1A]">Know the rent range before you build, list, or lend.</h2>
-          <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-            CRENIT sells anonymised, verified rental market data — suburb price bands, payment behaviour, and feasibility
-            packs for property professionals. Individual tenants are never exposed; only aggregated
-            statistics that meet minimum sample rules are licensed.
-          </p>
-          <Link href="/products/market-data" className="mt-6 inline-flex text-sm font-semibold text-[#C0392B] hover:underline">
-            Explore market data →
-          </Link>
-          <div className="mt-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Windhoek coverage (pilot suburbs)</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {WINDHOEK_SUBURBS.map((suburb) => (
-                <span key={suburb} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
-                  {suburb}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-16 rounded-[2rem] bg-white p-10 shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.35em] text-[#C0392B]/90">Get started</p>
-              <h2 className="mt-3 text-3xl font-semibold text-[#1A1A1A]">See how CRENIT can work for your portfolio.</h2>
-            </div>
-            <Link
-              href="/auth"
-              className="inline-flex items-center justify-center rounded-full bg-[#C0392B] px-6 py-3 text-sm font-semibold text-white hover:bg-[#992d24]"
-            >
-              Get started
+            <Link href="/products/market-data" className="mt-6 inline-flex text-sm font-semibold text-[#C0392B] hover:underline">
+              Explore market data →
             </Link>
+            <div className="mt-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--rc-text-muted)]">
+                Windhoek coverage (pilot suburbs)
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {WINDHOEK_SUBURBS.map((suburb) => (
+                  <span key={suburb} className="marketing-chip">
+                    {suburb}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
+
+      <MarketingCtaBand
+        eyebrow="Get started"
+        title={
+          <>
+            See how CRENIT can work for your <em>portfolio</em>
+          </>
+        }
+        href="/auth?mode=register"
+        ctaLabel="Create free account"
+        secondaryHref="/company/contact"
+        secondaryLabel="Contact sales"
+      />
     </main>
   );
 }

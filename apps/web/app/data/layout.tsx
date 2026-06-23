@@ -6,7 +6,7 @@ export default async function DataLayout({ children }: { children: ReactNode }) 
   const dashboard = await fetchPublicMarketDashboard();
 
   return (
-    <div className="min-h-[80vh] bg-[#F5F5F5]">
+    <div className="min-h-[80vh]">
       {children}
       <PublicMiFooter pipelineUpdatedAt={dashboard?.pipeline_updated_at} />
     </div>

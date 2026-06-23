@@ -127,19 +127,26 @@ export default function AuthModal({ open, mode = 'login', onClose }: AuthModalPr
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 py-8">
-      <div className="w-full max-w-4xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_30px_100px_rgba(0,0,0,0.35)]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 px-4 py-8 backdrop-blur-md">
+      <div className="shimmer-border w-full max-w-4xl overflow-hidden rounded-[2rem] border border-white/20 bg-[var(--rc-card)] shadow-[0_30px_100px_rgba(0,0,0,0.4)] dark:border-[var(--rc-border)]">
         <div className="grid lg:grid-cols-[1fr_1.05fr]">
-          <div className="bg-[#1A1A1A] px-6 py-8 text-white sm:px-8 sm:py-10">
-            <p className="text-xs uppercase tracking-[0.35em] text-[#C0392B]/90">CRENIT Access</p>
-            <h2 className="mt-4 text-3xl font-semibold leading-tight">Secure login for tenants, landlords, and admins.</h2>
+          <div className="auth-panel-side hidden lg:block">
+            <div
+              className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-[#C0392B]/25 blur-3xl"
+              aria-hidden
+            />
+            <p className="text-xs uppercase tracking-[0.35em] text-[#f4a9a3]">CRENIT Access</p>
+            <h2 className="auth-panel-side__title">Secure access for tenants, landlords, and admins.</h2>
             <p className="mt-4 text-sm leading-7 text-slate-300">
               Your payment records, KYC status, and credit progress remain protected under verified role-based access.
             </p>
-            <div className="mt-8 grid gap-3">
+            <div className="mt-8 space-y-3">
               {['Verified payment history', 'Real-time dashboard updates', 'Audit-ready data controls'].map((item) => (
-                <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
-                  {item}
+                <div key={item} className="marketing-check-row !bg-white/5 !text-slate-200">
+                  <span className="marketing-check-row__icon !bg-[#C0392B]/25 !text-white" aria-hidden>
+                    ✓
+                  </span>
+                  <p className="text-sm leading-6">{item}</p>
                 </div>
               ))}
             </div>
@@ -149,23 +156,24 @@ export default function AuthModal({ open, mode = 'login', onClose }: AuthModalPr
             <button
               type="button"
               onClick={onClose}
-              className="absolute right-4 top-4 rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+              className="absolute right-4 top-4 rounded-full border px-3 py-1 text-xs font-semibold transition hover:bg-[var(--rc-hover)]"
+              style={{ borderColor: 'var(--rc-border)', color: 'var(--rc-text-secondary)' }}
             >
               Close
             </button>
 
-            <div className="mb-6 inline-flex rounded-full border border-slate-200 bg-[#F8F8F8] p-1 text-sm font-semibold text-slate-700">
+            <div className="auth-tab-pill mb-6">
               <button
                 type="button"
                 onClick={() => setActiveMode('login')}
-                className={`rounded-full px-5 py-2 transition ${activeMode === 'login' ? 'bg-white text-[#C0392B] shadow-sm' : 'text-slate-600'}`}
+                className={`px-5 py-2 transition ${activeMode === 'login' ? 'auth-tab-pill__btn--active' : ''}`}
               >
                 Login
               </button>
               <button
                 type="button"
                 onClick={() => setActiveMode('register')}
-                className={`rounded-full px-5 py-2 transition ${activeMode === 'register' ? 'bg-white text-[#C0392B] shadow-sm' : 'text-slate-600'}`}
+                className={`px-5 py-2 transition ${activeMode === 'register' ? 'auth-tab-pill__btn--active' : ''}`}
               >
                 Sign up
               </button>
@@ -173,18 +181,22 @@ export default function AuthModal({ open, mode = 'login', onClose }: AuthModalPr
 
             {activeMode === 'register' ? (
               <>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Full name</label>
+                <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--rc-text)' }}>
+                  Full name
+                </label>
                 <input
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="mb-4 w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none transition focus:border-[#C0392B]/60"
+                  className="auth-input"
                   placeholder="Jane Doe"
                 />
-                <label className="mb-2 block text-sm font-medium text-slate-700">Role</label>
+                <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--rc-text)' }}>
+                  Role
+                </label>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value as 'TENANT' | 'LANDLORD')}
-                  className="mb-4 w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none transition focus:border-[#C0392B]/60"
+                  className="auth-input"
                 >
                   <option value="TENANT">Tenant</option>
                   <option value="LANDLORD">Landlord</option>
@@ -192,22 +204,26 @@ export default function AuthModal({ open, mode = 'login', onClose }: AuthModalPr
               </>
             ) : null}
 
-            <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
+            <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--rc-text)' }}>
+              Email
+            </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mb-4 w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none transition focus:border-[#C0392B]/60"
+              className="auth-input"
               placeholder="you@example.com"
               autoComplete="email"
             />
 
-            <label className="mb-2 block text-sm font-medium text-slate-700">Password</label>
+            <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--rc-text)' }}>
+              Password
+            </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none transition focus:border-[#C0392B]/60"
+              className="auth-input !mb-0"
               placeholder="••••••••"
               autoComplete={activeMode === 'login' ? 'current-password' : 'new-password'}
               onKeyDown={(e) => {
@@ -224,7 +240,7 @@ export default function AuthModal({ open, mode = 'login', onClose }: AuthModalPr
             ) : null}
 
             {activeMode === 'register' ? (
-              <label className="mt-4 flex items-start gap-3 text-sm text-slate-600">
+              <label className="mt-4 flex items-start gap-3 text-sm" style={{ color: 'var(--rc-text-secondary)' }}>
                 <input
                   type="checkbox"
                   checked={marketDataConsent}

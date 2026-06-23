@@ -84,8 +84,8 @@ export default function DashboardShell({
 
   const sidebar = (
     <aside
-      className={`flex h-full w-[260px] flex-col border-r ${
-        isPolishedShell ? 'border-[var(--rc-border)] bg-[var(--rc-card)]' : 'border-gray-200 bg-[var(--rc-card-alt)]'
+      className={`dashboard-sidebar flex h-full w-[260px] flex-col border-r ${
+        isPolishedShell ? 'border-[var(--rc-border)]' : 'border-gray-200 bg-[var(--rc-card-alt)]'
       }`}
     >
       <div className={`border-b p-5 ${isPolishedShell ? 'border-slate-200' : 'border-gray-200'}`}>
@@ -142,13 +142,13 @@ export default function DashboardShell({
             ) : (
               <Link
                 href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                   active
                     ? isPolishedShell
-                      ? 'bg-[#C0392B] text-white shadow-md shadow-[#C0392B]/20'
+                      ? 'dashboard-sidebar__nav-active'
                       : 'bg-[#1A1A2E] text-white'
                     : isPolishedShell
-                      ? 'text-slate-700 hover:bg-[#FDEDEC]'
+                      ? 'text-[var(--rc-text-secondary)] hover:bg-[var(--rc-accent-surface)] hover:text-[var(--rc-text)]'
                       : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
@@ -172,11 +172,7 @@ export default function DashboardShell({
   return (
     <NotificationsProvider>
     <div className="min-h-screen bg-[var(--rc-bg,#F3F4F6)]">
-      <header
-        className={`fixed left-0 right-0 top-0 z-50 h-16 border-b backdrop-blur ${
-          isPolishedShell ? 'border-[var(--rc-border)] bg-[var(--rc-bg)]/95' : 'border-[var(--rc-border)] bg-[var(--rc-card)]'
-        }`}
-      >
+      <header className="rc-glass-header fixed left-0 right-0 top-0 z-50 h-16 border-b">
         <div className="flex h-full items-center justify-between gap-4 px-4 lg:px-6">
           <div className="flex items-center gap-3">
             <button
@@ -233,7 +229,7 @@ export default function DashboardShell({
         </div>
       ) : null}
 
-      <main className="mt-16 min-h-[calc(100vh-4rem)] p-4 md:ml-[260px] md:p-8">
+      <main className="dashboard-main mt-16 min-h-[calc(100vh-4rem)] p-4 md:ml-[260px] md:p-8">
         {banner}
         {children}
       </main>

@@ -155,7 +155,7 @@ export default function AdminKycCompliancePage() {
             />
           </section>
 
-          <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <section className="admin-panel">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="font-semibold text-[#1A1A1A]">Fraud &amp; integrity flags</h2>
@@ -206,7 +206,7 @@ export default function AdminKycCompliancePage() {
           </section>
 
           <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <section className="admin-panel">
               <h2 className="font-semibold text-[#1A1A1A]">Submission register</h2>
               <p className="mt-1 text-sm text-slate-500">Click a row to load the full KYC audit trail.</p>
               <div className="mt-4 space-y-3">
@@ -268,7 +268,7 @@ export default function AdminKycCompliancePage() {
               </div>
             </section>
 
-            <aside className="h-fit rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <aside className="admin-panel h-fit">
               <h2 className="font-semibold text-[#1A1A1A]">Audit trail</h2>
               {auditLoading ? (
                 <p className="mt-4 text-sm text-slate-500">Loading audit events…</p>

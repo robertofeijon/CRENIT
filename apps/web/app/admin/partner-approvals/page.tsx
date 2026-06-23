@@ -118,11 +118,7 @@ export default function AdminPartnerApprovalsPage() {
                 key={row.id}
                 type="button"
                 onClick={() => setSelected(row)}
-                className={`w-full rounded-[1.5rem] border p-5 text-left shadow-sm transition ${
-                  selected?.id === row.id
-                    ? 'border-[#C0392B] bg-[#FDEDEC]'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
-                }`}
+                className={`w-full admin-list-item text-left ${selected?.id === row.id ? 'admin-list-item--selected' : ''}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -158,7 +154,7 @@ export default function AdminPartnerApprovalsPage() {
           )}
         </div>
 
-        <aside className="h-fit rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <aside className="admin-panel h-fit">
           <h2 className="text-lg font-semibold text-[#1A1A1A]">Review panel</h2>
           {!selected ? (
             <p className="mt-4 text-sm text-slate-500">Select a submission to approve or reject.</p>

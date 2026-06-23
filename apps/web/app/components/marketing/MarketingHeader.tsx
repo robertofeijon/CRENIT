@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import MarketingNav from '../layout/MarketingNav';
@@ -11,18 +11,32 @@ import ThemeToggle from '../ui/ThemeToggle';
 export default function MarketingHeader() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[var(--rc-border,#e2e8f0)] bg-[var(--rc-card,#fff)]">
+    <header
+      className={`marketing-header rc-glass-header sticky top-0 z-50 w-full border-b transition-shadow duration-300 ${
+        scrolled ? 'marketing-header--scrolled' : ''
+      }`}
+    >
+      <div className="marketing-header__glow" aria-hidden />
       <div className="marketing-container flex h-[72px] items-center justify-between gap-4">
         <div className="flex items-center gap-6">
           <button
             type="button"
-            className="rounded-lg p-2 text-slate-700 lg:hidden"
+            className="rounded-lg p-2 transition hover:bg-[var(--rc-hover)] lg:hidden"
+            style={{ color: 'var(--rc-text)' }}
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
           >
@@ -42,14 +56,17 @@ export default function MarketingHeader() {
           <Link href="/company/contact" className="marketing-btn-outline hidden md:inline-flex">
             Talk to sales
           </Link>
-          <Link href="/auth?mode=register" className="marketing-btn-primary">
+          <Link href="/auth?mode=register" className="marketing-btn-primary marketing-btn-primary--glow">
             Get started
           </Link>
         </div>
       </div>
 
       {mobileOpen ? (
-        <div className="border-t border-[var(--rc-border,#f1f5f9)] bg-[var(--rc-card,#fff)] px-4 py-4 lg:hidden">
+        <div
+          className="border-t px-4 py-4 lg:hidden"
+          style={{ borderColor: 'var(--rc-border)', background: 'var(--rc-card)' }}
+        >
           <MarketingNav compact />
           <div className="mt-4 flex flex-col gap-2">
             <ThemeToggle className="w-full justify-center" />

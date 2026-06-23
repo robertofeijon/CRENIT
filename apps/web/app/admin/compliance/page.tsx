@@ -11,6 +11,7 @@ import AdminStatCard from '../../components/ui/AdminStatCard';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 import EmptyStateCard from '../../components/ui/EmptyStateCard';
+import AdminHealthPanel from '../../components/admin/AdminHealthPanel';
 
 type ComplianceUser = {
   id: string;
@@ -124,19 +125,13 @@ export default function AdminCompliancePage() {
         }
       />
 
-      <div className="rounded-[1.5rem] border border-slate-200 bg-[#F3F4F6] p-5">
-        <div className="flex items-start gap-3">
-          <Shield className="mt-0.5 h-5 w-5 shrink-0 text-[#C0392B]" aria-hidden />
-          <div className="text-sm text-slate-600">
-            <p className="font-semibold text-[#1A1A1A]">Before you export or delete</p>
-            <ul className="mt-2 list-inside list-disc space-y-1 text-xs leading-5">
-              <li>Export produces a JSON bundle: profile, payments, KYC metadata, scores, deposits, admin audit references.</li>
-              <li>Delete anonymises the profile and removes KYC files from storage — irreversible.</li>
-              <li>Confirm identity of the requester outside the platform before acting.</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+      <AdminHealthPanel title="Before you export or delete" icon={Shield} variant="warning">
+        <ul className="list-inside list-disc space-y-1 text-xs leading-5 text-slate-600">
+          <li>Export produces a JSON bundle: profile, payments, KYC metadata, scores, deposits, admin audit references.</li>
+          <li>Delete anonymises the profile and removes KYC files from storage — irreversible.</li>
+          <li>Confirm identity of the requester outside the platform before acting.</li>
+        </ul>
+      </AdminHealthPanel>
 
       {error ? <ErrorStateCard message={error} onRetry={searchUsers} /> : null}
       {message ? <p className="text-sm font-medium text-emerald-700">{message}</p> : null}
@@ -169,7 +164,7 @@ export default function AdminCompliancePage() {
         </Link>
       </p>
 
-      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="admin-panel">
         <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Find user</label>
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">
@@ -200,7 +195,7 @@ export default function AdminCompliancePage() {
       ) : rows.length ? (
         <div className="space-y-4">
           {rows.map((row) => (
-            <article key={row.id} className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <article key={row.id} className="admin-list-item">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-lg font-semibold text-[#1A1A1A]">{row.full_name}</p>

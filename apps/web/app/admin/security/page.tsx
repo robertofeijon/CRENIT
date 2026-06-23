@@ -7,6 +7,7 @@ import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import AdminPageHeader from '../../components/ui/AdminPageHeader';
 import TwoFactorSetupBlock from '../../components/auth/TwoFactorSetupBlock';
+import AdminHealthPanel from '../../components/admin/AdminHealthPanel';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
 
 export default function AdminSecurityPage() {
@@ -97,15 +98,7 @@ export default function AdminSecurityPage() {
       {error ? <ErrorStateCard message={error} onRetry={() => void loadStatus()} /> : null}
       {message ? <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{message}</p> : null}
 
-      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-[#C0392B]" aria-hidden />
-          <h2 className="text-lg font-semibold text-[#1A1A1A]">Authenticator app</h2>
-        </div>
-        <p className="mt-2 text-sm text-slate-600">
-          Status: {twoFactor?.enabled ? 'Enabled' : 'Not enabled'}
-          {twoFactor?.session_active ? ' · Session verified' : ''}
-        </p>
+      <AdminHealthPanel title="Authenticator app" subtitle={`Status: ${twoFactor?.enabled ? 'Enabled' : 'Not enabled'}${twoFactor?.session_active ? ' · Session verified' : ''}`} icon={Shield}>
         <TwoFactorSetupBlock
           qrDataUrl={qrDataUrl}
           manualKey={manualKey}
@@ -121,14 +114,12 @@ export default function AdminSecurityPage() {
           secondaryButtonClass="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold text-[#1A1A1A]"
           primaryButtonClass="rounded-full bg-[#C0392B] px-5 py-2.5 text-sm font-semibold text-white"
         />
-      </section>
+      </AdminHealthPanel>
 
-      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-[#1A1A1A]">SMS two-factor (optional)</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Requires SMS_ENABLED on API and a phone on your profile.
-          {!twoFactor?.sms_available ? ' SMS is disabled in this environment.' : ''}
-        </p>
+      <AdminHealthPanel
+        title="SMS two-factor (optional)"
+        subtitle={`Requires SMS_ENABLED on API and a phone on your profile.${!twoFactor?.sms_available ? ' SMS is disabled in this environment.' : ''}`}
+      >
         {twoFactor?.enabled && twoFactor?.method === 'sms' ? (
           <p className="mt-2 text-sm text-emerald-700">SMS 2FA active{twoFactor.phone_masked ? ` · ${twoFactor.phone_masked}` : ''}.</p>
         ) : (
@@ -173,7 +164,7 @@ export default function AdminSecurityPage() {
             Confirm SMS 2FA
           </button>
         ) : null}
-      </section>
+      </AdminHealthPanel>
     </div>
   );
 }

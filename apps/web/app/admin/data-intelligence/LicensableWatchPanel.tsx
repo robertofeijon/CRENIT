@@ -51,7 +51,7 @@ export default function LicensableWatchPanel() {
   const licensable = rows.filter((r) => r.commercially_licensable);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5">
+    <div className="admin-list-item">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="font-semibold text-[#1A1A1A]">Webhook watch table</h4>
         <p className="text-xs text-slate-500">

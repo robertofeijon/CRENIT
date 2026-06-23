@@ -16,6 +16,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import dynamic from 'next/dynamic';
 import LandlordPageHeader from '../ui/LandlordPageHeader';
 import LandlordStatCard from '../ui/LandlordStatCard';
 import Badge from '../ui/Badge';
@@ -25,6 +26,11 @@ import SkeletonBlocks from '../ui/SkeletonBlocks';
 import { LandlordWorkspaceLoading } from '../ui/WorkspaceLoading';
 import { landlordNavItems } from './landlordNav';
 import { countActionableRenewals } from '../../../src/lib/renewalUi';
+
+const LazyLandlordPortfolioCharts = dynamic(() => import('../charts/LandlordPortfolioCharts'), {
+  ssr: false,
+  loading: () => <SkeletonBlocks rows={3} />,
+});
 
 const WORKSPACE_LINKS = landlordNavItems.filter((item) => item.href !== '/landlord/overview');
 
@@ -97,6 +103,7 @@ export default function LandlordOverviewDashboard() {
         badge="Portfolio"
         title="Overview"
         subtitle="Live metrics from your properties, tenants, and payments — your partner command centre."
+        display
         actions={
           <button type="button" onClick={loadOverview} disabled={isLoading} className="landlord-btn-secondary">
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden />
@@ -148,6 +155,10 @@ export default function LandlordOverviewDashboard() {
           />
         </section>
       )}
+
+      {!statsLoading && dashboard ? (
+        <LazyLandlordPortfolioCharts stats={stats} recentPayments={dashboard?.recentPayments ?? []} />
+      ) : null}
 
       {!statsLoading && Number(stats.totalProperties) === 0 ? (
         <div className="space-y-3">
@@ -227,7 +238,7 @@ export default function LandlordOverviewDashboard() {
               <Link
                 key={card.href}
                 href={hrefWhenApproved(card.href)}
-                className="group rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:border-[#C0392B]/40 hover:shadow-md"
+                className="marketing-bento-card group block h-full !p-5"
               >
                 <Icon className="h-5 w-5 text-[#C0392B]" aria-hidden />
                 <p className="mt-3 font-semibold text-[#1A1A1A] group-hover:text-[#C0392B]">{card.label}</p>

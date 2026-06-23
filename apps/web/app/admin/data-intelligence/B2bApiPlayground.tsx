@@ -90,7 +90,7 @@ export default function B2bApiPlayground({ apiKey, suburbOptions, onError }: Pro
   const envelope = (response as { data?: Record<string, unknown> })?.data;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="chart-card">
       <h3 className="font-semibold text-[#1A1A1A]">B2B API playground</h3>
       <p className="mt-1 text-sm text-slate-600">
         Live-call any JSON route with a client key. Full reference:{' '}

@@ -8,6 +8,7 @@ import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import TenantPageHeader from '../../components/ui/TenantPageHeader';
 import LandlordStatCard from '../../components/ui/LandlordStatCard';
+import ScoreRingMini from '../../components/ui/ScoreRingMini';
 import SkeletonBlocks from '../../components/ui/SkeletonBlocks';
 import { TenantWorkspaceLoading } from '../../components/ui/WorkspaceLoading';
 import ErrorStateCard from '../../components/ui/ErrorStateCard';
@@ -106,7 +107,9 @@ export default function TenantHomePage() {
   }
 
   const name = data?.profile?.full_name ?? user.email?.split('@')[0] ?? 'there';
-  const score = data?.score?.score ?? '—';
+  const scoreRaw = data?.score?.score;
+  const score = scoreRaw ?? '—';
+  const scoreNumeric = typeof scoreRaw === 'number' ? scoreRaw : Number(scoreRaw);
   const tier = data?.score?.brand_tier?.label ?? data?.score?.tier ?? 'BUILDING';
   const paymentMetrics = data?.paymentMetrics;
   const streak = paymentMetrics?.consecutive_on_time_streak ?? 0;
@@ -168,21 +171,23 @@ export default function TenantHomePage() {
       {loadingDashboard ? <SkeletonBlocks rows={4} /> : null}
 
       {hasLease && !loadingDashboard ? (
-        <section className="tenant-panel border-[#C0392B]/20 bg-gradient-to-br from-white to-[#FDEDEC]/40">
+        <section className="dashboard-hero shimmer-border">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#FDEDEC]">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#C0392B]/15">
                 <ScrollText className="h-5 w-5 text-[#C0392B]" aria-hidden />
               </span>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C0392B]/90">Your lease</p>
-                <h2 className="mt-1 text-xl font-semibold text-[#1A1A1A]">
+                <h2 className="mt-1 text-xl font-semibold text-[var(--rc-text)]">
                   {leaseSummary?.property_name || 'Linked property'}
                   {leaseSummary?.unit_identifier ? ` · ${leaseSummary.unit_identifier}` : ''}
                 </h2>
-                {leaseSummary?.address ? <p className="mt-1 text-sm text-slate-600">{leaseSummary.address}</p> : null}
-                <p className="mt-2 text-sm text-slate-600">
-                  Landlord: <span className="font-medium text-[#1A1A1A]">{leaseSummary?.landlord_name}</span>
+                {leaseSummary?.address ? (
+                  <p className="mt-1 text-sm text-[var(--rc-text-secondary)]">{leaseSummary.address}</p>
+                ) : null}
+                <p className="mt-2 text-sm text-[var(--rc-text-secondary)]">
+                  Landlord: <span className="font-medium text-[var(--rc-text)]">{leaseSummary?.landlord_name}</span>
                 </p>
               </div>
             </div>
@@ -192,27 +197,27 @@ export default function TenantHomePage() {
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl bg-white/80 p-4 ring-1 ring-slate-100">
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">Monthly rent</p>
-              <p className="mt-1 text-lg font-semibold tabular-nums text-[#1A1A1A]">{formatN$(leaseSummary?.monthly_rent)}</p>
+            <div className="dashboard-hero__stat">
+              <p className="dashboard-hero__stat-label">Monthly rent</p>
+              <p className="dashboard-hero__stat-value">{formatN$(leaseSummary?.monthly_rent)}</p>
             </div>
-            <div className="rounded-xl bg-white/80 p-4 ring-1 ring-slate-100">
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">Lease term</p>
-              <p className="mt-1 text-sm font-medium text-[#1A1A1A]">
+            <div className="dashboard-hero__stat">
+              <p className="dashboard-hero__stat-label">Lease term</p>
+              <p className="dashboard-hero__stat-value text-sm">
                 {leaseSummary?.start_date ? new Date(leaseSummary.start_date).toLocaleDateString() : '—'}
                 {' → '}
                 {leaseSummary?.end_date ? new Date(leaseSummary.end_date).toLocaleDateString() : 'Open-ended'}
               </p>
             </div>
-            <div className="rounded-xl bg-white/80 p-4 ring-1 ring-slate-100">
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">Payments</p>
-              <p className="mt-1 text-sm font-medium text-[#1A1A1A]">
+            <div className="dashboard-hero__stat">
+              <p className="dashboard-hero__stat-label">Payments</p>
+              <p className="dashboard-hero__stat-value text-sm">
                 {leasePaymentMethod === 'PLATFORM' ? 'Via CRENIT' : 'Direct to landlord'}
               </p>
             </div>
-            <div className="rounded-xl bg-white/80 p-4 ring-1 ring-slate-100">
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">Security deposit</p>
-              <p className="mt-1 text-sm font-medium text-[#1A1A1A]">
+            <div className="dashboard-hero__stat">
+              <p className="dashboard-hero__stat-label">Security deposit</p>
+              <p className="dashboard-hero__stat-value text-sm">
                 {leaseSummary?.deposit_amount != null ? formatN$(leaseSummary.deposit_amount) : 'Not on file'}
                 {leaseSummary?.deposit_status ? (
                   <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${statusPillClass(leaseSummary.deposit_status)}`}>
@@ -283,6 +288,23 @@ export default function TenantHomePage() {
               </div>
             ))}
           </div>
+        </section>
+      ) : null}
+
+      {!loadingDashboard && Number.isFinite(scoreNumeric) ? (
+        <section className="dashboard-score-spotlight shimmer-border">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C0392B]">Rental credit score</p>
+            <h2 className="mt-2 text-xl font-semibold text-[var(--rc-text)]">Your verified score updates with every payment</h2>
+            <p className="mt-2 max-w-md text-sm leading-7 text-[var(--rc-text-secondary)]">
+              {onTime}% on-time · {streak} month streak
+            </p>
+            <Link href="/tenant/credit-score" className="tenant-btn-primary mt-5 inline-flex">
+              View full score
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </div>
+          <ScoreRingMini score={scoreNumeric} tier={tier} />
         </section>
       ) : null}
 

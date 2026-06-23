@@ -40,7 +40,7 @@ export default function B2bIntegratorExports({ onError }: Props) {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5">
+    <div className="admin-list-item">
       <h3 className="font-semibold text-[#1A1A1A]">Integrator exports</h3>
       <p className="mt-1 text-sm text-slate-600">
         OpenAPI 3.0 and Postman v2.1 generated from the live B2B catalog. B2B clients can also fetch{' '}

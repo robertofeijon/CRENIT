@@ -214,9 +214,7 @@ export default function AdminKycPage() {
             submissions.map((submission) => (
               <article
                 key={submission.user_id}
-                className={`rounded-[1.5rem] border bg-white p-5 shadow-sm sm:p-6 ${
-                  submission.location_mismatch ? 'border-red-400 ring-2 ring-red-200' : 'border-slate-200'
-                }`}
+                className={`admin-list-item ${submission.location_mismatch ? 'border-red-400 ring-2 ring-red-200' : ''}`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -475,7 +473,7 @@ export default function AdminKycPage() {
           )}
         </div>
 
-        <aside className="h-fit rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <aside className="admin-panel h-fit">
           <h2 className="text-lg font-semibold text-[#1A1A1A]">Verification detail</h2>
           <p className="mt-2 text-sm text-slate-500">Select a user to view verification state, documents, and flags.</p>
           {!kycDetail ? (

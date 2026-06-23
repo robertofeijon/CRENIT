@@ -252,7 +252,7 @@ export default function AdminServiceRequestsPage() {
             requests.map((req) => (
               <article
                 key={req.id}
-                className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+                className="admin-panel"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -299,7 +299,7 @@ export default function AdminServiceRequestsPage() {
       ) : (
         <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-4">
-            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <section className="admin-panel">
               <div className="flex items-center gap-2">
                 <FileUp className="h-5 w-5 text-[#C0392B]" aria-hidden />
                 <h2 className="font-semibold text-[#1A1A1A]">Upload on behalf</h2>
@@ -365,11 +365,7 @@ export default function AdminServiceRequestsPage() {
                   key={att.id}
                   type="button"
                   onClick={() => setSelectedAttachment(att)}
-                  className={`w-full rounded-[1.25rem] border bg-white p-5 text-left shadow-sm transition ${
-                    selectedAttachment?.id === att.id
-                      ? 'border-[#C0392B] ring-2 ring-[#C0392B]/20'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
+                  className={`w-full admin-list-item text-left ${selectedAttachment?.id === att.id ? 'admin-list-item--selected ring-2 ring-[#C0392B]/20' : ''}`}
                 >
                   <p className="font-semibold text-[#1A1A1A]">{att.attachment_type.replace(/_/g, ' ')}</p>
                   <p className="mt-1 text-sm text-slate-600">Landlord {att.landlord_id.slice(0, 8)}…</p>
@@ -382,7 +378,7 @@ export default function AdminServiceRequestsPage() {
             )}
           </div>
 
-          <aside className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:sticky xl:top-24 xl:self-start">
+          <aside className="admin-panel xl:sticky xl:top-24 xl:self-start">
             {selectedAttachment ? (
               <>
                 <h2 className="font-semibold text-[#1A1A1A]">Review document</h2>
